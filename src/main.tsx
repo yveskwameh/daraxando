@@ -12,6 +12,17 @@ import { initPress } from './lib/press';
 import { registerPwa } from './lib/pwa';
 import { initSound } from './lib/sound';
 
+// Errors on real phones go to the server's logs (Cloudflare, Workers, daraxando, Logs), at most
+// three a visit. Only the message, where it happened and the phone's browser: nothing personal.
+let reported = 0;
+const report = (message: string, where = '') => {
+  if (reported++ >= 3 || !import.meta.env.PROD) return;
+  const body = JSON.stringify({ message: message.slice(0, 500), where: where.slice(0, 300), path: location.pathname.replace(/\/play\/.+/, '/play/:id'), ua: navigator.userAgent.slice(0, 200) });
+  navigator.sendBeacon?.('/api/log', body);
+};
+addEventListener('error', (e) => report(String(e.message), `${e.filename}:${e.lineno}:${e.colno}`));
+addEventListener('unhandledrejection', (e) => report(String((e.reason as Error)?.message ?? e.reason), String((e.reason as Error)?.stack ?? '').split('\n')[1] ?? ''));
+
 markDevice();
 applyPrints();
 initSound();

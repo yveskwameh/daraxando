@@ -5,11 +5,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { StateCode } from '../../shared/places';
 import type { Profile } from '../../shared/protocol';
-import { ApiError, api, type ProfilePatch } from './api';
+import { ApiError, api, RESTING, type ProfilePatch } from './api';
 import { KEYS, store } from './storage';
 import { toast } from './toast';
 
-type Status = 'loading' | 'guest' | 'ready' | 'offline';
+type Status = 'loading' | 'guest' | 'ready' | 'offline' | 'resting';
 
 interface SessionValue {
   status: Status;
@@ -38,11 +38,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [attempt, setAttempt] = useState(0);
   // A player made a moment ago: their profile is already here, no need to fetch it.
   const fresh = useRef<string | null>(null);
+  // A profile fetched a moment ago is fresh enough: Home asks on every visit, and on the free
+  // plan every request counts (docs/BACKEND.md).
+  const fetchedAt = useRef(0);
 
   useEffect(() => {
     if (!token || fresh.current === token) return;
     let live = true;
     setStatus('loading');
+    fetchedAt.current = Date.now();
     api.me(token).then(
       ({ profile }) => {
         if (live) {
@@ -57,7 +61,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           setToken(null);
           setStatus('guest');
         } else {
-          setStatus('offline');
+          setStatus(err.status === RESTING ? 'resting' : 'offline');
         }
       },
     );
@@ -78,7 +82,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refresh = useCallback(async () => {
-    if (!token) return;
+    if (!token || Date.now() - fetchedAt.current < 4_000) return;
+    fetchedAt.current = Date.now();
     try {
       setProfile((await api.me(token)).profile);
     } catch { /* keep what we have */ }

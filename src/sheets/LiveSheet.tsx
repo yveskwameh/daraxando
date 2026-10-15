@@ -8,7 +8,7 @@
  * game set its stake, so you never pick one here: you see it, and Join is agreeing to it.
  *
  * Nobody waiting (Yves, 15 October 2026: the old 3-second countdown was too fast): nothing
- * starts by itself. The sheet keeps looking every 2 seconds and says so, with how long it has
+ * starts by itself. The sheet keeps watching (the server pushes new games) and says so, with how long it has
  * looked and how many other people are looking right now. A game that shows up replaces the
  * screen. You choose: Start my own game (your last game and stake, shown under the button),
  * Change game or stake, or Play Baba Ayo.
@@ -20,18 +20,14 @@ import type { LiveGame } from '../../shared/protocol';
 import { fmt, prize } from '../../shared/stakes';
 import { Avatar, Cowries, Icon } from '../components/art';
 import { Sheet } from '../components/Sheet';
-import { api } from '../lib/api';
 import { buzz } from '../lib/haptics';
 import { usePrefs } from '../lib/prefs';
 import type { Go } from '../lib/router';
 import { usePlayer } from '../lib/session';
 import { sfx } from '../lib/sound';
 import { toast } from '../lib/toast';
+import { useLive, useLooking } from '../lib/useLive';
 import { useLobby } from '../lib/useLobby';
-
-/** How often to look again: quickly while there's nothing to join, slower while you're reading a game. */
-const LOOK_EMPTY_MS = 2_000;
-const LOOK_MS = 4_000;
 
 interface Props {
   open: boolean;
@@ -43,8 +39,6 @@ interface Props {
   onChange: () => void;
   /** Play Baba Ayo instead (his sheet). */
   onBaba: () => void;
-  /** Tells Home how many games are live, so its button stays honest. */
-  onCount?: (n: number) => void;
 }
 
 export default function LiveSheet(props: Props) {
@@ -55,44 +49,21 @@ export default function LiveSheet(props: Props) {
   );
 }
 
-function Body({ go, onStartOwn, onChange, onBaba, onCount }: Props) {
+function Body({ go, onStartOwn, onChange, onBaba }: Props) {
   const { token } = usePlayer();
   const { mode, stake } = usePrefs();
-  const [games, setGames] = useState<LiveGame[] | null>(null);
+  // The server pushes the games down one socket as they change (src/lib/useLive.ts), and
+  // knows this sheet is open so other people's sheets can say someone else is looking.
+  const live = useLive(token);
+  useLooking(true);
+  // A game taken while you tried to join it goes at once, before the server's next update.
+  const [taken, setTaken] = useState<ReadonlySet<string>>(() => new Set());
+  const games = useMemo(() => (live.games ? live.games.filter((g) => !taken.has(g.id)) : null), [live.games, taken]);
+  const looking = live.looking;
   const [current, setCurrent] = useState<string | null>(null);
   const [joining, setJoining] = useState<LiveGame | null>(null);
-  const [looking, setLooking] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [opened] = useState(() => Date.now());
-  const counted = useRef(onCount);
-  counted.current = onCount;
-
-  const load = useCallback(async () => {
-    try {
-      const r = await api.live(token, true);
-      setGames(r.games);
-      setLooking(r.looking ?? 0);
-      counted.current?.(r.n);
-    } catch {
-      setGames((g) => g ?? []);
-    }
-  }, [token]);
-
-  // Fresh list on open, then every few seconds, so a game that was taken disappears and a new
-  // one shows up. Not while joining, and not while the app is in the background: a sheet left
-  // open in a hidden tab isn't someone looking (found in testing, 15 October 2026).
-  const none = games !== null && games.length === 0;
-  useEffect(() => {
-    if (joining) return;
-    void load();
-    const t = setInterval(() => !document.hidden && void load(), none ? LOOK_EMPTY_MS : LOOK_MS);
-    const back = () => !document.hidden && void load();
-    document.addEventListener('visibilitychange', back);
-    return () => {
-      clearInterval(t);
-      document.removeEventListener('visibilitychange', back);
-    };
-  }, [load, joining, none]);
 
   // One tick a second: the waiting times and how long we've been looking.
   useEffect(() => {
@@ -140,7 +111,7 @@ function Body({ go, onStartOwn, onChange, onBaba, onCount }: Props) {
     if (was) {
       const more = (games ?? []).some((x) => x.id !== was.id);
       toast(more ? `${was.name}'s game was taken. Here's the next one.` : `${was.name}'s game was taken. We'll keep looking.`);
-      setGames((g) => (g ? g.filter((x) => x.id !== was.id) : g));
+      setTaken((t) => new Set(t).add(was.id));
       setCurrent(null);
     }
   }, [joining, games]);

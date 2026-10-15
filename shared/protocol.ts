@@ -333,6 +333,8 @@ export type LobbyServerMsg =
   | { t: 'matched'; matchId: string }
   /** You tried to join someone's game, but they were matched or left first. */
   | { t: 'gone' }
+  /** To someone watching from Home: the games waiting right now, and how many others have Quick match open. */
+  | { t: 'live'; games: LiveGame[]; looking: number }
   | { t: 'error'; code: ErrorCode; message: string };
 
 /** Close codes from 4000 up are ours. The browser stops reconnecting on any of them. */

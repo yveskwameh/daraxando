@@ -24,10 +24,32 @@ async function call<T>(path: string, token: string | null, init: RequestInit = {
   } catch {
     throw new ApiError(0, 'You look offline. Check your connection and try again.');
   }
-  const data = (await res.json().catch(() => ({}))) as T & { error?: string };
-  if (!res.ok) throw new ApiError(res.status, data.error ?? 'The server did not answer. Try again.');
+  const text = await res.text().catch(() => '');
+  let data = {} as T & { error?: string };
+  let json = true;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    json = false;
+  }
+  if (!res.ok) {
+    // Cloudflare's own page, not ours: the free plan's daily limit (error 1027). See docs/BACKEND.md.
+    if (!json && (res.status === 429 || text.includes('1027'))) throw new ApiError(RESTING, restingMessage());
+    throw new ApiError(res.status, data.error ?? 'The server did not answer. Try again.');
+  }
   return data;
 }
+
+/** The status an ApiError carries when the game is resting for the day. */
+export const RESTING = 1027;
+
+/** When the free plan's day starts again: midnight UTC, in the player's own time (1:00 am in Lagos). */
+export function backAt(now = new Date()) {
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  return next.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+}
+
+export const restingMessage = () => `Dara X&O is resting until ${backAt()}. Your progress is safe.`;
 
 const post = (body: unknown, method = 'POST'): RequestInit => ({ method, body: JSON.stringify(body) });
 
@@ -48,8 +70,8 @@ export const api = {
   where: () => call<{ state: StateCode | null }>('/api/where', null),
 
   /** Quick match games waiting for an opponent that you can join, best first. */
-  /** Games to join. `looking` counts you as looking at Quick match, and `looking` back is how many others are. */
-  live: (token: string, looking = false) => call<{ games: LiveGame[]; n: number; looking: number }>(`/api/live${looking ? '?looking=1' : ''}`, token),
+  /** Games to join, as one request. The app watches instead (src/lib/useLive.ts); this is for checks. */
+  live: (token: string) => call<{ games: LiveGame[]; n: number; looking: number }>('/api/live', token),
 
   me: (token: string) => call<{ profile: Profile }>('/api/me', token),
 

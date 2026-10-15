@@ -5,6 +5,7 @@
   "name": "daraxando",
   "main": "./worker/index.ts",
   "compatibility_date": "2026-10-01",
+  "vars": { "ENVIRONMENT": "local" },
 
   "assets": {
     // Any path that is not a file gets index.html, so /r/K7P2Q opens the app.
@@ -22,8 +23,8 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Match", "Matchmaker"] }],
 
-  // Player profiles, ratings and match history. Before the first deploy, run
-  // `npx wrangler d1 create daraxando` and paste the id it prints over the placeholder.
+  // Player profiles, ratings and match history. On your Mac this is a local database
+  // (in .wrangler), so the id below is a placeholder that never leaves your machine.
   "d1_databases": [
     {
       "binding": "DB",
@@ -36,10 +37,70 @@
   // New players: at most 5 a minute from one phone, and a loose 60 a minute per IP address.
   // Most Nigerian mobile networks put thousands of phones behind one IP, so the IP limit is
   // only a backstop. The phone's id is a random value the app keeps in local storage.
+  // ACTION_LIMITER: 60 changes a minute per player (anything that isn't a read).
+  // PEEK_LIMITER: 120 room-code checks and error reports a minute per IP, so nobody can try
+  // codes until they find a stranger's room.
   "ratelimits": [
     { "name": "DEVICE_LIMITER", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } },
-    { "name": "IP_LIMITER", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } }
+    { "name": "IP_LIMITER", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } },
+    { "name": "ACTION_LIMITER", "namespace_id": "1003", "simple": { "limit": 60, "period": 60 } },
+    { "name": "PEEK_LIMITER", "namespace_id": "1004", "simple": { "limit": 120, "period": 60 } }
   ],
 
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+
+  // The two copies on Cloudflare, each with its own database (docs/BACKEND.md). Everything above
+  // is for `npm run dev` on your Mac. Bindings aren't inherited, so each copy lists its own.
+  // Cloudflare builds both from GitHub (Workers Builds); each Worker's build variable
+  // CLOUDFLARE_ENV picks its copy, and `npm run release` deploys it (README, "Going live").
+  //   staging:    a test copy on a free workers.dev address. Updates on every push to main.
+  //   production: the real game at daraxando.yveskwameh.com. Updates on the production branch.
+  // The database ids come from the Cloudflare dashboard (Storage and databases, D1). They aren't secret.
+  "env": {
+    "staging": {
+      "name": "daraxando-staging",
+      "workers_dev": true,
+      "vars": { "ENVIRONMENT": "staging" },
+      "durable_objects": {
+        "bindings": [
+          { "name": "MATCH", "class_name": "Match" },
+          { "name": "MATCHMAKER", "class_name": "Matchmaker" }
+        ]
+      },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Match", "Matchmaker"] }],
+      "d1_databases": [
+        { "binding": "DB", "database_name": "daraxando-staging", "database_id": "d8f9b78c-21fc-45d1-82a3-cb5b3effbc13", "migrations_dir": "migrations" }
+      ],
+      "ratelimits": [
+        { "name": "DEVICE_LIMITER", "namespace_id": "2001", "simple": { "limit": 5, "period": 60 } },
+        { "name": "IP_LIMITER", "namespace_id": "2002", "simple": { "limit": 60, "period": 60 } },
+        { "name": "ACTION_LIMITER", "namespace_id": "2003", "simple": { "limit": 60, "period": 60 } },
+        { "name": "PEEK_LIMITER", "namespace_id": "2004", "simple": { "limit": 120, "period": 60 } }
+      ]
+    },
+    "production": {
+      "name": "daraxando",
+      "workers_dev": false,
+      // Cloudflare makes the DNS record and the HTTPS certificate on the first deploy. The domain
+      // must be active on Cloudflare (it is: its nameservers point there).
+      "routes": [{ "pattern": "daraxando.yveskwameh.com", "custom_domain": true }],
+      "vars": { "ENVIRONMENT": "production" },
+      "durable_objects": {
+        "bindings": [
+          { "name": "MATCH", "class_name": "Match" },
+          { "name": "MATCHMAKER", "class_name": "Matchmaker" }
+        ]
+      },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Match", "Matchmaker"] }],
+      "d1_databases": [
+        { "binding": "DB", "database_name": "daraxando", "database_id": "PRODUCTION_DATABASE_ID", "migrations_dir": "migrations" }
+      ],
+      "ratelimits": [
+        { "name": "DEVICE_LIMITER", "namespace_id": "3001", "simple": { "limit": 5, "period": 60 } },
+        { "name": "IP_LIMITER", "namespace_id": "3002", "simple": { "limit": 60, "period": 60 } },
+        { "name": "ACTION_LIMITER", "namespace_id": "3003", "simple": { "limit": 60, "period": 60 } },
+        { "name": "PEEK_LIMITER", "namespace_id": "3004", "simple": { "limit": 120, "period": 60 } }
+      ]
+    }
+  }
 }

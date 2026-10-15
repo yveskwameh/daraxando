@@ -1,8 +1,9 @@
 import { Suspense, lazy, useEffect } from 'react';
-import { Icon } from './components/art';
+import { Avatar, Icon } from './components/art';
 import { InstallPop } from './components/InstallPop';
 import { RoomWatch } from './components/RoomWatch';
 import { Toast } from './components/Toast';
+import { backAt } from './lib/api';
 import { useRoute } from './lib/router';
 import { SessionProvider, useSession } from './lib/session';
 import { Home } from './screens/Home';
@@ -55,6 +56,21 @@ function Shell() {
   }, []);
 
   if (session.status === 'loading') return <Loading />;
+
+  // The free plan's requests for the day are used up (docs/BACKEND.md). The app itself still
+  // loads, because its files don't count; only the game server is resting until midnight UTC.
+  if (session.status === 'resting') {
+    return (
+      <main className="screen center">
+        <div className="empty resting">
+          <Avatar avatar="baba" size={88} />
+          <h2>Dara X&O is resting</h2>
+          <p>So many people played today that the game is taking a short rest. It's back at {backAt()}. Your progress is safe.</p>
+          <button type="button" className="btn ghost lg" onClick={session.retry}>Try again</button>
+        </div>
+      </main>
+    );
+  }
 
   if (session.status === 'offline') {
     return (

@@ -40,7 +40,7 @@ const roomCode = () => {
 };
 
 function secretOf(env: Env) {
-  if (!env.SESSION_SECRET) throw new Error('SESSION_SECRET is not set. Locally it lives in .dev.vars, live run: npx wrangler secret put SESSION_SECRET');
+  if (!env.SESSION_SECRET) throw new Error('SESSION_SECRET is not set. Locally it lives in .dev.vars. Live, add it as a secret on the Worker: Settings, Variables and Secrets.');
   return env.SESSION_SECRET;
 }
 
@@ -137,9 +137,25 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     return json({ state: guess });
   }
 
+  /* --- is it up? For checks after a deploy. No player needed. --- */
+  if (path === '/api/health' && method === 'GET') return json({ ok: true, env: env.ENVIRONMENT ?? 'local' });
+
+  /* --- an error on a player's phone, so bugs on real phones show up in the logs --- */
+  if (path === '/api/log' && method === 'POST') {
+    const ip = req.headers.get('cf-connecting-ip') ?? 'local';
+    if (env.PEEK_LIMITER && !(await env.PEEK_LIMITER.limit({ key: `log:${ip}` })).success) return new Response(null, { status: 204 });
+    const text = (await req.text().catch(() => '')).slice(0, 2000);
+    console.error('[phone]', env.ENVIRONMENT ?? 'local', text);
+    return new Response(null, { status: 204 });
+  }
+
   /* --- peek at a friend room before joining: who is hosting, and the stake --- */
   const peekMatch = path.match(/^\/api\/rooms\/([A-Za-z0-9]+)$/);
   if (peekMatch && method === 'GET') {
+    const ip = req.headers.get('cf-connecting-ip') ?? 'local';
+    if (env.PEEK_LIMITER && !(await env.PEEK_LIMITER.limit({ key: `peek:${ip}` })).success) {
+      return fail(429, 'Too many codes tried. Wait a minute, then try again.');
+    }
     const code = peekMatch[1].toUpperCase();
     if (!isRoomCode(code)) return fail(404, 'That code is not right. Check it with your friend.');
     const room = await env.MATCH.get(env.MATCH.idFromName(code)).peek();
@@ -151,6 +167,9 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   const me = await playerFrom(req, url, env);
   if (!me) return isSocket ? socketError(CLOSE.unauthorized, 'unauthorized') : fail(401, 'unauthorized');
   const now = Date.now();
+  if (method !== 'GET' && !isSocket && env.ACTION_LIMITER && !(await env.ACTION_LIMITER.limit({ key: `a:${me.id}` })).success) {
+    return fail(429, 'Slow down a little. Try again in a minute.');
+  }
 
   /* --- your profile --- */
   if (path === '/api/me' && method === 'GET') return json({ profile: me });
@@ -261,9 +280,15 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     });
   }
 
-  /* --- live games for Quick match: the ones you can join, nearest and longest waiting first --- */
+  /* --- watching the live games from Home: one socket, the server pushes changes --- */
+  if (path === '/api/live/watch' && isSocket) {
+    const check = { level: me.level, cowries: me.cowries, createdAt: me.createdAt, coolUntil: me.coolUntil };
+    return forward(req, env.MATCHMAKER.get(env.MATCHMAKER.idFromName('global')), toPublic(me), { 'x-watch': JSON.stringify({ check }) });
+  }
+
+  /* --- live games for Quick match, as one request: the ones you can join, nearest and longest waiting first --- */
   if (path === '/api/live' && method === 'GET') {
-    const { games: all, looking } = await env.MATCHMAKER.get(env.MATCHMAKER.idFromName('global')).live(me.id, url.searchParams.get('looking') === '1');
+    const { games: all, looking } = await env.MATCHMAKER.get(env.MATCHMAKER.idFromName('global')).live(me.id);
     const zone = zoneOf(me.state);
     const near = (g: LiveGame) => (g.state === me.state && me.state !== 'OUT' && me.state !== 'NONE' ? 0 : zone && zoneOf(g.state) === zone ? 1 : 2);
     const games = all

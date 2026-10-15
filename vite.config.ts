@@ -53,6 +53,8 @@ export default defineConfig({
       workbox: {
         // Only the Latin font files: other alphabets load on demand if a name needs them.
         globPatterns: ['**/*.{js,css,html,png,webmanifest}', '**/*-latin-wght-*.woff2'],
+        // The sign-in email's pictures are fetched by mail apps, never by the game.
+        globIgnores: ['email/**'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
         cleanupOutdatedCaches: true,

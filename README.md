@@ -94,8 +94,7 @@ Secrets are passwords for the game's server, like the key that signs each player
 | --- | --- | --- |
 | `.dev.vars` (project folder) | Secrets for the game on your Mac (`npm run dev`). Today just `SESSION_SECRET`. | Open it in VS Code, one `NAME=value` per line. |
 | `.dev.vars.example` (on GitHub) | The same names with fake values, so you know what `.dev.vars` needs. No real values, ever. | Add a line whenever a new secret is added. |
-| Cloudflare (live game) | The real secrets for the live game, stored encrypted by Cloudflare, not in any file. | `npx wrangler secret put NAME`, then paste the value. To see which exist: Cloudflare dashboard → **Workers & Pages** → **daraxando** → **Settings** → **Variables and Secrets** (values can't be read back). |
-| GitHub (later, for automatic deploys) | A Cloudflare token so GitHub can deploy for you. | github.com → the repository → **Settings** → **Secrets and variables** → **Actions**. |
+| Cloudflare (live game) | The real secrets for the live game, stored encrypted by Cloudflare, not in any file. Each copy has its own. | Cloudflare dashboard → **Workers & Pages** → **daraxando-staging** or **daraxando** → **Settings** → **Variables and Secrets** → **Add**, type **Secret**. Values can't be read back, only replaced. |
 
 `wrangler.jsonc` and `worker/env.ts` list every setting the server uses, but hold no secret values. The database id in `wrangler.jsonc` isn't secret.
 
@@ -109,6 +108,7 @@ Secrets are passwords for the game's server, like the key that signs each player
 | `npm run typecheck` | Checks the TypeScript across the app and the server |
 | `npm run build` | Makes the production build in `dist/` and shows the download size |
 | `node scripts/icons.cjs` | Redraws the app icons from the Sticker logo |
+| `npm run release` | Cloudflare runs this after each build from GitHub: database changes, then the upload. Not for your Mac (section 8). |
 
 **Before calling any change done:** `npm run typecheck && npm test && npm run build`, then look at it at 390 and 360 px wide and in landscape.
 
@@ -172,35 +172,51 @@ scripts/             icons.cjs draws the app icons
 | `docs/PHONE-FEATURES.md` | Installing, portrait only, sound, haptics, phone limits |
 | `docs/STAKES.md` | Dara Seeds, the pot, and the rules that keep it a game and not gambling |
 | `docs/COWRIES-REVIEW.md` | The streak and age changes the lawyer approved (written before Dara Cowries became Dara Seeds) |
+| `docs/BACKEND.md` | The backend and launch plan: decisions, milestones, who does what, keys and the domain |
 | `docs/RETENTION.md` | Research modelled on Duolingo: getting players into a game fast, what brings them back, and what was built |
 | `docs/prototype.html` | The approved redesign as a clickable prototype (open it in a browser) |
 | `docs/logos.html` | Logo options. Option 3, the Sticker, was chosen |
 
 ## 7. Roadmap
 
-1. **Frontend: done.** Every screen, state and animation, tested locally with real matches.
-2. **Backend: next.** Sign-in to keep progress across phones, name filtering, stronger checks at high stakes, privacy-friendly analytics, and push notifications (streak reminders, "your friend joined your room").
+1. **Frontend: done.** Every screen, state and animation, tested locally with real matches. Signed off 15 October 2026.
+2. **Backend: now.** Sign-in to keep progress across phones, name filtering, stronger checks at high stakes, privacy-friendly analytics, and push notifications (streak reminders, "your friend joined your room"). The plan is `docs/BACKEND.md`.
 3. **Launch.** Cloudflare account, live database, secrets, domain, and deploys from GitHub.
 
 Approved on 15 October 2026: the native-speaker check of every Yoruba, Igbo and Hausa word and the 20 titles, and the lawyer's opinion on Dara Seeds, including the streak items and the one-tap age confirmation (`docs/COWRIES-REVIEW.md`). Any change to how seeds work, or to the age confirmation on the first screen, goes back to the lawyer first.
 
-## 8. Going live (later)
+## 8. Going live
 
-Yves publishes; nothing is deployed for him. When it's time:
+Yves publishes; nothing is deployed for him. It all runs on free plans (`docs/BACKEND.md`). There are two copies of the game on Cloudflare, each a **Worker** with its own database:
 
-```sh
-npx wrangler login
-npx wrangler d1 create daraxando            # paste the id it prints into wrangler.jsonc
-npm run db:migrate:remote
-npx wrangler secret put SESSION_SECRET      # any long random string
-npm run deploy
-```
+- **daraxando-staging**, the test copy, on a free `workers.dev` address. It updates by itself every time you push to the `main` branch on GitHub.
+- **daraxando**, the real game at **daraxando.yveskwameh.com**. It updates only when you merge `main` into the `production` branch on GitHub, so nothing reaches players until you say so. This one is set up at launch.
 
-The first launch address is **daraxando.yveskwameh.com**. To point it at the game:
+Cloudflare takes the code from GitHub, never from your Mac. On every push it builds the game (`npm run build`), then runs `npm run release`, which adds any new tables from `migrations/` to that copy's database and then uploads the game. If the database step fails, nothing is uploaded. Free plan: 3,000 build minutes a month, and one build takes about 2.
 
-1. Make sure `yveskwameh.com` is on Cloudflare (Cloudflare dashboard → Add a domain, then change the nameservers where you bought the domain). A Worker can only use a custom domain whose DNS Cloudflare runs.
-2. Cloudflare dashboard → Workers & Pages → **daraxando** → **Domains** tab → add `daraxando.yveskwameh.com` as a custom domain. (Older dashboards: Settings → Domains & Routes → Add → Custom Domain.) Cloudflare makes the DNS record and the HTTPS certificate. There must not already be a CNAME record for `daraxando` in the domain's DNS.
-3. Open https://daraxando.yveskwameh.com on your phone and play a match against Baba Ayo to check it.
+**Set up the test copy, once.** Everything happens in the Cloudflare dashboard (dash.cloudflare.com) except two short steps in the VS Code terminal (**Terminal → New Terminal**, in the project folder).
+
+1. **Make the database.** In the left sidebar, open **Storage & databases → D1 SQL database** (or type `D1` in the search box at the top). Click **Create Database**. Name it `daraxando-staging`. If it asks for a location, pick **Western Europe**, the closest to Nigeria. Click **Create**. On the database's page, copy the **Database ID**.
+2. **Put the id in the settings.** In VS Code, press **Cmd+P**, type `wrangler.jsonc`, press **Enter**. Press **Cmd+Option+F** to open Find and Replace. Type `STAGING_DATABASE_ID` in the first box, paste the Database ID in the second, click **Replace All**, then **Cmd+S**. The id isn't secret.
+3. **Push it.** In the terminal: `git add -A`, then `git commit -m "Staging database"`, then `git push`.
+4. **Connect GitHub.** Back in Cloudflare, open **Workers & Pages** (sidebar, or search). Click **Create application**, then **Get started** next to **Import a repository**. Choose GitHub. If GitHub opens, pick **Only select repositories**, choose `daraxando`, and click **Install & Authorize**. Back in Cloudflare, select the `daraxando` repository.
+5. **Fill in the build settings** exactly:
+   - Project name: `daraxando-staging` (it must match `wrangler.jsonc`, or the build fails)
+   - Build command: `npm run build`
+   - Deploy command: `npm run release`
+   - Under **Advanced settings**, **Build variables**, add `CLOUDFLARE_ENV` with the value `staging`
+   - Leave everything else as it is, and click **Deploy**.
+6. **Let the build reach the database.** The first build stops at the database step with an "Authentication error", because the key Cloudflare made for builds can't touch databases yet. In the sidebar, open **Manage account → Account API Tokens**. Find the token named **Workers Builds** followed by today's date, open its menu (**...**) and click **Edit**. Under **Permissions**, click **Add more** and set the new row to **Account**, **D1**, **Edit**. Click **Continue to summary**, then **Update token**.
+7. **Build again.** Open **Workers & Pages → daraxando-staging → Deployments**, open the failed build and click **Retry build**. If there's no such button, run `git commit --allow-empty -m "Build staging again"` and `git push` in the terminal. Wait for the build to turn green (about 2 minutes).
+8. **Add the secret.** In the terminal, run `openssl rand -base64 32` and copy the line it prints. In Cloudflare, open **daraxando-staging → Settings → Variables and Secrets** and click **Add**. Type: **Secret**. Variable name: `SESSION_SECRET`. Value: paste. Click **Deploy**. Keep this value to yourself; it's different from the one in `.dev.vars`.
+9. **Only build `main`.** Still in **Settings**, find **Build → Branch control**. Check the production branch is `main`, and turn off builds for other branches (it saves build minutes). Save.
+10. **Play it.** The Worker's **Overview** shows its address, like `daraxando-staging.<your-name>.workers.dev`. Open it on your phone and play Baba Ayo, then a friend room between your phone and laptop. Adding `/api/health` to the address should show `"env":"staging"`.
+
+**Every update after that:** commit and push from VS Code (section 3). Cloudflare rebuilds the test copy by itself; **Workers & Pages → daraxando-staging → Deployments** shows each build. A failed build changes nothing on the live copy.
+
+**The real game, at launch:** the same steps with `daraxando` everywhere `daraxando-staging` appears, `PRODUCTION_DATABASE_ID` in step 2, `CLOUDFLARE_ENV` set to `production`, a different `SESSION_SECRET`, and **Branch control** set to a `production` branch (on GitHub: **Branches → New branch**, named `production`, from `main`). Step 6 is only needed once, because both Workers share the build token. The first build creates `daraxando.yveskwameh.com` and its HTTPS certificate by itself, since the domain's nameservers already point to Cloudflare. If it says the domain has a conflicting record, delete the old `daraxando` record (**yveskwameh.com → DNS**) and retry. From then on, to publish: on GitHub, **Pull requests → New pull request**, base `production`, compare `main`, **Create pull request**, then **Merge**.
+
+If the free plan's 100,000 requests a day ever run out, players see "Dara X&O is resting" until 1:00 am Lagos time, when the count starts again.
 
 ## 9. If something goes wrong
 

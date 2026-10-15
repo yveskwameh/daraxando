@@ -45,34 +45,44 @@ export function botMove(board: Board, hist: Hist, me: Mark, v: Variant, level: B
   return heuristic(board, me, v, rng);
 }
 
-/** Every best move on a plain 3×3 board, found by full minimax with alpha-beta pruning. */
+/**
+ * Every best move on a plain 3×3 board, by full minimax. The free plan gives a request 10 ms
+ * of processing, and a cold search from an empty board took 40, so: the opening moves come
+ * from a book (any square; then the centre, or a corner if the centre is taken), and every
+ * position solved is remembered for the life of the server (there are only 5,478).
+ */
 export function perfect(board: Board, me: Mark, v: Variant): number[] {
   const free = legalMoves(board);
+  const pieces = board.length - free.length;
+  if (pieces === 0) return [0, 1, 2, 3, 4, 5, 6, 7, 8]; // every first move draws with perfect play
+  if (pieces === 1) return board[4] ? [0, 2, 6, 8] : [4];
   let best = -Infinity;
   let moves: number[] = [];
   for (const i of free) {
     const b = board.slice();
     b[i] = me;
-    const score = lineThrough(b, i, me, v.n, v.k) ? 10 : -negamax(b, other(me), v, 1, -Infinity, Infinity);
+    const score = lineThrough(b, i, me, v.n, v.k) ? 10 - pieces : -solve(b, other(me), v);
     if (score > best) { best = score; moves = [i]; } else if (score === best) moves.push(i);
   }
   return moves;
 }
 
-function negamax(board: Board, toMove: Mark, v: Variant, depth: number, alpha: number, beta: number): number {
+/** Best score for the player to move. A win scores higher the fewer pieces it took. */
+const solved = new Map<string, number>();
+function solve(board: Board, toMove: Mark, v: Variant): number {
+  const key = board.map((c) => c ?? '.').join('') + toMove;
+  const known = solved.get(key);
+  if (known !== undefined) return known;
   const free = legalMoves(board);
-  if (free.length === 0) return 0;
-  let best = -Infinity;
+  let best = free.length ? -Infinity : 0;
+  const pieces = board.length - free.length;
   for (const i of free) {
     board[i] = toMove;
-    const score = lineThrough(board, i, toMove, v.n, v.k)
-      ? 10 - depth
-      : -negamax(board, other(toMove), v, depth + 1, -beta, -alpha);
+    const score = lineThrough(board, i, toMove, v.n, v.k) ? 10 - (pieces + 1) : -solve(board, other(toMove), v);
     board[i] = null;
     if (score > best) best = score;
-    if (best > alpha) alpha = best;
-    if (alpha >= beta) break;
   }
+  solved.set(key, best);
   return best;
 }
 

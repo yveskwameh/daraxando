@@ -16,7 +16,13 @@ export interface Env {
   DEVICE_LIMITER?: RateLimit;
   /** A loose backstop per IP address, high enough for a shared mobile network. */
   IP_LIMITER?: RateLimit;
-  /** Signs player tokens. Local: .dev.vars. Live: `npx wrangler secret put SESSION_SECRET`. */
+  /** Changes per player (anything that isn't a read): 60 a minute. */
+  ACTION_LIMITER?: RateLimit;
+  /** Room-code checks and error reports per IP: 120 a minute. */
+  PEEK_LIMITER?: RateLimit;
+  /** Which copy this is: local, staging or production (wrangler.jsonc). */
+  ENVIRONMENT?: 'local' | 'staging' | 'production';
+  /** Signs player tokens. Local: .dev.vars. Live: a secret on each Worker (Settings, Variables and Secrets). */
   SESSION_SECRET?: string;
   ASSETS: Fetcher;
 }

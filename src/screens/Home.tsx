@@ -2,7 +2,8 @@
  * Home. Your title and Aura at the top, the Deck of modes in the middle (swipe, or tap the
  * dots), your streak and daily quests, and the three ways to play at the bottom. Tapping a
  * card starts your own game of that mode (pick a stake, then wait for a player). Quick match
- * joins a game someone is already waiting in; its button says how many are live.
+ * joins a game someone is already waiting in; its button says how many are live, as the server
+ * pushes them (no polling).
  */
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { questsToday, streakNow } from '../../shared/habits';
@@ -21,6 +22,7 @@ import { buzz } from '../lib/haptics';
 import { closeInstallPop, maybeShowInstallPop } from '../lib/install';
 import { prefs, usePrefs } from '../lib/prefs';
 import { applyUpdate, useUpdateReady } from '../lib/pwa';
+import { useLive } from '../lib/useLive';
 import type { Go } from '../lib/router';
 import { sfx } from '../lib/sound';
 import { usePlayer } from '../lib/session';
@@ -37,29 +39,6 @@ const LiveSheet = lazy(() => import('../sheets/LiveSheet'));
 
 type SheetName = 'stake' | 'wallet' | 'friend' | 'baba' | 'streak' | 'friends' | 'quests' | 'live' | null;
 
-/**
- * How many Quick match games are waiting right now. Asked when Home opens, every 15 seconds
- * while it's on screen, and when you come back to the app: a small request, never faster.
- */
-function useLiveCount(token: string) {
-  const [n, setN] = useState<number | null>(null);
-  useEffect(() => {
-    let alive = true;
-    const load = () => {
-      if (document.visibilityState !== 'visible') return;
-      api.live(token).then((r) => alive && setN(r.n), () => {});
-    };
-    load();
-    const t = setInterval(load, 15_000);
-    document.addEventListener('visibilitychange', load);
-    return () => {
-      alive = false;
-      clearInterval(t);
-      document.removeEventListener('visibilitychange', load);
-    };
-  }, [token]);
-  return [n, setN] as const;
-}
 
 export function Home({ go }: { go: Go }) {
   const { profile, refresh, token } = usePlayer();
@@ -75,7 +54,8 @@ export function Home({ go }: { go: Go }) {
   };
   const close = () => setSheet(null);
   const lv = levelInfo(profile.aura);
-  const [live, setLive] = useLiveCount(token);
+  // The live games come down one socket the server pushes to (src/lib/useLive.ts).
+  const live = useLive(token).games?.length ?? 0;
   // Nobody to join: your own game, with your last game and stake.
   const startOwn = useCallback(() => {
     setSheet(null);
@@ -257,7 +237,7 @@ export function Home({ go }: { go: Go }) {
         )}
         {opened.has('quests') && <QuestsSheet open={sheet === 'quests'} onClose={close} />}
         {opened.has('live') && (
-          <LiveSheet open={sheet === 'live'} onClose={close} go={go} onStartOwn={startOwn} onChange={() => setSheet('stake')} onBaba={() => setSheet('baba')} onCount={setLive} />
+          <LiveSheet open={sheet === 'live'} onClose={close} go={go} onStartOwn={startOwn} onChange={() => setSheet('stake')} onBaba={() => setSheet('baba')} />
         )}
       </Suspense>
     </main>

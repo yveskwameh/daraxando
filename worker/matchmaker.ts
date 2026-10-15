@@ -11,8 +11,12 @@
  *
  * Every waiting player is also a live game others can join from Quick match on Home: `live()`
  * lists them, and a join is a search that targets one player (`target`). It pairs with them
- * at once or gets told they're gone. People looking at Quick match with nobody to join are
- * counted too (in memory, for a few seconds), so the sheet can say others are looking.
+ * at once or gets told they're gone.
+ *
+ * Home and the Quick match sheet don't ask for that list over and over: they hold one watching
+ * socket (tagged 'watch') and this object pushes the list down it whenever it changes, along
+ * with how many other people have the Quick match sheet open. Pushing costs nothing on
+ * Cloudflare's free plan; polling every couple of seconds was most of the day's requests.
  *
  * One object comfortably handles hundreds of new searches a second. Past that, split it
  * by mode (idFromName('lobby:classic'), ...) and nothing else has to change.
@@ -23,12 +27,9 @@ import { canPair, searchStage } from '../shared/matching';
 import { zoneOf } from '../shared/places';
 import { dayKey } from '../shared/progression';
 import { CLOSE, type LiveGame, type LobbyServerMsg, type Nearby, type PublicPlayer } from '../shared/protocol';
-import { HIGH_TABLE, PAIR_DAILY_MAX } from '../shared/stakes';
+import { HIGH_TABLE, PAIR_DAILY_MAX, tableLock, type StakeCheck } from '../shared/stakes';
 import type { Env } from './env';
 import type { InitResult } from './match';
-
-/** Quick match checks every couple of seconds; anyone not seen for this long has stopped looking. */
-const LOOKING_MS = 7_000;
 
 interface Ticket extends PublicPlayer {
   mode: ModeId;
@@ -41,7 +42,19 @@ interface Ticket extends PublicPlayer {
   matched?: string;
 }
 
+/** Someone on Home watching the live games: who they are, enough to filter and sort for them. */
+interface Watcher {
+  watch: true;
+  id: string;
+  state: string;
+  check: StakeCheck;
+  /** Has the Quick match sheet open. */
+  looking: boolean;
+}
+
 const OPEN = 1;
+/** At most this many games go down a watching socket, best first. */
+const LIVE_MAX = 20;
 
 export const randomId = (n = 12) => {
   const abc = 'abcdefghijkmnpqrstuvwxyz23456789';
@@ -62,6 +75,7 @@ export class Matchmaker extends DurableObject<Env> {
 
   async fetch(req: Request): Promise<Response> {
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('Expected a websocket', { status: 426 });
+    if (req.headers.get('x-watch')) return this.watch(req);
     let ticket: Ticket;
     try {
       const player = JSON.parse(req.headers.get('x-player') ?? '') as PublicPlayer;
@@ -73,7 +87,7 @@ export class Matchmaker extends DurableObject<Env> {
 
     // Searching in two tabs at once would match you against yourself. Last tab wins.
     for (const ws of this.ctx.getWebSockets()) {
-      if (this.ticket(ws)?.id === ticket.id) {
+      if (!this.isWatcher(ws) && this.ticket(ws)?.id === ticket.id) {
         try { ws.close(CLOSE.replaced, 'replaced'); } catch { /* gone */ }
       }
     }
@@ -85,37 +99,106 @@ export class Matchmaker extends DurableObject<Env> {
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  /** The browser sends a tick every few seconds while searching, which re-runs pairing a little wider. */
-  async webSocketMessage() {
-    await this.pair();
+  /**
+   * The browser sends a tick every few seconds while searching, which re-runs pairing a little
+   * wider. A watcher sends {"t":"looking","on":true|false} when the Quick match sheet opens or closes.
+   */
+  async webSocketMessage(ws: WebSocket, msg: string | ArrayBuffer) {
+    if (!this.isWatcher(ws)) return this.pair();
+    let on: boolean;
+    try {
+      const m = JSON.parse(typeof msg === 'string' ? msg : '') as { t?: string; on?: unknown };
+      if (m.t !== 'looking') return;
+      on = m.on === true;
+    } catch {
+      return;
+    }
+    const w = this.ticket(ws) as unknown as Watcher;
+    if (w.looking === on) return;
+    ws.serializeAttachment({ ...w, looking: on } satisfies Watcher);
+    this.broadcast();
   }
 
   async webSocketClose(ws: WebSocket) {
     try { ws.close(); } catch { /* already closed */ }
+    // A game that was waiting, or someone who was looking, just left.
+    this.broadcast();
+  }
+
+  /** Someone on Home starts watching the live games. They get the list straight away. */
+  private watch(req: Request) {
+    let w: Watcher;
+    try {
+      const player = JSON.parse(req.headers.get('x-player') ?? '') as PublicPlayer;
+      const x = JSON.parse(req.headers.get('x-watch') ?? '') as { check: StakeCheck };
+      w = { watch: true, id: player.id, state: player.state, check: x.check, looking: false };
+    } catch {
+      return new Response('Missing player', { status: 400 });
+    }
+    const { 0: client, 1: server } = new WebSocketPair();
+    this.ctx.acceptWebSocket(server, ['watch']);
+    server.serializeAttachment(w);
+    this.sendLive(server, w, this.waiting().filter(({ t }) => !t.target), this.lookingIds());
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  private isWatcher(ws: WebSocket) {
+    return this.ctx.getTags(ws).includes('watch');
+  }
+
+  private watchers() {
+    return this.ctx
+      .getWebSockets('watch')
+      .filter((ws) => ws.readyState === OPEN)
+      .map((ws) => ({ ws, w: this.ticket(ws) as unknown as Watcher }))
+      .filter((x) => x.w?.watch);
+  }
+
+  /** Everyone with the Quick match sheet open right now. */
+  private lookingIds() {
+    return new Set(this.watchers().filter((x) => x.w.looking).map((x) => x.w.id));
+  }
+
+  /** The list one watcher sees: not their own game, only tables they can sit at, nearest first. */
+  private sendLive(ws: WebSocket, w: Watcher, open: { t: Ticket }[], looking: Set<string>) {
+    const now = Date.now();
+    const zone = zoneOf(w.state);
+    const near = (t: Ticket) => (t.state === w.state && realState(w.state) ? 0 : zone && zoneOf(t.state) === zone ? 1 : 2);
+    const games: LiveGame[] = open
+      .filter(({ t }) => t.id !== w.id && !tableLock(t.stake, w.check, now))
+      .sort((a, b) => near(a.t) - near(b.t) || a.t.since - b.t.since)
+      .slice(0, LIVE_MAX)
+      .map(({ t }) => ({ id: t.id, name: t.name, avatar: t.avatar, print: t.print, state: t.state, rating: t.rating, mode: t.mode, stake: t.stake, since: t.since }));
+    const msg: LobbyServerMsg = { t: 'live', games, looking: looking.size - (looking.has(w.id) ? 1 : 0) };
+    try { ws.send(JSON.stringify(msg)); } catch { /* closing */ }
+  }
+
+  /** What every watcher saw last, so nothing is sent when nothing changed. */
+  private lastLive = '';
+
+  /** Push the live games to every watcher, if the list or the looking count changed. */
+  private broadcast() {
+    const watchers = this.watchers();
+    if (!watchers.length) return;
+    const open = this.waiting().filter(({ t }) => !t.target);
+    const looking = this.lookingIds();
+    const sig = open.map(({ t }) => `${t.id}:${t.mode}:${t.stake}`).sort().join(',') + `|${[...looking].sort().join(',')}`;
+    if (sig === this.lastLive) return;
+    this.lastLive = sig;
+    for (const { ws, w } of watchers) this.sendLive(ws, w, open, looking);
   }
 
   /**
-   * Games waiting for an opponent, for Quick match on Home. Joiners aren't games, and you can't
-   * join yourself. `looking` marks the viewer as looking at Quick match right now; the count is
-   * everyone else seen doing that in the last few seconds. It's only memory: if this object
-   * sleeps, the count starts again from zero, which is fine for a hint.
+   * Games waiting for an opponent, as one request (the app watches instead; this is for
+   * checks and tests). Joiners aren't games, and you can't join yourself.
    */
-  async live(viewer: string, looking = false): Promise<{ games: LiveGame[]; looking: number }> {
-    const now = Date.now();
-    if (looking) this.lookers.set(viewer, now);
-    let others = 0;
-    for (const [id, at] of this.lookers) {
-      if (now - at > LOOKING_MS) this.lookers.delete(id);
-      else if (id !== viewer) others++;
-    }
+  async live(viewer: string): Promise<{ games: LiveGame[]; looking: number }> {
+    const looking = this.lookingIds();
     const games = this.waiting()
       .filter(({ t }) => !t.target && t.id !== viewer)
       .map(({ t }) => ({ id: t.id, name: t.name, avatar: t.avatar, print: t.print, state: t.state, rating: t.rating, mode: t.mode, stake: t.stake, since: t.since }));
-    return { games, looking: others };
+    return { games, looking: looking.size - (looking.has(viewer) ? 1 : 0) };
   }
-
-  /** Who is looking at Quick match right now, by player id, with when they last checked. */
-  private lookers = new Map<string, number>();
 
   private ticket(ws: WebSocket): Ticket | null {
     try {
@@ -128,7 +211,7 @@ export class Matchmaker extends DurableObject<Env> {
   private waiting() {
     return this.ctx
       .getWebSockets()
-      .filter((ws) => ws.readyState === OPEN)
+      .filter((ws) => ws.readyState === OPEN && !this.isWatcher(ws))
       .map((ws) => ({ ws, t: this.ticket(ws)! }))
       .filter((x) => x.t && !x.t.matched && !this.pairing.has(x.t.id));
   }
@@ -207,6 +290,7 @@ export class Matchmaker extends DurableObject<Env> {
       };
       try { ws.send(JSON.stringify({ t: 'queued', near } satisfies LobbyServerMsg)); } catch { /* closing */ }
     }
+    this.broadcast();
   }
 
   private async start(a: { ws: WebSocket; t: Ticket }, b: { ws: WebSocket; t: Ticket }) {
