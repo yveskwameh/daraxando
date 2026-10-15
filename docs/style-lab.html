@@ -1,0 +1,726 @@
+<!doctype html>
+<!-- The proposed look for the redesign, waiting for Yves to approve it. Open it in a browser. A reference, not app code. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>XO Arena Style Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@50..150,100..900&family=Atkinson+Hyperlegible+Next:wght@200..800&family=Funnel+Display:wght@300..800&family=Onest:wght@400..800&family=Unbounded:wght@400..900&display=swap">
+<style>
+/* Layout: one phone-width column of proposals, each section a working sample of the game's new look, controls at the top restyle everything below. */
+:root {
+  color-scheme: dark;
+  --night: #0b0a2a;        /* page */
+  --deep: #17164a;         /* surfaces */
+  --raise: #24226a;        /* tiles, raised surfaces */
+  --line: #34318a;         /* borders */
+  --indigo: #3d27db;       /* fills with white text */
+  --indigo-glow: #9b8fff;  /* indigo on dark: pieces, labels */
+  --fuchsia: #dc0fa1;      /* fills with white text */
+  --fuchsia-glow: #ff4fb8; /* pink on dark */
+  --danfo: #ffc921;        /* rewards */
+  --cream: #fff4e0;        /* sticker outlines */
+  --text: #ffffff;
+  --muted: #b8b4e8;
+  --head: 'Unbounded', 'Arial Black', system-ui, sans-serif;
+  --body: 'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --display-stretch: 100%;
+  --num-stretch: 100%;
+  --r: 18px;
+}
+:root[data-font="anybody"] { --head: 'Anybody', 'Arial Black', system-ui, sans-serif; --display-stretch: 128%; --num-stretch: 72%; }
+:root[data-font="funnel"] { --head: 'Funnel Display', system-ui, sans-serif; --body: 'Onest', system-ui, -apple-system, 'Segoe UI', sans-serif; }
+
+* { box-sizing: border-box; }
+html { background: var(--night); }
+body {
+  margin: 0;
+  background: var(--night);
+  color: var(--text);
+  font: 400 1.0625rem/1.55 var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+.wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 56px;
+}
+h1, h2, h3 { font-family: var(--head); font-weight: 800; margin: 0; line-height: 1.08; text-wrap: balance; }
+h1 { font-size: clamp(2.4rem, 10vw, 4rem); font-stretch: var(--display-stretch); letter-spacing: -0.01em; }
+h2 { font-size: clamp(1.5rem, 5.5vw, 2rem); font-stretch: var(--display-stretch); }
+h3 { font-size: 1.125rem; }
+p { margin: 0; }
+.kicker { font: 700 0.8125rem/1 var(--body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--fuchsia-glow); }
+.lede { color: var(--muted); max-width: 60ch; }
+.note { color: var(--muted); font-size: 0.9375rem; }
+.sec { display: grid; gap: 18px; }
+.sec > header { display: grid; gap: 8px; }
+.num { font-family: var(--head); font-stretch: var(--num-stretch); font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 3px solid var(--danfo); outline-offset: 3px; }
+
+/* ---------- controls ---------- */
+.controls { display: grid; gap: 12px; padding: 16px; border-radius: var(--r); background: var(--deep); border: 1px solid var(--line); }
+.control { display: grid; gap: 8px; }
+.control > span { font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button {
+  font: 700 0.9375rem/1 var(--body);
+  color: var(--text);
+  background: transparent;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--cream); color: var(--night); border-color: var(--cream); }
+
+/* ---------- hero demo ---------- */
+.hero { display: grid; gap: 22px; }
+.phone {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 28px;
+  background: var(--deep);
+  border: 1px solid var(--line);
+  max-width: 420px;
+}
+.stats { display: flex; gap: 8px; flex-wrap: wrap; }
+.stat {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
+  background: var(--raise);
+  font-weight: 700;
+}
+.stat svg { width: 20px; height: 20px; }
+.home-title { font-family: var(--head); font-weight: 800; font-size: 2rem; font-stretch: var(--display-stretch); line-height: 1; }
+.home-title b { color: var(--fuchsia-glow); font-weight: 800; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ---------- buttons, shared ---------- */
+.btn {
+  --fill: var(--fuchsia);
+  --ink: #fff;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 22px;
+  border: 0;
+  font: 700 1rem/1.1 var(--head);
+  font-stretch: 100%;
+  color: var(--ink);
+  background: var(--fill);
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 160ms cubic-bezier(.3, 1.6, .5, 1), background-color 160ms;
+}
+.btn.block { width: 100%; }
+.btn.alt { --fill: var(--indigo); }
+.btn.ghost { --fill: transparent; --ink: var(--text); }
+.xp {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--danfo);
+  color: var(--night);
+  font: 800 0.75rem/1 var(--body);
+}
+
+/* Style 1: Danfo sticker. Flat colour cut out with a cream border, set at a slight tilt like a sticker on a bus window. */
+[data-btn="sticker"] .btn { border-radius: 999px; box-shadow: 0 0 0 3px var(--cream); transform: rotate(-1.4deg); }
+[data-btn="sticker"] .btn.alt { transform: rotate(1.1deg); }
+[data-btn="sticker"] .btn.ghost { box-shadow: inset 0 0 0 2px var(--cream); transform: none; }
+[data-btn="sticker"] .btn.is-down { transform: rotate(0deg) scale(0.92); }
+
+/* Style 2: Adire print. Cut corners like a fabric label, with an indigo-dye pattern that slides when pressed. */
+[data-btn="adire"] .btn {
+  border-radius: 4px;
+  clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px);
+}
+[data-btn="adire"] .btn::before {
+  content: "";
+  position: absolute;
+  inset: -48px;
+  z-index: -1;
+  opacity: 0.3;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ccircle cx='16' cy='16' r='8' fill='none' stroke='white' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='2.5' fill='white'/%3E%3Ccircle cx='0' cy='0' r='3' fill='white'/%3E%3Ccircle cx='32' cy='0' r='3' fill='white'/%3E%3Ccircle cx='0' cy='32' r='3' fill='white'/%3E%3Ccircle cx='32' cy='32' r='3' fill='white'/%3E%3C/svg%3E");
+  transition: transform 520ms cubic-bezier(.2, .8, .2, 1);
+}
+[data-btn="adire"] .btn.ghost { --fill: var(--raise); }
+[data-btn="adire"] .btn.ghost::before { opacity: 0.12; }
+[data-btn="adire"] .btn.is-down { transform: scale(0.95); }
+[data-btn="adire"] .btn.is-down::before { transform: translate(16px, 16px) rotate(10deg); }
+
+/* Style 3: Neon line. Crisp double outline like an arcade sign, no blur, with a flash of light that sweeps across on press. */
+[data-btn="neon"] .btn { border-radius: 14px; --fill: transparent; --ink: var(--fuchsia-glow); box-shadow: inset 0 0 0 2px var(--fuchsia-glow); }
+[data-btn="neon"] .btn.primary { --fill: var(--fuchsia); --ink: #fff; box-shadow: 0 0 0 2px var(--night), 0 0 0 4px var(--fuchsia-glow); }
+[data-btn="neon"] .btn.alt { --ink: var(--indigo-glow); box-shadow: inset 0 0 0 2px var(--indigo-glow); }
+[data-btn="neon"] .btn.alt.primary { --fill: var(--indigo); --ink: #fff; box-shadow: 0 0 0 2px var(--night), 0 0 0 4px var(--indigo-glow); }
+[data-btn="neon"] .btn.ghost { --ink: var(--text); box-shadow: inset 0 0 0 2px var(--line); }
+[data-btn="neon"] .btn::after {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0; left: -50%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: translateX(0) skewX(-20deg);
+  opacity: 0;
+}
+[data-btn="neon"] .btn.is-flash::after { animation: sweep 480ms ease-out; }
+[data-btn="neon"] .btn.is-down { transform: scale(0.96); }
+@keyframes sweep { 0% { opacity: 1; transform: translateX(0) skewX(-20deg); } 100% { opacity: 1; transform: translateX(380%) skewX(-20deg); } }
+
+/* Sparks fly from the main buttons when tapped. One fixed layer, transforms only. */
+.sparks { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+.spark { position: absolute; width: 9px; height: 9px; border-radius: 2px; }
+
+/* ---------- colour ---------- */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.sw { display: grid; align-content: end; gap: 2px; min-height: 108px; padding: 12px; border-radius: 16px; font-size: 0.875rem; }
+.sw b { font: 800 0.9375rem/1.2 var(--head); }
+.sw code { font: 700 0.8125rem/1 ui-monospace, 'SF Mono', Menlo, monospace; opacity: 0.85; }
+.rule { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; padding: 14px 16px; border-radius: 16px; background: var(--deep); border: 1px solid var(--line); }
+.rule strong { color: var(--danfo); font-family: var(--head); font-size: 0.875rem; }
+
+/* ---------- type ---------- */
+.specimen { display: grid; gap: 14px; padding: 20px; border-radius: var(--r); background: var(--deep); border: 1px solid var(--line); min-width: 0; }
+.spec-display { font-family: var(--head); font-weight: 800; font-size: clamp(2.2rem, 9vw, 3.4rem); line-height: 1; font-stretch: var(--display-stretch); color: var(--fuchsia-glow); }
+.spec-head { font-family: var(--head); font-weight: 700; font-size: 1.5rem; line-height: 1.15; color: var(--indigo-glow); }
+.spec-body { max-width: 60ch; }
+.spec-nums { display: flex; flex-wrap: wrap; gap: 10px; }
+.spec-nums div { display: grid; gap: 2px; padding: 8px 14px; border-radius: 12px; background: var(--raise); min-width: 84px; }
+.spec-nums b { font-family: var(--head); font-weight: 800; font-size: 1.6rem; line-height: 1.1; font-stretch: var(--num-stretch); font-variant-numeric: tabular-nums; }
+.spec-nums span { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.code { font-family: var(--head); font-weight: 800; font-size: 2rem; letter-spacing: 0.2em; color: var(--danfo); }
+.weights { display: flex; flex-wrap: wrap; gap: 6px 16px; font-family: var(--head); font-size: 1.25rem; }
+.why { display: grid; gap: 6px; font-size: 0.9375rem; color: var(--muted); }
+.why b { color: var(--text); }
+
+/* ---------- style cards ---------- */
+.styles { display: grid; gap: 16px; }
+.style-card { display: grid; gap: 14px; padding: 20px; border-radius: var(--r); background: var(--deep); border: 1px solid var(--line); }
+.style-card[aria-current="true"] { border-color: var(--danfo); box-shadow: inset 0 0 0 1px var(--danfo); }
+.style-card .demo { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 6px 4px; }
+.style-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.pick { font: 700 0.875rem/1 var(--body); color: var(--danfo); background: none; border: 0; padding: 8px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
+.tag { font: 700 0.75rem/1 var(--body); padding: 5px 9px; border-radius: 999px; background: var(--danfo); color: var(--night); }
+
+/* ---------- pieces + board ---------- */
+.pieces { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+.piece-tile { display: grid; place-items: center; width: 92px; height: 92px; border-radius: 20px; background: var(--raise); }
+.piece-tile svg { width: 72%; height: 72%; }
+.modes { display: flex; flex-wrap: wrap; gap: 8px; }
+.game { display: grid; gap: 14px; padding: 18px; border-radius: 26px; background: var(--deep); border: 1px solid var(--line); }
+.game-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.score { display: flex; align-items: center; gap: 10px; font-family: var(--head); font-weight: 800; font-size: 1.25rem; }
+.score svg { width: 26px; height: 26px; }
+.score .vs { color: var(--muted); font-size: 0.875rem; font-weight: 700; }
+.clock { color: var(--muted); font-size: 0.9375rem; font-variant-numeric: tabular-nums; }
+.status { font-family: var(--head); font-weight: 800; font-size: 1.375rem; line-height: 1.2; min-height: 1.7em; }
+.status.win { color: var(--danfo); }
+.board {
+  --n: 3;
+  display: grid;
+  grid-template-columns: repeat(var(--n), 1fr);
+  gap: calc(14px - var(--n) * 1px);
+  width: 100%;
+  max-width: 440px;
+  padding: 10px;
+  border-radius: 22px;
+  background: var(--night);
+  justify-self: center;
+}
+.cell {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: calc(20px - var(--n) * 1.6px);
+  background: var(--raise);
+  cursor: pointer;
+  transition: transform 120ms ease, background-color 160ms;
+}
+.cell:active { transform: scale(0.92); }
+.cell svg { width: 74%; height: 74%; animation: drop 260ms cubic-bezier(.3, 1.6, .5, 1); }
+.cell.win { background: var(--danfo); }
+.cell.next-gone svg { opacity: 0.4; animation: wobble 900ms ease-in-out infinite; }
+@keyframes drop { from { transform: scale(0.3) rotate(-20deg); opacity: 0; } }
+@keyframes wobble { 50% { transform: scale(0.88); } }
+.mode-info { display: grid; gap: 4px; font-size: 0.9375rem; color: var(--muted); }
+.mode-info b { color: var(--text); font-family: var(--head); font-size: 1rem; }
+
+/* ---------- names ---------- */
+.legends { display: flex; flex-wrap: wrap; gap: 8px; }
+.legend-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px 6px 6px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font: 700 0.9375rem/1 var(--body);
+  cursor: pointer;
+}
+.legend-btn[aria-pressed="true"] { border-color: var(--fuchsia-glow); background: var(--raise); }
+.mono {
+  flex: none;
+  display: grid; place-items: center;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  font: 800 0.875rem/1 var(--head);
+  color: var(--night);
+}
+.name-card { display: grid; gap: 12px; padding: 18px; border-radius: var(--r); background: var(--deep); border: 1px solid var(--line); }
+.name-card .who { display: flex; gap: 12px; align-items: center; }
+.name-card .who .mono { width: 52px; height: 52px; font-size: 1.25rem; }
+.name-big { font-family: var(--head); font-weight: 800; font-size: clamp(1.6rem, 7vw, 2.2rem); line-height: 1.05; color: var(--danfo); }
+.name-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.name-list span { padding: 6px 12px; border-radius: 999px; background: var(--raise); font-weight: 700; font-size: 0.9375rem; }
+
+/* ---------- matchmaking ---------- */
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; counter-reset: s; }
+.steps li { display: grid; gap: 6px; padding: 16px; border-radius: 16px; background: var(--deep); border: 1px solid var(--line); }
+.steps .t { font: 800 0.8125rem/1 var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--fuchsia-glow); }
+.steps b { font-family: var(--head); font-size: 1.0625rem; line-height: 1.2; }
+.steps span { color: var(--muted); font-size: 0.9375rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="drum" viewBox="0 0 100 100">
+      <path d="M24 18h52l-16 32 16 32H24l16-32z" transform="translate(0 5)" fill="#3d27db"/>
+      <path d="M24 18h52l-16 32 16 32H24l16-32z" fill="#9b8fff"/>
+      <rect x="20" y="14" width="60" height="10" rx="5" fill="#3d27db"/>
+      <rect x="20" y="76" width="60" height="10" rx="5" fill="#3d27db"/>
+      <path d="M30 24 46 50 30 76M50 24v52M70 24 54 50 70 76" stroke="#fff" stroke-width="3" opacity=".75" fill="none"/>
+    </symbol>
+    <symbol id="calabash" viewBox="0 0 100 100">
+      <path d="M14 40h72c0 26-16 44-36 44S14 66 14 40z" transform="translate(0 5)" fill="#a30a78"/>
+      <path d="M14 40h72c0 26-16 44-36 44S14 66 14 40z" fill="#ff4fb8"/>
+      <ellipse cx="50" cy="40" rx="36" ry="9" fill="#a30a78"/>
+      <path d="M24 56c8 6 44 6 52 0M30 68c6 4 34 4 40 0" stroke="#fff" stroke-width="3.5" opacity=".7" fill="none" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="flame" viewBox="0 0 24 24"><path fill="#ff8a1f" d="M12.6 1.8c.5 3.3-1.4 5-3.1 6.8C7.8 10.3 6 12.3 6 15.2 6 19 8.7 22.2 12 22.2s6-2.7 6-6.8c0-2.6-1.2-4.6-2.6-6-.2 1.7-1 2.9-2.2 3.4.7-4-.4-8.4-1.6-11z"/></symbol>
+    <symbol id="bolt" viewBox="0 0 24 24"><path fill="#ffc921" d="M13.8 1.8 4.2 13.6h6.6l-1.2 8.6 10.2-12.4h-6.7l.7-8z"/></symbol>
+    <symbol id="shield" viewBox="0 0 24 24"><path fill="#9b8fff" d="M12 1.9 3.8 5v6.3c0 5.1 3.5 9.3 8.2 10.8 4.7-1.5 8.2-5.7 8.2-10.8V5L12 1.9z"/></symbol>
+  </defs>
+</svg>
+
+<div class="sparks" id="sparks" aria-hidden="true"></div>
+
+<main class="wrap">
+
+  <section class="hero" aria-labelledby="hero-title">
+    <div style="display:grid;gap:10px">
+      <span class="kicker">Proposed look · for approval</span>
+      <h1 id="hero-title">XO Arena style lab</h1>
+      <p class="lede">The new indigo and fuchsia look, on your phone. Switch the fonts and button styles below and everything on this page changes with them. Tap the buttons to feel the effects, then play the new board sizes further down. Nothing here is in the app yet.</p>
+    </div>
+
+    <div class="controls" role="group" aria-label="Try options">
+      <div class="control">
+        <span id="font-label">Fonts</span>
+        <div class="seg" role="group" aria-labelledby="font-label" id="font-seg">
+          <button type="button" id="font-unbounded" data-font="unbounded" aria-pressed="true">Unbounded + Atkinson</button>
+          <button type="button" id="font-anybody" data-font="anybody" aria-pressed="false">Anybody + Atkinson</button>
+          <button type="button" id="font-funnel" data-font="funnel" aria-pressed="false">Funnel + Onest</button>
+        </div>
+      </div>
+      <div class="control">
+        <span id="btn-label">Button style</span>
+        <div class="seg" role="group" aria-labelledby="btn-label" id="btn-seg">
+          <button type="button" id="btn-sticker" data-style="sticker" aria-pressed="true">Danfo sticker</button>
+          <button type="button" id="btn-adire" data-style="adire" aria-pressed="false">Adire print</button>
+          <button type="button" id="btn-neon" data-style="neon" aria-pressed="false">Neon line</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="phone js-styled" data-btn="sticker" aria-label="Home screen sample">
+      <div class="stats">
+        <span class="stat"><svg aria-hidden="true"><use href="#flame"/></svg><span class="num">3</span></span>
+        <span class="stat"><svg aria-hidden="true"><use href="#bolt"/></svg>Lv <span class="num">4</span></span>
+        <span class="stat"><svg aria-hidden="true"><use href="#shield"/></svg><span class="num">1180</span></span>
+      </div>
+      <div class="home-title">Oya, <b>play.</b></div>
+      <p class="note">Three in a row wins. Baba Ayo is online if nobody else is.</p>
+      <button type="button" class="btn primary block" id="hero-quick">Quick match <span class="xp">+50 XP</span></button>
+      <div class="row">
+        <button type="button" class="btn alt" id="hero-friend">Play a friend</button>
+        <button type="button" class="btn ghost" id="hero-practice">Practice</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="c-title">
+    <header>
+      <span class="kicker">1 · Colour</span>
+      <h2 id="c-title">Owambe Night</h2>
+      <p class="lede">Your pick. Indigo is home and your piece. Fuchsia is energy: the main button, the opponent, the win. Danfo yellow is only for rewards.</p>
+    </header>
+    <div class="swatches">
+      <div class="sw" style="background:#0b0a2a;color:#fff;box-shadow:inset 0 0 0 1px #34318a"><b>Midnight</b><code>#0B0A2A</code><span>Page</span></div>
+      <div class="sw" style="background:#17164a;color:#fff"><b>Deep</b><code>#17164A</code><span>Cards, sheets</span></div>
+      <div class="sw" style="background:#24226a;color:#fff"><b>Raise</b><code>#24226A</code><span>Tiles, chips</span></div>
+      <div class="sw" style="background:#3d27db;color:#fff"><b>Royal indigo</b><code>#3D27DB</code><span>Fills, white text 8.4:1</span></div>
+      <div class="sw" style="background:#dc0fa1;color:#fff"><b>Fuchsia</b><code>#DC0FA1</code><span>Fills, white text 4.5:1</span></div>
+      <div class="sw" style="background:#9b8fff;color:#0b0a2a"><b>Indigo light</b><code>#9B8FFF</code><span>Indigo on dark</span></div>
+      <div class="sw" style="background:#ff4fb8;color:#0b0a2a"><b>Fuchsia light</b><code>#FF4FB8</code><span>Pink on dark</span></div>
+      <div class="sw" style="background:#ffc921;color:#0b0a2a"><b>Danfo yellow</b><code>#FFC921</code><span>XP, wins, rewards</span></div>
+      <div class="sw" style="background:#fff4e0;color:#0b0a2a"><b>Cream</b><code>#FFF4E0</code><span>Outlines, selected</span></div>
+    </div>
+    <div class="rule"><strong>Rule</strong><p>Flat colour only. No purple-to-pink gradients and no soft glow on everything, because those two are the strongest "made by AI" signals in 2026. The depth comes from outlines, cut shapes and motion instead.</p></div>
+  </section>
+
+  <section class="sec" aria-labelledby="t-title">
+    <header>
+      <span class="kicker">2 · Type</span>
+      <h2 id="t-title">Legible first, with character</h2>
+      <p class="lede">A strong sans for headings and numbers, and a very readable sans for everything else. Use the Fonts switch at the top to compare all three pairings right here.</p>
+    </header>
+    <div class="specimen">
+      <div class="spec-display">Gbam! You win</div>
+      <div class="spec-head">Oya, your move</div>
+      <p class="spec-body">Make a room and send the link. Your friend joins with the code, and the first to three wins takes the series.</p>
+      <div class="spec-nums">
+        <div><b>+50</b><span>XP</span></div>
+        <div><b>1180</b><span>Rating</span></div>
+        <div><b>0:42</b><span>Clock</span></div>
+      </div>
+      <div style="display:grid;gap:4px"><span class="note">Room code, the hardest test for a font</span><span class="code">K7P2Q</span></div>
+      <div class="weights" aria-label="Heading font at four weights">
+        <span style="font-weight:400">Regular</span><span style="font-weight:600">Semibold</span><span style="font-weight:800">Bold</span><span style="font-weight:900">Black</span>
+      </div>
+    </div>
+    <div class="why" id="font-why"></div>
+  </section>
+
+  <section class="sec" aria-labelledby="b-title">
+    <header>
+      <span class="kicker">3 · Buttons</span>
+      <h2 id="b-title">Three ways to press</h2>
+      <p class="lede">None of these use the thick bottom shadow. Each effect moves only position, size and opacity, so cheap phones run them without lag. Tap each one.</p>
+    </header>
+    <div class="styles">
+      <article class="style-card" data-btn="sticker" id="card-sticker" aria-current="true">
+        <div class="style-head"><h3>Danfo sticker</h3><span class="tag">Recommended</span></div>
+        <p class="note">Flat colour cut out with a cream border, stuck on at a slight tilt like the stickers on a danfo window. A press straightens it and squeezes it flat, and sparks pop out.</p>
+        <div class="demo">
+          <button type="button" class="btn primary" id="s1">Quick match <span class="xp">+50 XP</span></button>
+          <button type="button" class="btn alt" id="s2">Play a friend</button>
+          <button type="button" class="btn ghost" id="s3">Practice</button>
+        </div>
+        <button type="button" class="pick" data-style="sticker" id="pick-sticker">Use across the page</button>
+      </article>
+      <article class="style-card" data-btn="adire" id="card-adire" aria-current="false">
+        <div class="style-head"><h3>Adire print</h3></div>
+        <p class="note">Cut corners like a fabric label, filled with an indigo-dye pattern. A press makes the pattern slide and twist under your finger.</p>
+        <div class="demo">
+          <button type="button" class="btn primary" id="a1">Quick match <span class="xp">+50 XP</span></button>
+          <button type="button" class="btn alt" id="a2">Play a friend</button>
+          <button type="button" class="btn ghost" id="a3">Practice</button>
+        </div>
+        <button type="button" class="pick" data-style="adire" id="pick-adire">Use across the page</button>
+      </article>
+      <article class="style-card" data-btn="neon" id="card-neon" aria-current="false">
+        <div class="style-head"><h3>Neon line</h3></div>
+        <p class="note">A crisp double outline like an arcade sign, with no blur. A press sends a flash of light across the button.</p>
+        <div class="demo">
+          <button type="button" class="btn primary" id="n1">Quick match <span class="xp">+50 XP</span></button>
+          <button type="button" class="btn alt" id="n2">Play a friend</button>
+          <button type="button" class="btn ghost" id="n3">Practice</button>
+        </div>
+        <button type="button" class="pick" data-style="neon" id="pick-neon">Use across the page</button>
+      </article>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="g-title">
+    <header>
+      <span class="kicker">4 · Longer games</span>
+      <h2 id="g-title">Pick a board, play a series</h2>
+      <p class="lede">Play both sides on this phone to feel each mode. Quick modes play as a short series, so one session lasts about 3 to 5 minutes whichever board you pick.</p>
+    </header>
+    <div class="pieces" aria-label="The two pieces">
+      <div class="piece-tile"><svg role="img" aria-label="Talking drum"><use href="#drum"/></svg></div>
+      <div class="piece-tile"><svg role="img" aria-label="Calabash"><use href="#calabash"/></svg></div>
+      <p class="note" style="flex:1;min-width:200px">Talking drum against calabash. The drum reads like an X and the calabash like an O, so the board is clear at a glance.</p>
+    </div>
+    <div class="modes seg" role="group" aria-label="Mode" id="mode-seg">
+      <button type="button" id="m-classic" data-mode="classic" aria-pressed="true">Classic 3×3</button>
+      <button type="button" id="m-fading" data-mode="fading" aria-pressed="false">Fading 3×3</button>
+      <button type="button" id="m-big" data-mode="big" aria-pressed="false">Big 5×5</button>
+      <button type="button" id="m-pro" data-mode="pro" aria-pressed="false">Pro 7×7</button>
+    </div>
+    <div class="game js-styled" data-btn="sticker">
+      <div class="game-top">
+        <div class="score" aria-live="polite">
+          <svg aria-hidden="true"><use href="#drum"/></svg><span class="num" id="sc-d">0</span>
+          <span class="vs" id="bo">best of 5</span>
+          <span class="num" id="sc-c">0</span><svg aria-hidden="true"><use href="#calabash"/></svg>
+        </div>
+        <span class="clock" id="clock">Session 0:00</span>
+      </div>
+      <div class="status" id="status" aria-live="polite">Drum to move</div>
+      <div class="board" id="board" role="group" aria-label="Board"></div>
+      <div class="row">
+        <button type="button" class="btn primary" id="next">Next game</button>
+        <button type="button" class="btn ghost" id="reset">Restart</button>
+      </div>
+      <div class="mode-info" id="mode-info"></div>
+    </div>
+    <p class="note">Not on the list: a 4×3 board with 12 spots. With three in a row on that board, whoever moves first can always force a win, so it would feel unfair fast. Coming later: <b style="color:var(--text)">Dara</b>, the three-in-a-row game of the Dakarkari people of Kebbi State, as a Naija special mode.</p>
+  </section>
+
+  <section class="sec" aria-labelledby="n-title">
+    <header>
+      <span class="kicker">5 · Player names</span>
+      <h2 id="n-title">Legends meet their land</h2>
+      <p class="lede">Your two ideas fused. Each avatar is a legend, and the names it suggests come from that legend's home and what the place is known for. Modern legends are famous moments, never living people.</p>
+    </header>
+    <div class="legends" role="group" aria-label="Legend" id="legend-seg"></div>
+    <div class="name-card" aria-live="polite">
+      <div class="who"><span class="mono" id="nc-mono"></span><div><h3 id="nc-name"></h3><p class="note" id="nc-place"></p></div></div>
+      <div class="name-big" id="nc-big"></div>
+      <div class="name-list" id="nc-list"></div>
+      <div class="js-styled" data-btn="sticker"><button type="button" class="btn alt" id="shuffle">Shuffle name</button></div>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="q-title">
+    <header>
+      <span class="kicker">6 · Quick match</span>
+      <h2 id="q-title">Near you first, then everyone</h2>
+      <p class="lede">The search widens every 10 seconds, so nobody waits long. Phones on MTN and Airtel mostly look like they are in Lagos to the network, so players pick their state once instead of being tracked.</p>
+    </header>
+    <ol class="steps">
+      <li><span class="t">0 to 10 s</span><b>Same state</b><span>Port Harcourt meets Port Harcourt.</span></li>
+      <li><span class="t">10 to 20 s</span><b>Same zone</b><span>Rivers meets Delta, Bayelsa, Cross River.</span></li>
+      <li><span class="t">20 to 30 s</span><b>All of Nigeria</b><span>Port Harcourt meets Kaduna.</span></li>
+      <li><span class="t">After 30 s</span><b>Baba Ayo steps in</b><span>Clearly marked as the bot.</span></li>
+    </ol>
+  </section>
+
+</main>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const lite = (navigator.deviceMemory || 8) <= 2 || (navigator.hardwareConcurrency || 8) <= 4;
+
+  /* ---------- font switch ---------- */
+  const fontWhy = {
+    unbounded: '<b>Unbounded + Atkinson Hyperlegible Next (recommended).</b><span>Unbounded is wide and round, so headings and numbers read instantly even small, at every weight from regular to black. It feels like a scoreboard. Atkinson Hyperlegible was made by the Braille Institute for people with low vision: every letter is built to be told apart, like I, l and 1, or O and 0.</span>',
+    anybody: '<b>Anybody + Atkinson Hyperlegible Next.</b><span>Anybody can go wide for titles and narrow for scores and timers, so one font covers both, and it can stretch when someone wins. A little less steady than Unbounded at small sizes.</span>',
+    funnel: '<b>Funnel Display + Onest.</b><span>Funnel has small funnel-shaped details, quirky but calm. Onest is a clean, modern text face. The softest of the three, with the least game energy.</span>'
+  };
+  const fontSeg = document.getElementById('font-seg');
+  function setFont(f) {
+    if (f === 'unbounded') root.removeAttribute('data-font'); else root.setAttribute('data-font', f);
+    fontSeg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.font === f)));
+    document.getElementById('font-why').innerHTML = fontWhy[f];
+  }
+  fontSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFont(b.dataset.font); });
+  setFont('unbounded');
+
+  /* ---------- button style switch ---------- */
+  const btnSeg = document.getElementById('btn-seg');
+  function setStyle(s) {
+    document.querySelectorAll('.js-styled').forEach(el => el.setAttribute('data-btn', s));
+    btnSeg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.style === s)));
+    document.querySelectorAll('.style-card').forEach(c => c.setAttribute('aria-current', String(c.dataset.btn === s)));
+  }
+  btnSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setStyle(b.dataset.style); });
+  document.querySelectorAll('.pick').forEach(p => p.addEventListener('click', () => { setStyle(p.dataset.style); window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); }));
+
+  /* ---------- press effects ---------- */
+  const sparks = document.getElementById('sparks');
+  const colors = ['#ffc921', '#ff4fb8', '#9b8fff', '#fff4e0'];
+  function burst(x, y) {
+    if (reduce) return;
+    const count = lite ? 5 : 9;
+    for (let i = 0; i < count; i++) {
+      const s = document.createElement('span');
+      s.className = 'spark';
+      s.style.left = x - 4 + 'px';
+      s.style.top = y - 4 + 'px';
+      s.style.background = colors[i % colors.length];
+      sparks.appendChild(s);
+      const a = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+      const d = 34 + Math.random() * 26;
+      s.animate(
+        [{ transform: 'translate(0,0) scale(1) rotate(0deg)', opacity: 1 },
+         { transform: `translate(${Math.cos(a) * d}px, ${Math.sin(a) * d}px) scale(0.2) rotate(${180 + Math.random() * 180}deg)`, opacity: 0 }],
+        { duration: 460, easing: 'cubic-bezier(.2,.8,.2,1)' }
+      ).onfinish = () => s.remove();
+    }
+  }
+  document.addEventListener('pointerdown', e => {
+    const b = e.target.closest('.btn');
+    if (!b) return;
+    b.classList.add('is-down');
+    b.classList.remove('is-flash'); void b.offsetWidth; b.classList.add('is-flash');
+    if (b.classList.contains('primary')) burst(e.clientX, e.clientY);
+    try { navigator.vibrate && navigator.vibrate(8); } catch (_) {}
+  });
+  const up = () => document.querySelectorAll('.btn.is-down').forEach(b => b.classList.remove('is-down'));
+  document.addEventListener('pointerup', up);
+  document.addEventListener('pointercancel', up);
+  document.addEventListener('animationend', e => { if (e.target.classList && e.target.classList.contains('is-flash')) e.target.classList.remove('is-flash'); });
+
+  /* ---------- game demo ---------- */
+  const MODES = {
+    classic: { n: 3, k: 3, fade: 0, bo: 5, info: '<b>Classic 3×3, three in a row. Best of 5.</b><span>About 30 seconds a game, so 2 to 4 minutes a series. Perfect play always draws, so the series decides it.</span>' },
+    fading: { n: 3, k: 3, fade: 3, bo: 3, info: '<b>Fading 3×3, three pieces each. Best of 3.</b><span>Place a fourth and your oldest piece disappears. The one about to go wobbles. The board never fills up, so games run 1 to 2 minutes. A draw after 30 moves.</span>' },
+    big: { n: 5, k: 4, fade: 0, bo: 3, info: '<b>Big 5×5, four in a row. Best of 3.</b><span>About 1 to 3 minutes a game. Fair, because neither side can force a win.</span>' },
+    pro: { n: 7, k: 5, fade: 0, bo: 1, info: '<b>Pro 7×7, five in a row. One game.</b><span>About 3 to 5 minutes on its own. Fair, and the most strategic.</span>' }
+  };
+  const boardEl = document.getElementById('board');
+  const statusEl = document.getElementById('status');
+  const info = document.getElementById('mode-info');
+  const scD = document.getElementById('sc-d'), scC = document.getElementById('sc-c');
+  const clock = document.getElementById('clock');
+  let mode = 'classic', cells = [], turn = 'd', starter = 'd', over = false, history = { d: [], c: [] }, moves = 0, score = { d: 0, c: 0 }, started = 0;
+  const NAME = { d: 'Drum', c: 'Calabash' };
+  const need = () => Math.ceil(MODES[mode].bo / 2);
+
+  function newGame() {
+    const m = MODES[mode];
+    cells = Array(m.n * m.n).fill(null);
+    history = { d: [], c: [] };
+    moves = 0; over = false; turn = starter;
+    boardEl.style.setProperty('--n', m.n);
+    statusEl.className = 'status';
+    statusEl.textContent = `${NAME[turn]} to move`;
+    render();
+  }
+  function render(line) {
+    const m = MODES[mode];
+    const goneNext = m.fade && !over && history[turn].length >= m.fade ? history[turn][0] : -1;
+    boardEl.innerHTML = '';
+    cells.forEach((v, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cell' + (line && line.includes(i) ? ' win' : '') + (i === goneNext ? ' next-gone' : '');
+      b.setAttribute('aria-label', `Row ${Math.floor(i / m.n) + 1}, column ${(i % m.n) + 1}, ${v ? NAME[v] : 'empty'}`);
+      if (v) b.innerHTML = `<svg aria-hidden="true"><use href="#${v === 'd' ? 'drum' : 'calabash'}"/></svg>`;
+      b.addEventListener('click', () => play(i));
+      boardEl.appendChild(b);
+    });
+  }
+  function lineAt(i, who) {
+    const { n, k } = MODES[mode];
+    const r = Math.floor(i / n), c = i % n;
+    for (const [dr, dc] of [[0, 1], [1, 0], [1, 1], [1, -1]]) {
+      const run = [i];
+      for (const s of [1, -1]) {
+        let rr = r + dr * s, cc = c + dc * s;
+        while (rr >= 0 && rr < n && cc >= 0 && cc < n && cells[rr * n + cc] === who) { run.push(rr * n + cc); rr += dr * s; cc += dc * s; }
+      }
+      if (run.length >= k) return run;
+    }
+    return null;
+  }
+  function play(i) {
+    if (over || cells[i]) return;
+    if (!started) started = Date.now();
+    const m = MODES[mode];
+    if (m.fade && history[turn].length >= m.fade) cells[history[turn].shift()] = null;
+    cells[i] = turn; history[turn].push(i); moves++;
+    try { navigator.vibrate && navigator.vibrate(6); } catch (_) {}
+    const line = lineAt(i, turn);
+    if (line) {
+      over = true; score[turn]++;
+      scD.textContent = score.d; scC.textContent = score.c;
+      statusEl.className = 'status win';
+      statusEl.textContent = MODES[mode].bo === 1 ? `Gbam! ${NAME[turn]} wins` : score[turn] >= need() ? `${NAME[turn]} takes the series, ${score.d} to ${score.c}` : `Gbam! ${NAME[turn]} wins this one`;
+      starter = starter === 'd' ? 'c' : 'd';
+      render(line);
+      return;
+    }
+    const full = cells.every(Boolean);
+    if (full || (m.fade && moves >= 30)) {
+      over = true;
+      statusEl.textContent = 'Draw. Next game decides it';
+      starter = starter === 'd' ? 'c' : 'd';
+      render();
+      return;
+    }
+    turn = turn === 'd' ? 'c' : 'd';
+    statusEl.textContent = `${NAME[turn]} to move`;
+    render();
+  }
+  function resetSeries() { score = { d: 0, c: 0 }; scD.textContent = 0; scC.textContent = 0; starter = 'd'; started = 0; newGame(); }
+  document.getElementById('next').addEventListener('click', () => { if (score.d >= need() || score.c >= need()) resetSeries(); else newGame(); });
+  document.getElementById('reset').addEventListener('click', resetSeries);
+  const modeSeg = document.getElementById('mode-seg');
+  modeSeg.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    mode = b.dataset.mode;
+    modeSeg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    info.innerHTML = MODES[mode].info;
+    document.getElementById('bo').textContent = MODES[mode].bo === 1 ? 'one game' : 'best of ' + MODES[mode].bo;
+    resetSeries();
+  });
+  info.innerHTML = MODES[mode].info;
+  setInterval(() => {
+    const s = started ? Math.floor((Date.now() - started) / 1000) : 0;
+    clock.textContent = `Session ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }, 1000);
+  newGame();
+
+  /* ---------- names ---------- */
+  const LEGENDS = [
+    { id: 'amina', name: 'Amina of Zazzau', place: 'Zaria, Kaduna State. Warrior queen, Durbar horsemen, the old city walls.', color: '#ff4fb8', names: ['Durbar Queen', 'Zaria Warrior', 'Zazzau Rider', 'Amina Walls'] },
+    { id: 'moremi', name: 'Moremi Ajasoro', place: 'Ile-Ife, Osun State. The heroine of Ife, the Edi festival, the bronze heads.', color: '#9b8fff', names: ['Ife Heroine', 'Edi Brave', 'Ife Bronze', 'Moremi Fire'] },
+    { id: 'idia', name: 'Queen Idia', place: 'Benin City, Edo State. The Iyoba whose mask became the face of FESTAC 77.', color: '#ffc921', names: ['Bronze Iyoba', 'Benin Bronze', 'FESTAC Mask', 'Idia Gold'] },
+    { id: 'jaja', name: 'Jaja of Opobo', place: 'Opobo, Rivers State. The palm oil king of the creeks, next door to Port Harcourt.', color: '#ff8a1f', names: ['Opobo King', 'Palm Oil Baron', 'Rivers Royal', 'Creek King'] },
+    { id: 'emotan', name: 'Emotan', place: 'Benin City, Edo State. The market woman whose statue still stands at Oba Market.', color: '#7ff5e6', names: ['Oba Market Mama', 'Emotan Market', 'Benin Trader'] },
+    { id: 'moments', name: 'Modern moments', place: 'Famous Nigerian moments, so no living person is named.', color: '#fff4e0', names: ['FESTAC 77', 'Atlanta 96 Gold', 'Eagles 94', 'Eko Owambe', 'Kano Durbar', 'Up NEPA'] }
+  ];
+  const legendSeg = document.getElementById('legend-seg');
+  let legend = LEGENDS[0], pick = 0;
+  LEGENDS.forEach((l, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'legend-btn'; b.id = 'legend-' + l.id;
+    b.setAttribute('aria-pressed', String(i === 0));
+    b.innerHTML = `<span class="mono" style="background:${l.color}">${l.name[0]}</span>${l.name}`;
+    b.addEventListener('click', () => { legend = l; pick = 0; legendSeg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); showName(); });
+    legendSeg.appendChild(b);
+  });
+  function showName() {
+    const mono = document.getElementById('nc-mono');
+    mono.textContent = legend.name[0]; mono.style.background = legend.color;
+    document.getElementById('nc-name').textContent = legend.name;
+    document.getElementById('nc-place').textContent = legend.place;
+    document.getElementById('nc-big').textContent = legend.names[pick % legend.names.length];
+    document.getElementById('nc-list').innerHTML = legend.names.map(n => `<span>${n}</span>`).join('');
+  }
+  document.getElementById('shuffle').addEventListener('click', () => { pick++; showName(); });
+  showName();
+})();
+</script>
+</body>
+</html>

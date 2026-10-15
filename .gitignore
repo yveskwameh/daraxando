@@ -1,20 +1,13 @@
-# Installed packages, builds and the local database
+# Installed packages, builds and the local test database: rebuilt on every machine
 node_modules
 dist
 .wrangler
 *.tsbuildinfo
 
-# Secrets: never commit these
+# Secrets: never commit these. .dev.vars.example shows the names without the values.
 .dev.vars
 *.local
 
 # Mac and sync leftovers
 .DS_Store
 _to_delete
-
-# Notes for building the game: plans, research, design notes and Claude's instructions.
-# They stay on Yves's Mac. GitHub only holds what makes the game run (Yves, 15 October 2026).
-docs/
-DESIGN.md
-CLAUDE.md
-README.md
