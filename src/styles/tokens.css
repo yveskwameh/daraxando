@@ -1,0 +1,46 @@
+/*
+ * Owambe Night. Every colour, font and timing the game uses. One dark theme on purpose:
+ * the game is a night out, and a dark screen saves battery on the AMOLED phones many
+ * players use.
+ */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces, from the back of the room to the front. */
+  --night: #0b0a2a;
+  --deep: #17164a;
+  --raise: #24226a;
+  --line: #34318a;
+
+  /* Brand. Indigo is you, fuchsia is them, Danfo yellow is reward and only reward. */
+  --indigo: #3d27db;
+  --indigo-glow: #9b8fff;
+  --fuchsia: #dc0fa1;
+  --fuchsia-dk: #a30a78;
+  --fuchsia-glow: #ff4fb8;
+  --danfo: #ffc921;
+  --cream: #fff4e0;
+  --teal: #35d6c0;
+  /* Ice blue for the Streak Freeze, and only for it, the way every streak app shows it. */
+  --ice: #7fd8ff;
+  /* The streak flame: lit after your first match of the day, grey until then. */
+  --flame: #ff8a1f;
+  --flame-off: #5d58a8;
+
+  --text: #ffffff;
+  --muted: #b8b4e8;
+  --muted-on-indigo: #e3e0ff; /* secondary text on an indigo fill (your own row) */
+  --scroll-thumb: #4a46b4; /* the scrollbar on lists */
+
+  /* Gabarito for headings and numbers, Onest for reading. */
+  --head: 'Gabarito Variable', 'Gabarito', 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --body: 'Onest Variable', 'Onest', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --gut-l: max(16px, env(safe-area-inset-left, 0px));
+  --gut-r: max(16px, env(safe-area-inset-right, 0px));
+
+  --ease-pop: cubic-bezier(.3, 1.6, .5, 1);
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+}

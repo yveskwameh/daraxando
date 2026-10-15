@@ -1,0 +1,144 @@
+/**
+ * First visit: one screen, one tap. The app picks a name, an animal and a best guess at your
+ * state, shows them, and Play now starts your first game against Baba Ayo straight away.
+ * Change opens a sheet to pick your own. Someone who arrived through a friend's room link
+ * joins the room instead.
+ *
+ * Tapping Play now is also how you confirm you're 13 or older, so the age check costs no
+ * extra step but is still something you do, not something we assume.
+ */
+import { useEffect, useState } from 'react';
+import { AVATARS } from '../../shared/collections';
+import { stateName, type StateCode } from '../../shared/places';
+import { cleanName } from '../../shared/protocol';
+import { Avatar, Icon, Wordmark } from '../components/art';
+import { DemoBoard } from '../components/DemoBoard';
+import { Sheet } from '../components/Sheet';
+import { StatePicker } from '../components/StatePicker';
+import { api, type RoomPeek } from '../lib/api';
+import { buzz } from '../lib/haptics';
+import { suggestNames } from '../lib/names';
+import type { Go, Route } from '../lib/router';
+import { useSession } from '../lib/session';
+
+const OPEN = AVATARS.filter((a) => a.lvl === 1);
+/** The first game: Classic against Baba Ayo at his easiest. Instant, and winnable. */
+const FIRST_MODE = 'classic';
+const FIRST_LEVEL = 'jeje';
+
+export function Onboarding({ route, go }: { route: Route; go: Go }) {
+  const { start } = useSession();
+  // Fixed at the start. Play now changes the route to the first game before this screen goes.
+  const [room] = useState(() => (route.name === 'play' ? route.id : null));
+  const [host, setHost] = useState<RoomPeek['host']>(null);
+  const [ideas] = useState(() => suggestNames(6));
+  const [name, setName] = useState(() => ideas[0]);
+  const [avatar, setAvatar] = useState(() => OPEN[Math.floor(Math.random() * OPEN.length)].id);
+  const [state, setState] = useState<StateCode | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  // A best guess from the network, only to fill in the card. The player sees it and can change it.
+  useEffect(() => {
+    api.where().then((r) => setState((s) => s ?? r.state), () => {});
+  }, []);
+
+  // Arrived through a friend's link: say who invited them.
+  useEffect(() => {
+    if (room) api.peekRoom(room).then((r) => setHost(r.host), () => {});
+  }, [room]);
+
+  const clean = cleanName(name);
+
+  const play = async () => {
+    if (!clean || busy) return;
+    setBusy(true);
+    setError('');
+    buzz('tap');
+    try {
+      await start({ name: clean, avatar, state: state ?? 'NONE' }, async (token) => {
+        if (room) return;
+        // One game, not a series: win it and you're through to Home (worker/match.ts, `first`).
+        const { matchId } = await api.playBot(token, FIRST_MODE, FIRST_LEVEL, true);
+        go({ name: 'play', id: matchId }, { replace: true });
+      });
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <main className="screen onb welcome" aria-label="Welcome">
+      <div className="onb-head">
+        <Wordmark />
+        <p>
+          {room
+            ? `${host?.name ?? 'Your friend'} invited you to a game. They're waiting for you.`
+            : 'Three in a row, the Naija way. Warm up against Baba Ayo, then take on players across Nigeria.'}
+        </p>
+      </div>
+
+      <div className="mb-wrap welcome-board" aria-hidden="true">
+        <DemoBoard mode="classic" piece="calabash" playing />
+      </div>
+
+      <div className="me-card">
+        <Avatar avatar={avatar} print="line" size={48} />
+        <div>
+          <span className="kicker">You play as</span>
+          <b>{clean || 'Pick a name'}</b>
+          <span><Icon id="i-pin" className="" />{stateName(state)}</span>
+        </div>
+        <button type="button" className="mini-btn" onClick={() => setEditing(true)}>Change</button>
+      </div>
+
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <button type="button" className="btn primary block lg" disabled={!clean || busy} onClick={play}>
+        {busy ? 'Setting up the board' : room ? 'Join the game' : 'Play now'}
+      </button>
+      <p className="fine age">By tapping {room ? 'Join the game' : 'Play now'}, you confirm you're 13 or older.</p>
+
+      <Sheet open={editing} onClose={() => setEditing(false)} label="Make it yours" closeButton={false}>
+        <h2>Make it yours</h2>
+        <div className="edit">
+          <label className="kicker" htmlFor="onb-name">Your name</label>
+          <div className="name-row">
+            <input
+              id="onb-name"
+              className="text-in"
+              value={name}
+              maxLength={16}
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <button type="button" className="icon-btn" aria-label="Another name idea" onClick={() => { setName(suggestNames(1, name)[0]); buzz('tap'); }}>
+              <Icon id="i-shuffle" />
+            </button>
+          </div>
+          <div className="chips-row ideas">
+            {ideas.slice(0, 3).map((n) => (
+              <button key={n} type="button" aria-pressed={n === name} onClick={() => setName(n)}>{n}</button>
+            ))}
+          </div>
+        </div>
+        <div className="onb-avs" role="group" aria-label="Your animal">
+          {OPEN.map((a) => (
+            <button key={a.id} type="button" className="tile" aria-pressed={avatar === a.id} onClick={() => { setAvatar(a.id); buzz('tap'); }}>
+              <Avatar avatar={a.id} print="line" size={48} />
+              <b>{a.name}</b>
+            </button>
+          ))}
+        </div>
+        <span className="kicker">Your state</span>
+        <div className="scroll onb-states">
+          <StatePicker value={state} onPick={(s) => { setState(s); buzz('tap'); }} />
+        </div>
+        <p className="fine">Quick match looks for players in your state first. We only keep the state you pick.</p>
+        <button type="button" className="btn cream block" disabled={!clean} onClick={() => setEditing(false)}>Done</button>
+      </Sheet>
+    </main>
+  );
+}

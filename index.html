@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0a2a" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="Three in a row, the Naija way. Quick matches across Nigeria, friend rooms, Baba Ayo, ranks by state, and Dara Seeds to stake." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Dara X&amp;O" />
+    <link rel="icon" href="/icons/favicon-48.png" sizes="48x48" type="image/png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <title>Dara X&amp;O</title>
+    <style>
+      /* The few styles needed before the app's stylesheet arrives: the right background, the
+         app icon while loading, and nothing half-styled (the portrait card stays hidden). */
+      html, body { margin: 0; background: #0b0a2a; color: #fff; }
+      .rotate { display: none; }
+      .hap { position: fixed; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+      .boot { position: fixed; inset: 0; display: grid; place-items: center; }
+      .boot img { width: 88px; height: 88px; border-radius: 22px; }
+    </style>
+  </head>
+  <body>
+    <!--sprite-->
+    <!-- Shown until the app starts. React replaces it. -->
+    <div id="root"><div class="boot"><img src="/icons/icon-192.png" alt="Dara X&amp;O" width="88" height="88" /></div></div>
+
+    <!-- Phones only play upright. CSS shows this card when a phone is turned sideways. -->
+    <div class="rotate" role="alertdialog" aria-labelledby="rotate-title">
+      <div class="card">
+        <svg aria-hidden="true"><use href="#i-phone" /></svg>
+        <h2 id="rotate-title">Turn your phone upright</h2>
+        <p>Dara X&amp;O plays standing up. Rotate your phone to continue.</p>
+      </div>
+    </div>
+    <div class="sparks" id="sparks" aria-hidden="true"></div>
+    <!-- iPhones have no vibration API. Tapping this hidden switch gives a light system tap instead. -->
+    <label class="hap" id="hap" aria-hidden="true"><input type="checkbox" switch tabindex="-1" /></label>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
