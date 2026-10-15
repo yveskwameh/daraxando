@@ -11,7 +11,8 @@
  *
  * Every waiting player is also a live game others can join from Quick match on Home: `live()`
  * lists them, and a join is a search that targets one player (`target`). It pairs with them
- * at once or gets told they're gone.
+ * at once or gets told they're gone. People looking at Quick match with nobody to join are
+ * counted too (in memory, for a few seconds), so the sheet can say others are looking.
  *
  * One object comfortably handles hundreds of new searches a second. Past that, split it
  * by mode (idFromName('lobby:classic'), ...) and nothing else has to change.
@@ -25,6 +26,9 @@ import { CLOSE, type LiveGame, type LobbyServerMsg, type Nearby, type PublicPlay
 import { HIGH_TABLE, PAIR_DAILY_MAX } from '../shared/stakes';
 import type { Env } from './env';
 import type { InitResult } from './match';
+
+/** Quick match checks every couple of seconds; anyone not seen for this long has stopped looking. */
+const LOOKING_MS = 7_000;
 
 interface Ticket extends PublicPlayer {
   mode: ModeId;
@@ -90,12 +94,28 @@ export class Matchmaker extends DurableObject<Env> {
     try { ws.close(); } catch { /* already closed */ }
   }
 
-  /** Games waiting for an opponent, for Quick match on Home. Joiners aren't games, and you can't join yourself. */
-  async live(viewer: string): Promise<LiveGame[]> {
-    return this.waiting()
+  /**
+   * Games waiting for an opponent, for Quick match on Home. Joiners aren't games, and you can't
+   * join yourself. `looking` marks the viewer as looking at Quick match right now; the count is
+   * everyone else seen doing that in the last few seconds. It's only memory: if this object
+   * sleeps, the count starts again from zero, which is fine for a hint.
+   */
+  async live(viewer: string, looking = false): Promise<{ games: LiveGame[]; looking: number }> {
+    const now = Date.now();
+    if (looking) this.lookers.set(viewer, now);
+    let others = 0;
+    for (const [id, at] of this.lookers) {
+      if (now - at > LOOKING_MS) this.lookers.delete(id);
+      else if (id !== viewer) others++;
+    }
+    const games = this.waiting()
       .filter(({ t }) => !t.target && t.id !== viewer)
       .map(({ t }) => ({ id: t.id, name: t.name, avatar: t.avatar, print: t.print, state: t.state, rating: t.rating, mode: t.mode, stake: t.stake, since: t.since }));
+    return { games, looking: others };
   }
+
+  /** Who is looking at Quick match right now, by player id, with when they last checked. */
+  private lookers = new Map<string, number>();
 
   private ticket(ws: WebSocket): Ticket | null {
     try {

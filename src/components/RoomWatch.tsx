@@ -1,7 +1,7 @@
 /**
  * Keeps an eye on the friend room you're hosting while you're anywhere else in the app.
  * When your friend joins, a pop-up slides down with Play, over whatever screen you're on.
- * If the invite sheet is still open, you go straight into the match instead.
+ * If the invite sheet is still open, it shows your friend and Start the game itself.
  *
  * It holds a small socket to the room only while the app is on screen, so the friend's
  * screen can honestly say you've been told.
@@ -12,7 +12,7 @@ import type { RoomStatus } from '../../shared/protocol';
 import { fmt } from '../../shared/stakes';
 import { api, socketUrl } from '../lib/api';
 import { buzz } from '../lib/haptics';
-import { autoEnter, hosted, useHosted } from '../lib/room';
+import { hosted, useHosted, useInviteOpen } from '../lib/room';
 import type { Go, Route } from '../lib/router';
 import { usePlayer } from '../lib/session';
 import { sfx } from '../lib/sound';
@@ -25,12 +25,10 @@ const onVisibility = (f: () => void) => {
 };
 const useVisible = () => useSyncExternalStore(onVisibility, () => !document.hidden);
 
-/** Joining takes this long to show on the invite sheet before the match opens. */
-const ENTER_MS = 900;
-
 export function RoomWatch({ route, go }: { route: Route; go: Go }) {
   const { token } = usePlayer();
   const room = useHosted();
+  const sheetShowing = useInviteOpen();
   const visible = useVisible();
   const code = room?.code ?? null;
   const inRoom = route.name === 'play' && route.id === code;
@@ -85,15 +83,11 @@ export function RoomWatch({ route, go }: { route: Route; go: Go }) {
     told.current = key;
     sfx.found();
     buzz('win');
-    if (autoEnter()) {
-      const t = setTimeout(() => go({ name: 'play', id: code }), ENTER_MS);
-      return () => clearTimeout(t);
-    }
-  }, [guest, code, inRoom, go]);
+  }, [guest, code, inRoom]);
 
   // Not while you're in the room already, or in the middle of another match, or while the
-  // invite sheet is about to take you in.
-  if (!room || !guest || route.name === 'play' || autoEnter()) return null;
+  // invite sheet is showing your friend and its own Start the game button.
+  if (!room || !guest || route.name === 'play' || sheetShowing) return null;
 
   const close = async () => {
     hosted.clear(room.code);

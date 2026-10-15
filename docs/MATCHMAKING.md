@@ -109,7 +109,7 @@ Yves split the two ways into a quick match:
 - **Start your own game:** tap a card on the Deck, pick a stake, and wait on the search screen (everything above still applies).
 - **Join one that's waiting:** tap **Quick match**. The Matchmaker lists everyone waiting (`live()`), the server drops the tables you can't sit at (`tableLock`), and sorts the rest: your state, then your zone, then the longest wait. The sheet shows one at a time with **Join** and "Show another". A join is a search that targets one player, so it pairs with them at once or hears they're gone.
 
-Stakes never conflict: the person who started the game set it, and the joiner sees it before tapping Join. With nobody waiting, Quick match counts down 3 seconds and starts the player's own game with their last game and stake, so two people tapping at the same moment still meet. The button on Home shows how many games are live, refreshed every 15 seconds while Home is on screen.
+Stakes never conflict: the person who started the game set it, and the joiner sees it before tapping Join. With nobody waiting, Quick match never starts a game by itself (changed 15 October 2026: the 3-second countdown was too fast). It keeps looking every 2 seconds and shows how many other people are looking at Quick match right now, so two people tapping at the same moment see each other and one starts a game for the other to join. The player chooses: Start my own game (their last game and stake), Change game or stake, or Play Baba Ayo. The button on Home shows how many games are live, refreshed every 15 seconds while Home is on screen.
 
 ## The six geopolitical zones
 

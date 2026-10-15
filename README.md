@@ -1,6 +1,6 @@
 # Dara X&O
 
-Tic tac toe for Nigerian players, the Naija way. Play people in your state, your zone or all of Nigeria, play a friend with a 5-letter code, or warm up against **Baba Ayo**, the game's bot. Four modes (Classic, Fading, Big and Pro), Aura and 20 Nigerian titles (JJC to Idan) that unlock folktale avatars, prints and pieces, **Dara Seeds** to stake on matches, day streaks, and Ranks by state.
+Tic tac toe for Nigerian players, the Naija way. Play people in your state, your zone or all of Nigeria, play a friend with a 5-letter code, or warm up against **Baba Ayo**, the game's bot. Four modes (Fading, the default, then Classic, Big and Pro), Aura and 20 Nigerian titles (JJC to Idan) that unlock folktale avatars, prints and pieces, **Dara Seeds** to stake on matches, day streaks, and Ranks by state.
 
 It installs on a phone like an app, plays upright, and is built to run smoothly on cheap Android phones on mobile data.
 
@@ -118,13 +118,13 @@ Secrets are passwords for the game's server, like the key that signs each player
 
 **Players.** A first visit is one screen: the app picks a legend name, an animal and a best guess at your state, and **Play now** starts a game against Baba Ayo straight away. Tapping it also confirms you're 13 or older. Players are guest accounts kept in the browser; signing in to keep progress across phones comes in the backend phase.
 
-**Your own game and Quick match.** Tapping a card on the Deck starts your own game: you pick a stake and the **Matchmaker** looks for someone at the same table, your state first, widening every 4 seconds to your zone, all of Nigeria, then anyone, picking the closest rating. If nobody is around, it offers Baba Ayo, or a busier table with players waiting. **Quick match** does the opposite: it shows games other players are waiting in, one at a time, and **Join** takes you straight into one at the stake its starter picked. With nobody waiting, it counts down 3 seconds and starts your own game.
+**Your own game and Quick match.** Tapping a card on the Deck starts your own game: you pick a stake and the **Matchmaker** looks for someone at the same table, your state first, widening every 4 seconds to your zone, all of Nigeria, then anyone, picking the closest rating. If nobody is around, it offers Baba Ayo, or a busier table with players waiting. **Quick match** does the opposite: it shows games other players are waiting in, one at a time, and **Join** takes you straight into one at the stake its starter picked. With nobody waiting, it keeps looking and shows how many other people are looking right now; you start your own game when you're ready, change the game or stake, or play Baba Ayo.
 
 **The first match** is one game against Baba Ayo, not a series. Lose or draw and you play one more; win and you're through to Home.
 
 **A match.** Each match runs in its own small server (a **Match** Durable Object). It checks every move, runs the turn clock and the series (best of 5 in Classic), and decides the winner. The browser only shows what the server says. Leaving the app pauses the match; away for more than 60 seconds and the other player wins. Between games, the next one starts when both players tap **Next game**.
 
-**Friend rooms.** A 5-letter code and a share link. The person who made the room hosts one room at a time, and the app tells them the moment their friend joins, wherever they are in it.
+**Friend rooms.** A 5-letter code (tap it to copy) and a share link. The person who made the room hosts one room at a time, and the app tells them the moment their friend joins, wherever they are in it. On the invite sheet, the friend's card shows up with **Start the game**.
 
 **Stakes.** Dara Seeds are points, never money: they can't be bought, sold, sent or cashed out. Stakes are taken when a match starts and paid to the winner when it ends; a draw or a called-off match gives them back. Every change is written to the `ledger` table.
 
@@ -195,6 +195,12 @@ npm run db:migrate:remote
 npx wrangler secret put SESSION_SECRET      # any long random string
 npm run deploy
 ```
+
+The first launch address is **daraxando.yveskwameh.com**. To point it at the game:
+
+1. Make sure `yveskwameh.com` is on Cloudflare (Cloudflare dashboard → Add a domain, then change the nameservers where you bought the domain). A Worker can only use a custom domain whose DNS Cloudflare runs.
+2. Cloudflare dashboard → Workers & Pages → **daraxando** → **Domains** tab → add `daraxando.yveskwameh.com` as a custom domain. (Older dashboards: Settings → Domains & Routes → Add → Custom Domain.) Cloudflare makes the DNS record and the HTTPS certificate. There must not already be a CNAME record for `daraxando` in the domain's DNS.
+3. Open https://daraxando.yveskwameh.com on your phone and play a match against Baba Ayo to check it.
 
 ## 9. If something goes wrong
 

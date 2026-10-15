@@ -5,7 +5,7 @@
  */
 import { isBotLevel, type BotLevel } from '../shared/bot';
 import { AVATARS, isOpen, PIECES, PRINTS } from '../shared/collections';
-import { isModeId, type ModeId } from '../shared/modes';
+import { DEFAULT_MODE, isModeId, type ModeId } from '../shared/modes';
 import { isStateCode, zoneOf } from '../shared/places';
 import {
   CLOSE, CODE_ALPHABET, CODE_LENGTH, cleanName, isMatchId, isRoomCode, type LiveGame, type Profile, type PublicPlayer,
@@ -171,7 +171,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   /* --- play a friend: make a room with a short code --- */
   if (path === '/api/rooms' && method === 'POST') {
     const b = await body<{ mode: ModeId; stake: number }>(req);
-    const mode = isModeId(b.mode) ? b.mode : 'classic';
+    const mode = isModeId(b.mode) ? b.mode : DEFAULT_MODE;
     const stake = isFriendTable(b.stake) ? b.stake : 0;
     if (stake > me.cowries) return fail(400, `You need ${fmt(stake)} Dara Seeds for that stake.`);
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -235,7 +235,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   if (path === '/api/bot' && method === 'POST') {
     const b = await body<{ mode: ModeId; level: BotLevel; first?: boolean }>(req);
     const level: BotLevel = isBotLevel(b.level) ? b.level : 'sharp';
-    const mode = isModeId(b.mode) ? b.mode : 'classic';
+    const mode = isModeId(b.mode) ? b.mode : DEFAULT_MODE;
     // The one-game first match is only for players who haven't finished a match yet.
     const first = !!b.first && me.wins + me.losses + me.draws === 0;
     const matchId = randomId();
@@ -263,14 +263,14 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
 
   /* --- live games for Quick match: the ones you can join, nearest and longest waiting first --- */
   if (path === '/api/live' && method === 'GET') {
-    const all = await env.MATCHMAKER.get(env.MATCHMAKER.idFromName('global')).live(me.id);
+    const { games: all, looking } = await env.MATCHMAKER.get(env.MATCHMAKER.idFromName('global')).live(me.id, url.searchParams.get('looking') === '1');
     const zone = zoneOf(me.state);
     const near = (g: LiveGame) => (g.state === me.state && me.state !== 'OUT' && me.state !== 'NONE' ? 0 : zone && zoneOf(g.state) === zone ? 1 : 2);
     const games = all
       .filter((g) => !tableLock(g.stake, me, now))
       .sort((a, b) => near(a) - near(b) || a.since - b.since)
       .slice(0, 20);
-    return json({ games, n: games.length });
+    return json({ games, n: games.length, looking });
   }
 
   /* --- a match --- */

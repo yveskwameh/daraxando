@@ -1,13 +1,17 @@
 /**
  * Play a friend. Two tabs: invite someone with a code and link, or type the code a friend
  * sent you. Friend rooms can stake up to 1,000 Dara Seeds.
+ *
+ * Inviting (Yves, 15 October 2026): tap the code to copy it, or share the link. Sharing keeps
+ * you here, so when you come back from WhatsApp you see the room waiting. When your friend
+ * joins, their card shows up with Start the game; nothing starts until you tap it.
  */
 import { useEffect, useRef, useState } from 'react';
 import { MODES, seriesLabel, type ModeId } from '../../shared/modes';
 import { stateName } from '../../shared/places';
 import { CODE_ALPHABET, CODE_LENGTH } from '../../shared/protocol';
 import { FRIEND_TABLES, fmt, prize } from '../../shared/stakes';
-import { Avatar } from '../components/art';
+import { Avatar, Icon } from '../components/art';
 import { Sheet } from '../components/Sheet';
 import { api, type RoomPeek } from '../lib/api';
 import { copyText } from '../lib/clipboard';
@@ -26,6 +30,39 @@ export function inviteText(code: string, stake: number) {
     url,
     text: `Oya, play me on Dara X&O. Code ${code}${stake ? `, stake ${fmt(stake)} Dara Seeds` : ''}.`,
   };
+}
+
+/** Copy just the code, for a tap on the big code. */
+export async function copyCode(code: string) {
+  if (await copyText(code)) {
+    buzz('tap');
+    toast(`Code ${code} copied.`);
+    return true;
+  }
+  toast(`Copy did not work here. The code is ${code}.`);
+  return false;
+}
+
+/** The room code, big. Tap it to copy. */
+export function CodeButton({ code, className = 'big-code' }: { code: string | null; className?: string }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(t);
+  }, [copied]);
+  return (
+    <button
+      type="button"
+      className={`code-btn ${className}`}
+      disabled={!code}
+      aria-label={code ? `Room code ${code.split('').join(' ')}. Tap to copy.` : 'Making a room'}
+      onClick={async () => { if (code && (await copyCode(code))) setCopied(true); }}
+    >
+      <span className="code-txt">{code ?? '·····'}</span>
+      <span className="code-hint"><Icon id={copied ? 'i-check' : 'i-copy'} className="" />{copied ? 'Copied' : 'Tap to copy'}</span>
+    </button>
+  );
 }
 
 /** Share on a phone (WhatsApp is one tap away), copy everywhere else. True if it worked. */
@@ -62,6 +99,8 @@ export function FriendSheet({ open, onClose, mode, go }: { open: boolean; onClos
 }
 
 function Invite({ mode, go, onClose }: { mode: ModeId; go: Go; onClose: () => void }) {
+  const [shared, setShared] = useState(false);
+  const [roomMode, setRoomMode] = useState<ModeId>(mode);
   const { token, profile } = usePlayer();
   const [code, setCode] = useState<string | null>(null);
   const [stake, setStake] = useState(() => {
@@ -73,8 +112,16 @@ function Invite({ mode, go, onClose }: { mode: ModeId; go: Go; onClose: () => vo
   const room = useHosted();
   const guest = room && room.code === code ? room.guest : null;
 
-  // While this is on screen, your friend joining takes you straight into the match.
+  // While this is on screen it shows your friend joining itself, so the pop-up stays away.
   useEffect(() => holdAutoEnter(), []);
+
+  // The room closed or ran out while this was open: make a fresh one.
+  useEffect(() => {
+    if (!code || room) return;
+    made.current = false;
+    setShared(false);
+    setCode(null);
+  }, [room, code]);
 
   // The room exists from the moment this tab opens, so the code on screen is real. You host
   // one room at a time: an open one for this mode is reused, any other one is closed.
@@ -82,7 +129,16 @@ function Invite({ mode, go, onClose }: { mode: ModeId; go: Go; onClose: () => vo
     if (made.current) return;
     made.current = true;
     const old = hosted.get();
-    if (old && old.mode === mode && !old.guest) {
+    // Your friend is already in your room, waiting for you: show that room, whatever its game,
+    // never a new one (found in testing, 15 October 2026: a new room left the friend stranded).
+    if (old?.guest) {
+      setCode(old.code);
+      setRoomMode(old.mode);
+      setStake(old.stake);
+      return;
+    }
+    setRoomMode(mode);
+    if (old && old.mode === mode) {
       setCode(old.code);
       api.peekRoom(old.code).then(
         (r) => {
@@ -99,7 +155,7 @@ function Invite({ mode, go, onClose }: { mode: ModeId; go: Go; onClose: () => vo
       );
       return;
     }
-    if (old && !old.guest) void api.cancelRoom(token, old.code).catch(() => {});
+    if (old) void api.cancelRoom(token, old.code).catch(() => {});
     api.createRoom(token, mode, stake).then(
       (r) => {
         setCode(r.matchId);
@@ -128,12 +184,16 @@ function Invite({ mode, go, onClose }: { mode: ModeId; go: Go; onClose: () => vo
     }
   };
 
-  const m = MODES[mode];
+  const m = MODES[roomMode];
   return (
     <>
-      <p className="muted">Send your friend the link. They join with this code.</p>
-      <div className="big-code" aria-label={code ? `Room code ${code.split('').join(' ')}` : 'Making a room'}>{code ?? '·····'}</div>
+      <p className="muted invite-lead">Send your friend the invite link, or this code.</p>
+      <CodeButton code={code} />
       {error && <p className="form-error" role="alert">{error}</p>}
+      {guest ? (
+        // Your friend is in: the stake is set, so it's a line instead of choices.
+        <p className="fine">{m.name} · {seriesLabel(m.bo)} · {stake ? `Stake ${fmt(stake)} each, winner takes ${fmt(prize(stake))}` : 'No stake'}</p>
+      ) : (
       <div style={{ display: 'grid', gap: 8 }}>
         <span className="kicker">Stake for this game</span>
         <div className="chips-row" role="group" aria-label="Stake">
@@ -143,30 +203,43 @@ function Invite({ mode, go, onClose }: { mode: ModeId; go: Go; onClose: () => vo
             </button>
           ))}
         </div>
-        <p className="fine">{m.name} · {seriesLabel(m.bo)}{stake ? ` · Winner takes ${fmt(prize(stake))}` : ''}</p>
+        <p className="fine invite-mode">{m.name} · {seriesLabel(m.bo)}{stake ? ` · Winner takes ${fmt(prize(stake))}` : ''}</p>
       </div>
-      <button
-        type="button"
-        className="btn primary block"
-        disabled={!code}
-        onClick={async () => {
-          if (!code) return;
-          await shareInvite(code, stake);
-          onClose();
-          go({ name: 'play', id: code });
-        }}
-      >
-        {'share' in navigator ? 'Share invite link' : 'Copy invite link'}
-      </button>
-      {guest ? (
-        <div className="joined" role="status">
-          <Avatar avatar={guest.avatar} print={guest.print} size={40} />
-          <b>{guest.name} joined. Starting the game.</b>
-        </div>
+      )}
+      {guest && code ? (
+        <>
+          <div className="joined" role="status">
+            <Avatar avatar={guest.avatar} print={guest.print} size={40} />
+            <div>
+              <b>{guest.name} joined your room</b>
+              <span>Start when you're ready.</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn primary block lg"
+            onClick={() => { buzz('tap'); onClose(); go({ name: 'play', id: code }); }}
+          >
+            Start the game
+          </button>
+        </>
       ) : (
-        <p className="near" role="status" style={{ justifyContent: 'center' }}>
-          <i />Waiting for your friend. You can close this. We'll tell you when they join.
-        </p>
+        <>
+          <button
+            type="button"
+            className="btn primary block"
+            disabled={!code}
+            onClick={async () => {
+              if (code && (await shareInvite(code, stake))) setShared(true);
+            }}
+          >
+            {'share' in navigator ? (shared ? 'Share again' : 'Share invite link') : shared ? 'Copy again' : 'Copy invite link'}
+          </button>
+          <p className="near" role="status" style={{ justifyContent: 'center' }}>
+            <i />
+            {shared ? `${'share' in navigator ? 'Sent' : 'Copied'}. Waiting for your friend to join.` : 'You can close this. We\'ll tell you when they join.'}
+          </p>
+        </>
       )}
     </>
   );
@@ -191,9 +264,12 @@ function Join({ go, onClose }: { go: Go; onClose: () => void }) {
   }, [code]);
 
   const short = room && room.stake > profile.cowries;
-  const blocked = !room || !room.open || !!short;
+  // Your own code, typed back in: there's nobody to join (found in testing, 15 October 2026).
+  const own = !!room && hosted.get()?.code === room.code;
+  const blocked = !room || !room.open || !!short || own;
   let note = 'Your friend sets the stake. You see it before you join.';
   if (error) note = error;
+  else if (own) note = "That's your own room. Send this code to a friend so they can join you.";
   else if (room && !room.open) note = 'This room is full or the match has started. Ask your friend for a new code.';
   else if (short) note = `You need ${fmt(room!.stake)} Dara Seeds for this room.`;
 

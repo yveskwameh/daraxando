@@ -7,10 +7,10 @@ import { AnimatePresence, LazyMotion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { BOT_LEVEL_INFO } from '../../shared/bot';
 import { pieceById } from '../../shared/collections';
-import { MODES, seriesLabel, variantOf, winsNeeded } from '../../shared/modes';
+import { DEFAULT_MODE, MODES, seriesLabel, variantOf, winsNeeded } from '../../shared/modes';
 import { dayKey } from '../../shared/progression';
 import { stateName } from '../../shared/places';
-import { ABANDON_MS, AWAY_MS, EMOTES, FIRST_TURN_BONUS_MS, NEXT_WAIT_MS, type MatchView, type SeatView } from '../../shared/protocol';
+import { ABANDON_MS, AWAY_MS, EMOTES, FIRST_MATCH_TURN_MS, FIRST_TURN_BONUS_MS, NEXT_WAIT_MS, type MatchView, type SeatView } from '../../shared/protocol';
 import { findWin, squareName, type Cell } from '../../shared/rules';
 import { fmt, FRIEND_TABLES, prize, short, tableLock } from '../../shared/stakes';
 import { printBg } from '../art/prints';
@@ -32,7 +32,7 @@ import { toast } from '../lib/toast';
 import { useCountdown } from '../lib/useCountdown';
 import { useMatch } from '../lib/useMatch';
 import { ResultSheet } from '../sheets/ResultSheet';
-import { shareInvite } from '../sheets/FriendSheet';
+import { CodeButton, shareInvite } from '../sheets/FriendSheet';
 
 const motionFeatures = () => import('../lib/motionFeatures').then((x) => x.default);
 
@@ -58,8 +58,8 @@ function Match({ id, go }: { id: string; go: Go }) {
   const you = v?.you ?? null;
   const me = you !== null && v ? v.seats[you] : null;
   const opp = you !== null && v ? v.seats[you === 0 ? 1 : 0] : null;
-  const mode = MODES[v?.mode ?? 'classic'];
-  const variant = useMemo(() => variantOf(v?.mode ?? 'classic'), [v?.mode]);
+  const mode = MODES[v?.mode ?? DEFAULT_MODE];
+  const variant = useMemo(() => variantOf(v?.mode ?? DEFAULT_MODE), [v?.mode]);
   const playing = v?.phase === 'playing';
   // Someone left the app: the clock is frozen and nobody can move.
   const paused = !!v?.paused;
@@ -300,6 +300,24 @@ function Match({ id, go }: { id: string; go: Go }) {
     setTimeout(() => setLineCool(false), 900);
   };
 
+  // The phone's Back button (or swipe) mid-match asks first, like X does, instead of walking
+  // out of a match you could lose by leaving (found in testing, 15 October 2026). An extra
+  // history entry with the same address catches it.
+  const guard = !!v && (v.phase === 'playing' || v.phase === 'between') && !!opp;
+  useEffect(() => {
+    if (!guard) return;
+    history.pushState({ dara: 'guard' }, '');
+    const onPop = () => {
+      history.pushState({ dara: 'guard' }, '');
+      setSheet('leave');
+    };
+    addEventListener('popstate', onPop);
+    return () => {
+      removeEventListener('popstate', onPop);
+      if (history.state?.dara === 'guard') history.replaceState(null, '');
+    };
+  }, [guard]);
+
   const leave = () => {
     if (v && (v.phase === 'playing' || v.phase === 'between') && opp) return setSheet('leave');
     if (v?.phase === 'waiting' && v.kind === 'friend') {
@@ -346,7 +364,7 @@ function Match({ id, go }: { id: string; go: Go }) {
   const timerStyle = useMemo(() => {
     if (!v) return undefined;
     const first = v.board.every((c) => !c);
-    const total = mode.turnMs + (first ? FIRST_TURN_BONUS_MS : 0);
+    const total = (v.first ? FIRST_MATCH_TURN_MS : mode.turnMs) + (first ? FIRST_TURN_BONUS_MS : 0);
     // Paused: the bar stands still where the clock stopped.
     if (pausedLeft !== null) return { '--from': Math.min(1, pausedLeft / total) } as CSSProperties;
     if (!turnEndsAt) return undefined;
@@ -406,7 +424,16 @@ function Match({ id, go }: { id: string; go: Go }) {
     else status = w === me.mark ? 'Yawwa! You win this one.' : w ? 'We move. Next one.' : 'Draw. Nobody wins this one.';
   } else if (playing) {
     if (paused) status = `Paused. Waiting for ${opp?.name}`;
-    else if (myTurn) status = low ? 'Sharp sharp!' : threat ? 'Shine your eye. They have a line.' : `Oya, place your ${pieceById(myPiece).short}`;
+    else if (myTurn) {
+      const piece = pieceById(myPiece).short;
+      // Fading: say the rule before your first piece, and which piece goes once you have three.
+      const fresh = mode.fade > 0 && !v.board.some((c) => c === me.mark);
+      status = low ? 'Sharp sharp!'
+        : threat ? 'Shine your eye. They have a line.'
+        : fresh ? `Fading: ${mode.fade} pieces each. Your oldest one goes.`
+        : mode.fade > 0 && v.fading !== null ? `Place one. Your faded ${piece} goes.`
+        : `Oya, place your ${piece}`;
+    }
     else status = opp?.bot ? 'Baba Ayo is thinking' : 'Jeje, e dey come';
   }
 
@@ -452,7 +479,14 @@ function Match({ id, go }: { id: string; go: Go }) {
       )}
 
       {waitingFriend ? (
-        <FriendWaiting code={v.id} stake={v.stake} modeName={mode.name} bo={mode.bo} isHost={v.seats[0]?.id === profile.id} />
+        <FriendWaiting
+          code={v.id}
+          stake={v.stake}
+          modeName={mode.name}
+          bo={mode.bo}
+          isHost={v.seats[0]?.id === profile.id}
+          onClose={() => { leaveRoom(); go({ name: 'home' }); }}
+        />
       ) : waitingRoom && opp ? (
         <RoomWaiting view={v} opp={opp} host={you === 0} onLeave={() => { leaveRoom(); go({ name: 'home' }); }} />
       ) : (
@@ -573,7 +607,7 @@ function Match({ id, go }: { id: string; go: Go }) {
         <p className="muted">
           {v.kind === 'bot'
             ? 'Baba Ayo takes the win if you leave now.'
-            : `If you leave now, the match${v.stake ? ` and the ${fmt(prize(v.stake))} pot` : ''} go to ${opp?.name}.`}
+            : v.stake ? `If you leave now, the match and the ${fmt(prize(v.stake))} pot go to ${opp?.name}.` : `If you leave now, the match goes to ${opp?.name}.`}
         </p>
         <button type="button" className="btn cream block" onClick={() => setSheet(null)}>Stay and play</button>
         <button type="button" className="btn ghost block" onClick={() => { send({ t: 'resign' }); go({ name: 'home' }); }}>Leave</button>
@@ -688,7 +722,7 @@ function RoomWaiting({ view: v, opp, host, onLeave }: { view: MatchView; opp: Se
     copy = v.waitingOn === 'away'
       ? `${opp.name} switched to another app. The game starts as soon as they come back.`
       : v.waitingOn === 'told'
-        ? `${opp.name} has been told you're here. The game starts when they tap Play.`
+        ? `${opp.name} has been told you're here. The game starts as soon as they come in.`
         : `${opp.name} isn't in Dara X&O right now. They'll see that you joined when they open it.`;
   }
   return (
@@ -707,8 +741,11 @@ function RoomWaiting({ view: v, opp, host, onLeave }: { view: MatchView; opp: Se
   );
 }
 
-/** A friend room before the friend arrives: the code, the stake, and a way to send the link. */
-function FriendWaiting({ code, stake, modeName, bo, isHost }: { code: string; stake: number; modeName: string; bo: number; isHost: boolean }) {
+/**
+ * A friend room before the friend arrives: the code (tap it to copy), the stake, a way to send
+ * the link, and a way to close the room. The game starts by itself when your friend comes in.
+ */
+function FriendWaiting({ code, stake, modeName, bo, isHost, onClose }: { code: string; stake: number; modeName: string; bo: number; isHost: boolean; onClose: () => void }) {
   const { token, profile } = usePlayer();
   const change = async (n: number) => {
     if (n > profile.cowries) {
@@ -726,8 +763,8 @@ function FriendWaiting({ code, stake, modeName, bo, isHost }: { code: string; st
   return (
     <section className="invite" aria-label="Invite a friend">
       <span className="kicker">Room code</span>
-      <div className="code" aria-label={code.split('').join(' ')}>{code}</div>
-      <p className="muted">Send the link, or your friend can type the code under Play a friend, then I have a code.</p>
+      <CodeButton code={code} className="code" />
+      <p className="muted">Send your friend the invite link, or give them the code. They tap Play a friend, then I have a code.</p>
       {isHost && (
         <div className="chips-row" role="group" aria-label="Stake" style={{ justifyContent: 'center' }}>
           {FRIEND_TABLES.map((n) => (
@@ -736,12 +773,13 @@ function FriendWaiting({ code, stake, modeName, bo, isHost }: { code: string; st
         </div>
       )}
       <p className="fine">{modeName} · {seriesLabel(bo)}{stake ? ` · Winner takes ${fmt(prize(stake))}` : ''}</p>
-      <div className="actions-col">
+      <p className="near" role="status" style={{ justifyContent: 'center' }}><i />Waiting for your friend to join</p>
+      <div className={`actions-col${isHost ? ' two' : ''}`}>
         <button type="button" className="btn primary block" onClick={() => void shareInvite(code, stake)}>
           {'share' in navigator ? 'Share invite link' : 'Copy invite link'}
         </button>
+        {isHost && <button type="button" className="btn ghost block" onClick={onClose}>Close the room</button>}
       </div>
-      <p className="near" style={{ justifyContent: 'center' }}><i />Waiting for your friend</p>
     </section>
   );
 }

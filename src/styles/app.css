@@ -161,6 +161,11 @@ svg.ic { width: 22px; height: 22px; flex: none; }
 .btn.cream { --fill: var(--cream); --print: none; color: var(--night); }
 .btn.block { width: 100%; }
 .btn.lg { min-height: 60px; font-size: 1.1875rem; }
+/* Three sizes, one shape. Big and printed: the one thing to do next. Same size on the raised
+   colour: the other way out. Small (.sm): the choices under them. Every button is a pill
+   with a fill or a ring, so nothing that can be tapped is bare text. */
+.btn.sm { min-height: 46px; padding: 8px 16px; gap: 6px; font-size: 0.9375rem; line-height: 1.15; text-wrap: balance; }
+.btn.sm.baba { box-shadow: 0 0 0 2px var(--cream); }
 .btn.is-down { transform: scale(.94); }
 .btn.is-down::before { transform: translate(22px, 14px) rotate(8deg); }
 .btn:disabled { opacity: .5; cursor: default; }
@@ -187,17 +192,18 @@ svg.ic { width: 22px; height: 22px; flex: none; }
 .wordmark.sm .tag { font-size: 1.125rem; padding: 2px 10px 4px; }
 
 /* ---------- home ---------- */
+/* Your avatar, your title and how far the next one is: nothing else, so it never runs into the
+   seeds chip on a small phone (Yves, 15 October 2026). The numbers are on You and in the titles list. */
 .me-chip {
   display: flex; align-items: center; gap: 9px;
-  flex: 1 1 auto; min-width: 0; max-width: 210px;
+  flex: 0 1 auto; min-width: 0; width: 168px; overflow: hidden;
   padding: 4px 14px 4px 4px;
   border: 0; border-radius: 999px;
   background: var(--raise);
   text-align: left;
 }
 .me-chip .lv { display: grid; gap: 6px; flex: 1; min-width: 0; }
-.me-chip b { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; font: 800 0.9375rem/1 var(--head); white-space: nowrap; }
-.me-chip small { font: 700 0.6875rem/1 var(--body); color: var(--muted); font-variant-numeric: tabular-nums; }
+.me-chip b { display: block; font: 800 0.9375rem/1.1 var(--head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .aura-bar { display: block; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
 .aura-bar i { display: block; height: 100%; border-radius: 3px; background: var(--danfo); }
 .top .spacer { flex: 1; }
@@ -433,6 +439,7 @@ svg.ic { width: 22px; height: 22px; flex: none; }
 /* friend room, waiting for the friend */
 .invite { flex: 1; min-height: 0; display: grid; align-content: center; gap: 14px; text-align: center; }
 .invite .code { font: 900 3rem/1 var(--head); letter-spacing: .22em; color: var(--danfo); padding-left: .22em; }
+.invite .code-btn.code { padding: 16px 12px 12px; }
 .invite .actions-col { display: grid; gap: 12px; }
 .room-wait h2 { font-size: 1.75rem; text-wrap: balance; }
 .room-wait .muted { max-width: 34ch; justify-self: center; text-wrap: pretty; }
@@ -440,15 +447,37 @@ svg.ic { width: 22px; height: 22px; flex: none; }
 .joined { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 12px; border-radius: 16px; background: var(--raise); box-shadow: inset 0 0 0 2px var(--danfo); animation: pop 320ms var(--ease-pop) both; }
 .joined b { font: 800 1rem/1.2 var(--head); color: var(--danfo); }
 
-/* ---------- scrollbars: lists that scroll get a thin rounded bar in the game's colours ---------- */
-.scroll::-webkit-scrollbar, .list::-webkit-scrollbar, .panel::-webkit-scrollbar, .onb-states::-webkit-scrollbar { width: 6px; }
-.scroll::-webkit-scrollbar-track, .list::-webkit-scrollbar-track, .panel::-webkit-scrollbar-track, .onb-states::-webkit-scrollbar-track { background: transparent; margin: 10px 0; }
-.scroll::-webkit-scrollbar-thumb, .list::-webkit-scrollbar-thumb, .panel::-webkit-scrollbar-thumb, .onb-states::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 3px; }
-.scroll::-webkit-scrollbar-thumb:active, .list::-webkit-scrollbar-thumb:active, .panel::-webkit-scrollbar-thumb:active, .onb-states::-webkit-scrollbar-thumb:active { background: var(--indigo-glow); }
+/* ---------- scrollbars (Yves, 15 October 2026) ----------
+   A list that scrolls reaches out to the right edge of the sheet or screen, so its bar sits in
+   the margin, 3px from the edge, clear of the cards, never on top of them. The content inside
+   is padded back so it still lines up with everything above and below (--sbw is the bar's
+   width on this device, measured at start: 0 on phones, where the bar floats).
+   The bar itself: a flat indigo pill (the colour of your pieces) running on a thin line in
+   the line colour. It turns fuchsia while you hold or drag it. */
+.sheet-body .scroll, .screen > .list:not(.pinned), .screen > .panel {
+  --sb-out: calc(var(--gut-r) - 3px);
+  scrollbar-gutter: stable;
+}
+.sheet-body .scroll { margin: -3px calc(-1 * var(--sb-out)) -3px -3px; padding: 3px calc(var(--sb-out) - var(--sbw, 0px)) 3px 3px; }
+.screen > .list:not(.pinned) { margin-right: calc(-1 * var(--sb-out)); padding-right: calc(var(--sb-out) - var(--sbw, 0px) + 4px); }
+.screen > .panel { margin-right: calc(-1 * var(--sb-out)); padding-right: calc(var(--sb-out) - var(--sbw, 0px) + 2px); }
+.scroll::-webkit-scrollbar, .list::-webkit-scrollbar, .panel::-webkit-scrollbar, .sb-probe::-webkit-scrollbar { width: 6px; }
+.scroll::-webkit-scrollbar-track, .list::-webkit-scrollbar-track, .panel::-webkit-scrollbar-track {
+  margin: 8px 0;
+  background: linear-gradient(var(--line), var(--line)) center / 2px 100% no-repeat;
+}
+.scroll::-webkit-scrollbar-thumb, .list::-webkit-scrollbar-thumb, .panel::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--indigo-glow);
+}
+.scroll::-webkit-scrollbar-thumb:hover, .list::-webkit-scrollbar-thumb:hover, .panel::-webkit-scrollbar-thumb:hover,
+.scroll::-webkit-scrollbar-thumb:active, .list::-webkit-scrollbar-thumb:active, .panel::-webkit-scrollbar-thumb:active { background: var(--fuchsia-glow); }
+.scroll::-webkit-scrollbar-button, .list::-webkit-scrollbar-button, .panel::-webkit-scrollbar-button { display: none; }
 /* Firefox has no ::-webkit-scrollbar; Chrome would ignore it if these were set, so only Firefox gets them. */
 @supports not selector(::-webkit-scrollbar) {
-  .scroll, .list, .panel, .onb-states { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
+  .scroll, .list, .panel, .sb-probe { scrollbar-width: thin; scrollbar-color: var(--indigo-glow) transparent; }
 }
+.sb-probe { position: absolute; top: -200px; left: 0; width: 100px; height: 100px; overflow-y: scroll; scrollbar-gutter: stable; visibility: hidden; pointer-events: none; }
 
 /* ---------- sheets: native <dialog> as a bottom sheet ---------- */
 dialog.sheet {
@@ -488,7 +517,7 @@ dialog.sheet.closing::backdrop { animation: fade-out 220ms ease-in forwards; }
 .sheet-head { display: flex; align-items: center; gap: 12px; }
 .sheet-head > div { min-width: 0; flex: 1; }
 .sheet-body h2 { font-size: 1.5rem; font-weight: 900; }
-.sheet-body .scroll { overflow-y: auto; min-height: 0; display: grid; gap: 10px; overscroll-behavior: contain; padding: 3px; margin: -3px; }
+.sheet-body .scroll { overflow-y: auto; min-height: 0; display: grid; gap: 10px; overscroll-behavior: contain; }
 .opt {
   display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
   width: 100%; padding: 12px; border: 0; border-radius: 18px;
@@ -519,6 +548,15 @@ dialog.sheet.closing::backdrop { animation: fade-out 220ms ease-in forwards; }
 .field:focus { outline: none; box-shadow: inset 0 0 0 2px var(--danfo); }
 .field::placeholder { color: var(--line); }
 .big-code { font: 900 2.75rem/1 var(--head); letter-spacing: .22em; color: var(--danfo); text-align: center; padding: 6px 0 6px .22em; }
+/* The room code is a button: tap it to copy. A dashed ring, like a ticket stub, says it's one. */
+.code-btn { display: grid; justify-items: center; gap: 8px; width: 100%; padding: 14px 12px 12px; border: 0; border-radius: 20px; background: var(--deep); box-shadow: inset 0 0 0 2px var(--line); color: var(--danfo); cursor: pointer; transition: transform 160ms var(--ease-pop); }
+.code-btn:active { transform: scale(.97); }
+.code-btn:focus-visible { outline: 3px solid var(--danfo); outline-offset: 2px; }
+.code-btn:disabled { cursor: default; opacity: .7; }
+.code-btn .code-txt { display: block; padding-left: .22em; }
+.code-btn .code-hint { display: inline-flex; align-items: center; gap: 6px; font: 700 0.8125rem/1 var(--body); letter-spacing: 0; color: var(--muted); }
+.code-btn .code-hint svg { width: 15px; height: 15px; }
+.code-btn.big-code { padding: 14px 12px 12px; }
 .host-card { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 18px; background: var(--raise); }
 .host-card b { display: block; font: 800 1rem/1.2 var(--head); }
 
@@ -643,7 +681,7 @@ dialog.sheet.closing::backdrop { animation: fade-out 220ms ease-in forwards; }
 .edit-row { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
 .edit-row small { color: var(--muted); font-size: 0.75rem; }
 .edit-row small { flex: 1; min-width: 0; }
-.edit-row .link-btn { min-height: 40px; color: var(--muted); }
+.edit-row .mini-btn, .edit-row .mini-btn.ghost { min-height: 38px; } /* keeps the name editor inside a 320 × 568 screen */
 .panel { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 2px 8px; }
 .hint { font-size: 0.8125rem; color: var(--muted); margin: 0 2px 10px; line-height: 1.35; }
 .hint b { color: var(--text); }
@@ -674,10 +712,11 @@ dialog.sheet.closing::backdrop { animation: fade-out 220ms ease-in forwards; }
 .sw-toggle[aria-checked="true"]::after { transform: translateX(22px); }
 /* your record in Settings: win rate, a split bar, best run */
 .record { display: grid; gap: 14px; padding: 16px; margin-bottom: 6px; border-radius: 20px; background: var(--raise); }
-.record-top { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 14px; }
+/* Two even columns, so a long label wraps instead of squeezing the best-run box. */
+.record-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: center; gap: 14px; }
 .record .rate { display: grid; gap: 2px; }
 .record .rate b { font: 900 2.25rem/1 var(--head); color: var(--teal); font-variant-numeric: tabular-nums; }
-.record .rate span { font: 700 0.6875rem/1.2 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.record .rate span { font: 700 0.6875rem/1.3 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); text-wrap: balance; }
 .record .run { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 12px; border-radius: 16px; background: var(--deep); }
 .record .run > svg { width: 22px; height: 22px; color: var(--danfo); }
 .record .run b { display: block; font: 800 0.9375rem/1.15 var(--head); }
@@ -704,7 +743,7 @@ dialog.sheet.closing::backdrop { animation: fade-out 220ms ease-in forwards; }
 .onb-head p { color: var(--muted); }
 .onb-avs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .onb-avs .tile { padding: 8px 4px; }
-.onb-states { flex: 1; min-height: 0; overflow-y: auto; display: grid; align-content: start; gap: 14px; padding: 4px 3px; margin: 0 -3px; overscroll-behavior: contain; }
+.onb-states { flex: 1; min-height: 0; overflow-y: auto; display: grid; align-content: start; gap: 14px; overscroll-behavior: contain; }
 .onb-states > div { display: grid; gap: 8px; }
 /* first visit: one screen, one tap */
 .welcome { gap: 14px; }
@@ -827,7 +866,6 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
   .top { gap: 4px; }
   .chip { padding: 0 10px 0 7px; }
   .me-chip { padding-right: 10px; gap: 7px; }
-  .me-chip small { display: none; }
 }
 
 /* Low-end phones: keep play smooth, drop ambient extras. */
@@ -948,6 +986,23 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 .live-dot { display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; background: var(--teal); vertical-align: 1px; animation: live 1.6s ease-in-out infinite; }
 @keyframes live { 50% { opacity: .35; } }
 .live-card { display: grid; gap: 12px; padding: 14px; border-radius: 20px; background: var(--raise); animation: pop 280ms var(--ease-pop) both; }
+/* Several games: a row of cards you swipe through, the next one peeking in from the right.
+   Sideways is the track's; up and down still drags the sheet. */
+.live-track {
+  flex: none;
+  display: grid; grid-auto-flow: column; grid-auto-columns: 100%; column-gap: 10px;
+  margin: 0 calc(-1 * var(--gut-r)) 0 calc(-1 * var(--gut-l));
+  padding: 0 var(--gut-r) 0 var(--gut-l);
+  scroll-padding: 0 var(--gut-r) 0 var(--gut-l);
+  overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory;
+  scrollbar-width: none; touch-action: pan-x;
+}
+.live-track::-webkit-scrollbar { display: none; }
+.live-track.many { grid-auto-columns: calc(100% - 30px); }
+.live-track > .live-card { scroll-snap-align: start; transition: opacity 200ms; }
+.live-track.many > .live-card:not(.on) { opacity: .55; cursor: pointer; }
+.live-dots { margin-top: -6px; }
+
 .live-card.loading { min-height: 168px; animation: breathe 1.2s ease-in-out infinite; }
 @keyframes breathe { 50% { opacity: .55; } }
 .live-who { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; }
@@ -967,10 +1022,35 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 .live-own b { font: 900 1.25rem/1.1 var(--head); }
 .live-own > div > span { font-size: 0.8125rem; line-height: 1.35; color: var(--muted); }
 .live-own .live-stake { color: var(--text); font-weight: 700; }
-.live-count { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--deep); box-shadow: inset 0 0 0 3px var(--teal); }
-.live-count b { font: 900 2rem/1 var(--head); color: var(--teal); animation: pop 300ms var(--ease-pop) both; }
+/* Nobody waiting: a radar that keeps sweeping while we look. */
+.live-look { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 16px; padding: 16px; border-radius: 20px; background: var(--raise); }
+.live-look > div { display: grid; gap: 4px; min-width: 0; }
+.live-look b { font: 800 1.125rem/1.15 var(--head); }
+.live-look > div > span { font-size: 0.8125rem; line-height: 1.35; color: var(--muted); font-variant-numeric: tabular-nums; }
+.live-radar { position: relative; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--deep); }
+.live-radar i { position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--teal); opacity: 0; animation: radar 2s var(--ease-out) infinite; }
+.live-radar i + i { animation-delay: 1s; }
+.live-radar b { width: 12px; height: 12px; border-radius: 50%; background: var(--teal); }
+@keyframes radar { from { transform: scale(.25); opacity: 1; } to { transform: scale(1); opacity: 0; } }
+.live-start { display: grid; gap: 8px; }
 .fine.center { text-align: center; }
 [data-lite] .live-dot, [data-lite] .live-wait i, [data-lite] .live-card.loading { animation: none; }
+.live-wait-short { display: none; font-style: normal; white-space: nowrap; }
+/* Narrow phones: the waiting time moves next to the state, so the name has the room. */
+@media (max-width: 360px) {
+  .live-wait { display: none; }
+  .live-wait-short { display: inline; }
+  .live-who { grid-template-columns: auto minmax(0, 1fr); }
+}
+/* Short phones: a tighter card, so Join stays in view. */
+@media (max-height: 640px) {
+  .live-card { gap: 8px; padding: 12px; }
+  .live-game { padding: 9px 10px; }
+  .live-game span { font-size: 0.75rem; }
+  .live-note { display: none; }
+}
+[data-lite] .live-radar i { animation: none; opacity: .6; transform: scale(.7); }
+@media (prefers-reduced-motion: reduce) { .live-radar i { animation: none; opacity: .6; transform: scale(.7); } }
 
 /* after a match: the moments worth a full screen */
 .celebrate {
@@ -1050,10 +1130,9 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 .sheet-x { position: absolute; top: 34px; right: max(10px, calc(var(--gut-r) - 4px)); z-index: 1; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--raise); color: var(--text); }
 .sheet-x::after { content: ""; position: absolute; inset: -4px; } /* 44px to tap */
 .sheet-x svg { width: 16px; height: 16px; }
-.more { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 20px; margin-top: -4px; }
-.link-btn { min-height: 44px; padding: 0 8px; border: 0; background: transparent; color: var(--cream); font: 800 0.9375rem/1 var(--head); }
-.link-btn:disabled { opacity: .45; }
-.link-btn:active { transform: scale(.96); }
+/* The choices under the main button: smaller buttons, side by side, never bare text. */
+.more { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.more > .btn { flex: 1 1 0; min-width: min(100%, 132px); max-width: 260px; }
 
 /* Baba Ayo's nudge: the owl trick. He leans in, sulking a little. */
 .baba-pop { grid-template-columns: 48px minmax(0, 1fr) auto; align-items: start; box-shadow: 0 0 0 3px var(--teal); }
@@ -1067,3 +1146,20 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 .baba-say p { font: 700 0.875rem/1.35 var(--body); color: var(--text); }
 @media (prefers-reduced-motion: reduce) { .baba-face { animation: none; transform: rotate(-6deg); } }
 [data-lite] .baba-face { animation: none; }
+.joined > div { display: grid; gap: 2px; min-width: 0; text-align: left; }
+.joined > div > span { font-size: 0.8125rem; color: var(--muted); }
+.chips-row button:disabled:not([aria-pressed="true"]) { opacity: .4; }
+.invite > p.muted { text-wrap: balance; }
+
+/* Short phones: the invite sheet and the room screen keep Start the game and Close the room in view. */
+@media (max-height: 700px) {
+  .invite-lead { display: none; }
+  .code-btn.big-code { font-size: 2.25rem; padding: 10px 12px; gap: 6px; }
+}
+@media (max-height: 600px) {
+  .invite-mode { display: none; }
+  .invite .code-btn.code { font-size: 2.25rem; padding: 10px 12px; gap: 6px; }
+  .invite > .fine { display: none; }
+  .invite .actions-col.two { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .invite .actions-col.two .btn { min-height: 48px; padding: 6px 12px; font-size: 0.9375rem; text-wrap: balance; }
+}

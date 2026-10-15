@@ -64,12 +64,30 @@ export function useHosted() {
 }
 
 /**
- * While the invite sheet is on screen you're plainly waiting, so your friend joining takes
- * you straight into the match. Anywhere else, a pop-up asks first.
+ * While the invite sheet is on screen it shows your friend joining and a Start the game
+ * button itself. Anywhere else, a pop-up says so, with Play.
  */
 let inviteOpen = 0;
+const inviteSubs = new Set<() => void>();
+const inviteChanged = () => inviteSubs.forEach((f) => f());
 export const holdAutoEnter = () => {
   inviteOpen++;
-  return () => { inviteOpen--; };
+  inviteChanged();
+  return () => {
+    inviteOpen--;
+    inviteChanged();
+  };
 };
-export const autoEnter = () => inviteOpen > 0;
+/**
+ * The same, as a hook, so the pop-up shows up the moment the invite sheet closes with your
+ * friend already in the room (found in testing, 15 October 2026: it stayed hidden).
+ */
+export function useInviteOpen() {
+  return useSyncExternalStore(
+    (f) => {
+      inviteSubs.add(f);
+      return () => inviteSubs.delete(f);
+    },
+    () => inviteOpen > 0,
+  );
+}

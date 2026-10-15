@@ -30,6 +30,14 @@ export function markDevice() {
   document.addEventListener('focusout', (e) => {
     if ((e.target as Element).matches?.('input, textarea')) root.classList.remove('typing');
   });
+  // How wide a list's scrollbar is here: 6px on a computer, 0 on most phones, where it floats
+  // over the list. Lists reach to the right edge of the screen so the bar sits in the margin,
+  // and use this to keep their content lined up with everything above and below them.
+  const probe = document.createElement('div');
+  probe.className = 'sb-probe';
+  document.body.appendChild(probe);
+  root.style.setProperty('--sbw', `${probe.offsetWidth - probe.clientWidth}px`);
+  probe.remove();
 }
 
 /**

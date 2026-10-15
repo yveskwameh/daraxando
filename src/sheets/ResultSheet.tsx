@@ -146,10 +146,12 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
   let rematchLabel = v.stake ? `Rematch · Stake ${fmt(v.stake)}` : 'Rematch';
   if (firstWin) rematchLabel = 'Continue';
   else if (bot) rematchLabel = 'Play again';
-  else if (!opp.connected) rematchLabel = `${opp.name} left`;
   else if (offer) rematchLabel = 'Accept rematch';
   else if (waiting) rematchLabel = `Waiting for ${opp.name}`;
   const ended = s?.reason === 'abandon' || s?.reason === 'resign' || s?.reason === 'idle';
+  // They've gone, so there's nobody to ask for a rematch: the main button moves you on instead
+  // of sitting there greyed out (found in testing, 15 October 2026).
+  const gone = !bot && !opp.connected;
 
   return (
     <>
@@ -211,7 +213,9 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
       ) : waiting ? (
         <p className="fine" role="status">You asked for <b>{describe(mine!)}</b>. Waiting for {opp.name} to accept.</p>
       ) : (
-        !ended && (
+        gone ? (
+          !ended && <p className="fine">{opp.name} left, so there's no rematch.</p>
+        ) : !ended && (
           <p className="taunt">
             {firstWin
               ? 'You beat Baba Ayo. Now take on players across Nigeria.'
@@ -223,10 +227,15 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
       )}
       {notice && <p className="form-error" role="alert">{notice}</p>}
 
+      {gone ? (
+        <button type="button" className="btn primary block lg" onClick={() => { buzz('tap'); (v.kind === 'quick' ? onNew : onHome)(); }}>
+          {v.kind === 'quick' ? 'Find another match' : 'Back to Home'}
+        </button>
+      ) : (
       <button
         type="button"
         className="btn primary block lg"
-        disabled={!bot && (!opp.connected || waiting)}
+        disabled={!bot && waiting}
         onClick={() => {
           buzz('tap');
           if (firstWin) return onHome();
@@ -235,13 +244,14 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
       >
         {rematchLabel}
       </button>
-      {/* One clear next step above; the other choices are quieter, and X goes Home. The first match keeps it to one. */}
-      {!v.first && <div className="more">
-        <button type="button" className="link-btn" disabled={!bot && !opp.connected} onClick={onChange}>
-          {bot ? 'Change game or level' : 'Change game or stake'}
+      )}
+      {/* One clear next step above; the other choices are smaller buttons under it, and X goes Home. The first match keeps it to one. */}
+      {!v.first && !gone && <div className="more">
+        <button type="button" className="btn ghost sm" onClick={onChange}>
+          {bot ? 'Change\u00a0game or level' : 'Change\u00a0game or stake'}
         </button>
         {v.kind !== 'friend' && (
-          <button type="button" className="link-btn" onClick={onNew}>{bot ? 'Find a player' : 'New opponent'}</button>
+          <button type="button" className="btn ghost sm" onClick={onNew}>{bot ? 'Find a player' : 'New opponent'}</button>
         )}
       </div>}
     </>
@@ -323,7 +333,7 @@ function ChangeRematch({ view: v, opp, onAsk, onBack }: Props & { onAsk: (ask: R
         {bot ? 'Play' : 'Ask for rematch'}
       </button>
       <div className="more">
-        <button type="button" className="link-btn" onClick={onBack}>Back</button>
+        <button type="button" className="btn ghost sm" onClick={onBack}>Back</button>
       </div>
     </>
   );

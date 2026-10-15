@@ -20,7 +20,7 @@ import { pairOf } from '../shared/collections';
 import { isModeId, MODES, maxGames, winsNeeded, type ModeId } from '../shared/modes';
 import { auraFor, eloDelta, levelInfo, MIN_RATING, type Kind, type Result } from '../shared/progression';
 import {
-  ABANDON_MS, AWAY_MS, BOT, CLOSE, EMOTES, FIRST_TURN_BONUS_MS, MAX_TIMEOUTS, NEXT_WAIT_MS, RESUME_MIN_MS,
+  ABANDON_MS, AWAY_MS, BOT, CLOSE, EMOTES, FIRST_MATCH_TURN_MS, FIRST_TURN_BONUS_MS, MAX_TIMEOUTS, NEXT_WAIT_MS, RESUME_MIN_MS,
   type ClientMsg, type EndReason, type ErrorCode, type GameResult, type MatchView, type Phase, type PublicPlayer,
   type Rematch, type RoomStatus, type SeriesResult, type ServerMsg,
 } from '../shared/protocol';
@@ -519,7 +519,7 @@ export class Match extends DurableObject<Env> {
     s.turn = s.starter;
     for (const p of s.seats) if (p) p.timeouts = 0;
     s.pausedLeft = null;
-    s.turnEndsAt = now + MODES[s.mode].turnMs + FIRST_TURN_BONUS_MS;
+    s.turnEndsAt = now + this.turnMs() + FIRST_TURN_BONUS_MS;
     this.updatePause(now);
     if (s.pausedLeft === null && this.seatOf(s.turn) === this.botIndex()) this.scheduleBot();
   }
@@ -622,7 +622,7 @@ export class Match extends DurableObject<Env> {
     if (o?.kind === 'draw') return this.endGame(null, 'draw', null, now);
 
     s.turn = other(mark);
-    s.turnEndsAt = now + MODES[s.mode].turnMs;
+    s.turnEndsAt = now + this.turnMs();
     this.sync();
 
     if (s.kind === 'bot') {
@@ -721,6 +721,12 @@ export class Match extends DurableObject<Env> {
     s.ready = [!!s.seats[0]?.bot, !!s.seats[1]?.bot];
     s.readyAt = null;
     this.sync();
+  }
+
+  /** Time for one move: the mode's clock, or a slow one in a new player's first match. */
+  private turnMs() {
+    const s = this.state!;
+    return s.first ? FIRST_MATCH_TURN_MS : MODES[s.mode].turnMs;
   }
 
   /** Games in this series: the mode's series, or one for a new player's first match. */

@@ -2,16 +2,18 @@
  * Quick match: join a game someone is already waiting in (Yves, 15 October 2026).
  *
  * Tapping a card on the Deck starts your own game and waits for someone. Quick match does the
- * opposite: it shows the games waiting right now, one at a time, best first (your state, then
- * your zone, then whoever has waited longest). The person who started a game set its stake,
- * so you never pick one here: you see it, and tapping Join is agreeing to it. "Show another"
- * moves to the next game.
+ * opposite: it shows the games waiting right now as cards you swipe through, best first (your
+ * state, then your zone, then whoever has waited longest), with dots under them (Yves, 15
+ * October 2026: pick the player you want, not just the next one). The person who started a
+ * game set its stake, so you never pick one here: you see it, and Join is agreeing to it.
  *
- * Nobody waiting: a 3-second countdown, then your own game starts with your last game and
- * stake, so two people tapping Quick match at once still find each other. "Start now" skips
- * the wait, "Change game or stake" opens the stake picker, and X or a swipe cancels.
+ * Nobody waiting (Yves, 15 October 2026: the old 3-second countdown was too fast): nothing
+ * starts by itself. The sheet keeps looking every 2 seconds and says so, with how long it has
+ * looked and how many other people are looking right now. A game that shows up replaces the
+ * screen. You choose: Start my own game (your last game and stake, shown under the button),
+ * Change game or stake, or Play Baba Ayo.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { MODES, seriesLabel } from '../../shared/modes';
 import { stateName } from '../../shared/places';
 import type { LiveGame } from '../../shared/protocol';
@@ -27,8 +29,9 @@ import { sfx } from '../lib/sound';
 import { toast } from '../lib/toast';
 import { useLobby } from '../lib/useLobby';
 
-/** Long enough to change your mind, short enough to feel instant. */
-export const START_OWN_SECONDS = 3;
+/** How often to look again: quickly while there's nothing to join, slower while you're reading a game. */
+const LOOK_EMPTY_MS = 2_000;
+const LOOK_MS = 4_000;
 
 interface Props {
   open: boolean;
@@ -38,6 +41,8 @@ interface Props {
   onStartOwn: () => void;
   /** Pick a different game or stake first (the stake picker). */
   onChange: () => void;
+  /** Play Baba Ayo instead (his sheet). */
+  onBaba: () => void;
   /** Tells Home how many games are live, so its button stays honest. */
   onCount?: (n: number) => void;
 }
@@ -50,65 +55,79 @@ export default function LiveSheet(props: Props) {
   );
 }
 
-function Body({ go, onStartOwn, onChange, onCount }: Props) {
+function Body({ go, onStartOwn, onChange, onBaba, onCount }: Props) {
   const { token } = usePlayer();
   const { mode, stake } = usePrefs();
   const [games, setGames] = useState<LiveGame[] | null>(null);
   const [current, setCurrent] = useState<string | null>(null);
   const [joining, setJoining] = useState<LiveGame | null>(null);
-  const [count, setCount] = useState(START_OWN_SECONDS);
+  const [looking, setLooking] = useState(0);
   const [now, setNow] = useState(() => Date.now());
+  const [opened] = useState(() => Date.now());
   const counted = useRef(onCount);
   counted.current = onCount;
 
   const load = useCallback(async () => {
     try {
-      const r = await api.live(token);
+      const r = await api.live(token, true);
       setGames(r.games);
+      setLooking(r.looking ?? 0);
       counted.current?.(r.n);
     } catch {
       setGames((g) => g ?? []);
     }
   }, [token]);
 
-  // Fresh list on open, then every few seconds (faster while counting down), so a game that
-  // was taken disappears and a new one shows up. Not while joining.
+  // Fresh list on open, then every few seconds, so a game that was taken disappears and a new
+  // one shows up. Not while joining, and not while the app is in the background: a sheet left
+  // open in a hidden tab isn't someone looking (found in testing, 15 October 2026).
   const none = games !== null && games.length === 0;
   useEffect(() => {
     if (joining) return;
     void load();
-    const t = setInterval(() => void load(), none ? 1_500 : 4_000);
-    return () => clearInterval(t);
+    const t = setInterval(() => !document.hidden && void load(), none ? LOOK_EMPTY_MS : LOOK_MS);
+    const back = () => !document.hidden && void load();
+    document.addEventListener('visibilitychange', back);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener('visibilitychange', back);
+    };
   }, [load, joining, none]);
 
-  // One tick a second: the waiting times and the countdown.
+  // One tick a second: the waiting times and how long we've been looking.
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1_000);
     return () => clearInterval(t);
   }, []);
 
-  // The countdown runs only while nobody is waiting. A game appearing stops it.
-  useEffect(() => {
-    if (!none || joining) {
-      setCount(START_OWN_SECONDS);
-      return;
-    }
-    if (count <= 0) {
-      onStartOwn();
-      return;
-    }
-    const t = setTimeout(() => setCount((c) => c - 1), 1_000);
-    return () => clearTimeout(t);
-  }, [none, joining, count, onStartOwn]);
-
   const game = useMemo(() => (games ? games.find((g) => g.id === current) ?? games[0] ?? null : null), [games, current]);
+  const index = games && game ? games.indexOf(game) : 0;
 
-  const showAnother = () => {
-    if (!games || games.length < 2 || !game) return;
-    buzz('tap');
-    const i = games.findIndex((g) => g.id === game.id);
-    setCurrent(games[(i + 1) % games.length].id);
+  // The cards scroll sideways and snap. Whichever card is in the middle is the one Join joins.
+  const track = useRef<HTMLDivElement>(null);
+  const step = () => {
+    const t = track.current;
+    const first = t?.firstElementChild as HTMLElement | null;
+    return t && first ? first.offsetWidth + parseFloat(getComputedStyle(t).columnGap || '0') : 1;
   };
+  const onScroll = () => {
+    const t = track.current;
+    if (!t || !games?.length) return;
+    const i = Math.max(0, Math.min(games.length - 1, Math.round(t.scrollLeft / step())));
+    if (games[i].id !== current) setCurrent(games[i].id);
+  };
+  const scrollTo = (i: number, smooth = true) => {
+    const t = track.current;
+    if (!t) return;
+    t.scrollTo({ left: i * step(), behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+  };
+  // The list refreshes every few seconds. Keep the card you're looking at in view.
+  useLayoutEffect(() => {
+    const t = track.current;
+    if (!t || !games?.length) return;
+    if (Math.round(t.scrollLeft / step()) !== index) scrollTo(index, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [games, index]);
 
   // Joining: a search aimed at that one player. Matched goes straight into the game.
   const onMatched = useCallback((id: string) => {
@@ -119,11 +138,12 @@ function Body({ go, onStartOwn, onChange, onCount }: Props) {
     const was = joining;
     setJoining(null);
     if (was) {
-      toast(`${was.name}'s game was taken. Here's the next one.`);
+      const more = (games ?? []).some((x) => x.id !== was.id);
+      toast(more ? `${was.name}'s game was taken. Here's the next one.` : `${was.name}'s game was taken. We'll keep looking.`);
       setGames((g) => (g ? g.filter((x) => x.id !== was.id) : g));
       setCurrent(null);
     }
-  }, [joining]);
+  }, [joining, games]);
   const queue = useMemo(
     () => (joining ? { mode: joining.mode, stake: joining.stake, wide: true, target: joining.id } : { mode, stake }),
     [joining, mode, stake],
@@ -150,61 +170,60 @@ function Body({ go, onStartOwn, onChange, onCount }: Props) {
 
   if (!game) {
     const m = MODES[mode];
+    const secs = Math.max(0, Math.round((now - opened) / 1000));
     return (
       <>
         <div>
-          <h2>Nobody is waiting</h2>
-          <p className="fine">Starting your own game, so the next player who taps Quick match joins you.</p>
+          <h2>Nobody is waiting yet</h2>
+          <p className="fine">We'll keep looking while this is open. A game shows up here the moment someone starts one.</p>
         </div>
-        <div className="live-own" role="status" aria-live="polite">
-          <span className="live-count" aria-label={`Starting in ${count}`}><b key={count}>{Math.max(count, 0)}</b></span>
+        <div className="live-look" role="status" aria-live="polite">
+          <span className="live-radar" aria-hidden="true"><i /><i /><b /></span>
           <div>
-            <b>{m.name}</b>
-            <span>{m.rule} {seriesLabel(m.bo)}</span>
-            <span className="live-stake">{stake ? <>Stake <Cowries n={stake} /> each</> : 'Free, no stake'}</span>
+            <b>{looking ? `${looking} other ${looking === 1 ? 'player is' : 'players are'} looking` : 'Looking for players'}</b>
+            <span>{looking ? 'Start your own game and they can join you.' : `Looking for ${secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m ${secs % 60}s`}`}</span>
           </div>
         </div>
-        <button type="button" className="btn primary block lg" onClick={() => { buzz('tap'); onStartOwn(); }}>Start now</button>
+        <div className="live-start">
+          <button type="button" className="btn primary block lg" onClick={() => { buzz('tap'); onStartOwn(); }}>Start my own game</button>
+          <p className="fine center">
+            {m.name} · {seriesLabel(m.bo)} · {stake ? <>Stake <Cowries n={stake} /> each</> : 'No stake'}
+          </p>
+        </div>
         <div className="more">
-          <button type="button" className="link-btn" onClick={onChange}>Change game or stake</button>
+          <button type="button" className="btn ghost sm" onClick={onChange}>{'Change\u00a0game or stake'}</button>
+          <button type="button" className="btn baba sm" onClick={onBaba}>Play Baba Ayo</button>
         </div>
       </>
     );
   }
 
-  const m = MODES[game.mode];
-  const waited = Math.max(0, Math.round((now - game.since) / 1000));
-  const others = games.length - 1;
   return (
     <>
       <div>
         <h2>Live now</h2>
-        <p className="fine">{games.length === 1 ? '1 game is' : `${games.length} games are`} waiting for a player.</p>
+        <p className="fine">
+          {games.length === 1 ? '1 game is waiting for a player.' : `${games.length} games are waiting for a player. Swipe to see them all.`}
+        </p>
       </div>
-      <div className="live-card" key={game.id}>
-        <div className="live-who">
-          <Avatar avatar={game.avatar} print={game.print} size={52} />
-          <div>
-            <b>{game.name}</b>
-            <span><Icon id="i-pin" className="pin" />{stateName(game.state)}</span>
-          </div>
-          <span className="live-wait"><i aria-hidden="true" />Waiting {waited < 60 ? `${waited}s` : `${Math.floor(waited / 60)}m`}</span>
-        </div>
-        <div className="live-game">
-          <b>{m.name}</b>
-          <span>{m.rule} {seriesLabel(m.bo)}.</span>
-        </div>
-        <div className="live-pot">
-          {game.stake ? (
-            <>
-              <span>Stake <Cowries n={game.stake} /> each</span>
-              <span>Winner takes <b>{fmt(prize(game.stake))}</b></span>
-            </>
-          ) : (
-            <span>Free, no stake. Play for Aura.</span>
-          )}
-        </div>
+      <div
+        ref={track}
+        className={`live-track${games.length > 1 ? ' many' : ''}`}
+        onScroll={onScroll}
+        aria-roledescription="carousel"
+        aria-label="Games waiting for a player"
+      >
+        {games.map((g, i) => (
+          <LiveCard key={g.id} game={g} now={now} active={i === index} onPick={() => { buzz('tap'); scrollTo(i); setCurrent(g.id); }} label={`${i + 1} of ${games.length}`} />
+        ))}
       </div>
+      {games.length > 1 && (
+        <div className="dots live-dots">
+          {games.map((g, i) => (
+            <button key={g.id} type="button" aria-label={`${g.name}, ${i + 1} of ${games.length}`} aria-current={i === index} onClick={() => { scrollTo(i); setCurrent(g.id); }} />
+          ))}
+        </div>
+      )}
       <button
         type="button"
         className="btn primary block lg"
@@ -214,10 +233,49 @@ function Body({ go, onStartOwn, onChange, onCount }: Props) {
         {joining ? 'Joining…' : `Join ${game.name}`}
       </button>
       <div className="more">
-        {others > 0 && <button type="button" className="link-btn" disabled={!!joining} onClick={showAnother}>Show another ({others})</button>}
-        <button type="button" className="link-btn" disabled={!!joining} onClick={onStartOwn}>Start my own game</button>
+        <button type="button" className="btn ghost sm" disabled={!!joining} onClick={onStartOwn}>Start my own game</button>
       </div>
-      {game.stake > 0 && <p className="fine center">Joining puts in your stake. You can't buy, sell, send or cash out Dara Seeds.</p>}
+      {game.stake > 0 && <p className="fine center live-note">Joining puts in your stake. You can't buy, sell, send or cash out Dara Seeds.</p>}
     </>
+  );
+}
+
+/** One waiting game: who, where, how long, the game and the stake. Tap it to bring it to the middle. */
+function LiveCard({ game, now, active, onPick, label }: { game: LiveGame; now: number; active: boolean; onPick: () => void; label: string }) {
+  const m = MODES[game.mode];
+  const waited = Math.max(0, Math.round((now - game.since) / 1000));
+  const wait = waited < 60 ? `${waited}s` : `${Math.floor(waited / 60)}m`;
+  return (
+    <div
+      className={`live-card${active ? ' on' : ''}`}
+      role="group"
+      aria-roledescription="slide"
+      aria-label={`${label}: ${game.name}`}
+      aria-current={active || undefined}
+      onClick={active ? undefined : onPick}
+    >
+      <div className="live-who">
+        <Avatar avatar={game.avatar} print={game.print} size={52} />
+        <div>
+          <b>{game.name}</b>
+          <span><Icon id="i-pin" className="pin" />{stateName(game.state)}<em className="live-wait-short"> · {wait}</em></span>
+        </div>
+        <span className="live-wait"><i aria-hidden="true" />Waiting {wait}</span>
+      </div>
+      <div className="live-game">
+        <b>{m.name}</b>
+        <span>{m.rule} {seriesLabel(m.bo)}.</span>
+      </div>
+      <div className="live-pot">
+        {game.stake ? (
+          <>
+            <span>Stake <Cowries n={game.stake} /> each</span>
+            <span>Winner takes <b>{fmt(prize(game.stake))}</b></span>
+          </>
+        ) : (
+          <span>Free, no stake. Play for Aura.</span>
+        )}
+      </div>
+    </div>
   );
 }

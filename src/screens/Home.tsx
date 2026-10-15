@@ -124,7 +124,7 @@ export function Home({ go }: { go: Go }) {
         <button type="button" className="me-chip" aria-label={aria} onClick={() => go({ name: 'profile' })}>
           <Avatar avatar={profile.avatar} print={profile.print} size={40} />
           <span className="lv">
-            <b>{lv.title}<small>{fmt(profile.aura)}/{fmt(auraForLevel(lv.level + 1))}</small></b>
+            <b>{lv.title}</b>
             <span className="aura-bar"><i style={{ width: `${Math.max(4, (lv.into / lv.span) * 100)}%` }} /></span>
           </span>
         </button>
@@ -159,7 +159,7 @@ export function Home({ go }: { go: Go }) {
         <button
           type="button"
           className="btn primary block lg"
-          aria-label={live ? `Quick match. ${live} ${live === 1 ? 'game is' : 'games are'} waiting for a player.` : `Quick match. Nobody is waiting, so it starts your ${MODES[p.mode].name} game${p.stake ? ` at ${fmt(p.stake)}` : ', free'}.`}
+          aria-label={live ? `Quick match. ${live} ${live === 1 ? 'game is' : 'games are'} waiting for a player.` : `Quick match. Nobody is waiting yet. You can start your own ${MODES[p.mode].name} game${p.stake ? ` at ${fmt(p.stake)}` : ', free'}.`}
           onClick={() => open('live')}
         >
           Quick match{' '}
@@ -257,7 +257,7 @@ export function Home({ go }: { go: Go }) {
         )}
         {opened.has('quests') && <QuestsSheet open={sheet === 'quests'} onClose={close} />}
         {opened.has('live') && (
-          <LiveSheet open={sheet === 'live'} onClose={close} go={go} onStartOwn={startOwn} onChange={() => setSheet('stake')} onCount={setLive} />
+          <LiveSheet open={sheet === 'live'} onClose={close} go={go} onStartOwn={startOwn} onChange={() => setSheet('stake')} onBaba={() => setSheet('baba')} onCount={setLive} />
         )}
       </Suspense>
     </main>

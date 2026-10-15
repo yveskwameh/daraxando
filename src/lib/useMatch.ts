@@ -8,6 +8,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ClientMsg, ErrorCode, MatchView, Reward, ServerMsg } from '../../shared/protocol';
 import { socketUrl } from './api';
 
+/** How often a match socket checks it can still hear the server. */
+const PING_MS = 10_000;
+
 export type LinkStatus = 'connecting' | 'open' | 'reconnecting' | 'closed';
 
 /** A line someone said: an emote from either player, or Baba Ayo talking. */
@@ -46,7 +49,19 @@ export function useMatch(matchId: string, token: string) {
       if (document.hidden) presence();
     };
     const onClose = (e: CloseEvent) => setStatus(e.code >= 4000 ? 'closed' : 'reconnecting');
+    // Losing signal can leave a socket looking open for a long time, so the board would sit
+    // there while your moves go nowhere. Say so the moment the phone knows it's offline, and
+    // treat a socket that stops answering as gone (found in testing, 15 October 2026).
+    let heard = Date.now();
+    const onOffline = () => setStatus('reconnecting');
+    const onOnline = () => sock.reconnect();
+    // Coming back to the app starts the count again, so a phone back from the background
+    // doesn't reconnect a line that's fine.
+    const onShow = () => {
+      if (!document.hidden) heard = Date.now();
+    };
     const onMessage = (e: MessageEvent) => {
+      heard = Date.now();
       if (e.data === 'pong') return;
       let m: ServerMsg;
       try {
@@ -84,11 +99,27 @@ export function useMatch(matchId: string, token: string) {
     sock.addEventListener('close', onClose as EventListener);
     sock.addEventListener('message', onMessage as EventListener);
     document.addEventListener('visibilitychange', presence);
+    document.addEventListener('visibilitychange', onShow);
+    addEventListener('offline', onOffline);
+    addEventListener('online', onOnline);
     // Keepalive. The server answers 'ping' without waking up, so this costs nothing there.
-    const ping = setInterval(() => sock.readyState === sock.OPEN && sock.send('ping'), 25_000);
+    // Two pings in a row with no answer: reconnect.
+    const ping = setInterval(() => {
+      if (sock.readyState !== sock.OPEN || document.hidden) return;
+      if (Date.now() - heard > PING_MS * 2 + 2_000) {
+        setStatus('reconnecting');
+        heard = Date.now();
+        sock.reconnect();
+        return;
+      }
+      sock.send('ping');
+    }, PING_MS);
 
     return () => {
       document.removeEventListener('visibilitychange', presence);
+      document.removeEventListener('visibilitychange', onShow);
+      removeEventListener('offline', onOffline);
+      removeEventListener('online', onOnline);
       clearInterval(ping);
       sock.close();
       ws.current = null;

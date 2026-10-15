@@ -8,7 +8,7 @@ import { AVATARS, PIECES, PRINTS, pieceById, type Item } from '../../shared/coll
 import { BADGES, STAR_AURA, badgeStars, badgeValue, type Habits } from '../../shared/habits';
 import { stateName, zoneName, type StateCode } from '../../shared/places';
 import { auraForLevel, levelInfo, tierOf, titleFor } from '../../shared/progression';
-import { cleanName } from '../../shared/protocol';
+import { cleanName, nameChars } from '../../shared/protocol';
 import { printBg } from '../art/prints';
 import { Avatar, Icon, Piece } from '../components/art';
 import { Sheet } from '../components/Sheet';
@@ -261,7 +261,7 @@ function NameEdit({ current, onSave, onCancel }: { current: string; onSave: (nam
       }}
     >
       <label className="sr" htmlFor="name-in">Your name</label>
-      <input id="name-in" className="text-in" value={value} maxLength={16} autoComplete="off" spellCheck={false} data-autofocus onChange={(e) => setValue(e.target.value)} />
+      <input id="name-in" className="text-in" value={value} maxLength={16} autoComplete="off" spellCheck={false} data-autofocus onChange={(e) => setValue(nameChars(e.target.value))} />
       <div className="chips-row">
         {ideas.map((n) => <button key={n} type="button" onClick={() => setValue(n)}>{n}</button>)}
         <button type="button" aria-label="More name ideas" onClick={() => setIdeas(suggestNames(5, value))}>
@@ -270,7 +270,7 @@ function NameEdit({ current, onSave, onCancel }: { current: string; onSave: (nam
       </div>
       <div className="edit-row">
         <small>2 to 16 letters. Change it any time.</small>
-        <button type="button" className="link-btn" onClick={onCancel}>Cancel</button>
+        <button type="button" className="mini-btn ghost" onClick={onCancel}>Cancel</button>
         <button type="submit" className="mini-btn" disabled={!clean}>Save</button>
       </div>
     </form>
@@ -294,8 +294,8 @@ function Record({ wins, draws, losses, best, now }: { wins: number; draws: numbe
       <section className="record empty" aria-label="Your record">
         <span className="record-ic"><Icon id="i-star" className="" /></span>
         <div>
-          <b>No matches yet</b>
-          <span>Your wins, draws and best run show up here after your first match.</span>
+          <b>No matches against players yet</b>
+          <span>Your wins, draws and best run against other players show up here. Games with Baba Ayo don't count.</span>
         </div>
       </section>
     );
@@ -305,7 +305,7 @@ function Record({ wins, draws, losses, best, now }: { wins: number; draws: numbe
       <div className="record-top">
         <div className="rate">
           <b>{rate}%</b>
-          <span>Win rate · {played} {played === 1 ? 'match' : 'matches'}</span>
+          <span>Win rate · {played} {played === 1 ? 'match' : 'matches'} against players</span>
         </div>
         <div className="run">
           <Icon id="i-star" className="" />
@@ -321,7 +321,7 @@ function Record({ wins, draws, losses, best, now }: { wins: number; draws: numbe
       <ul className="record-key">
         {parts.map((p) => <li key={p.k}><i className={p.k} /><b>{p.n}</b> {p.label}</li>)}
       </ul>
-      <span className="sr">{`${played} matches: ${wins} wins, ${draws} draws, ${losses} losses. Best run ${best} wins in a row.`}</span>
+      <span className="sr">{`${played} ${played === 1 ? 'match' : 'matches'} against players: ${parts.map((p) => `${p.n} ${p.label.toLowerCase()}`).join(', ')}. Best run ${best} ${best === 1 ? 'win' : 'wins'} in a row.`}</span>
     </section>
   );
 }

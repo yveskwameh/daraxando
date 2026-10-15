@@ -24,6 +24,11 @@ export const AWAY_MS = 60_000;
 export const RESUME_MIN_MS = 4_000;
 /** A little extra on the first move of each game, while people find the board. */
 export const FIRST_TURN_BONUS_MS = 2_000;
+/**
+ * A new player's first match against Baba Ayo gets a slow clock: 30 seconds a move, so
+ * someone still looking around their first screen doesn't lose before they've played.
+ */
+export const FIRST_MATCH_TURN_MS = 30_000;
 /** Time out this many moves in a row and you lose the game. */
 export const MAX_TIMEOUTS = 2;
 /**
@@ -345,9 +350,12 @@ export const CLOSE = {
  * Tidies a name: letters (including accents, so Ọlá stays Ọlá), numbers, spaces and a few
  * marks. Null if what is left is too short or too long.
  */
+/** Drops what a name can't hold (symbols, emoji) as it's typed, so what you see is what you get. */
+export const nameChars = (raw: string) => raw.normalize('NFC').replace(/[^\p{L}\p{M}\p{N} .'_-]/gu, '');
+
 export function cleanName(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
-  const name = raw.normalize('NFC').replace(/[^\p{L}\p{M}\p{N} .'_-]/gu, '').replace(/\s+/g, ' ').trim();
+  const name = nameChars(raw).replace(/\s+/g, ' ').trim();
   const length = [...name.normalize('NFC')].length;
   if (length < NAME_MIN || length > NAME_MAX) return null;
   return name;

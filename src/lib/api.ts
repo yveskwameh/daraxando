@@ -48,7 +48,8 @@ export const api = {
   where: () => call<{ state: StateCode | null }>('/api/where', null),
 
   /** Quick match games waiting for an opponent that you can join, best first. */
-  live: (token: string) => call<{ games: LiveGame[]; n: number }>('/api/live', token),
+  /** Games to join. `looking` counts you as looking at Quick match, and `looking` back is how many others are. */
+  live: (token: string, looking = false) => call<{ games: LiveGame[]; n: number; looking: number }>(`/api/live${looking ? '?looking=1' : ''}`, token),
 
   me: (token: string) => call<{ profile: Profile }>('/api/me', token),
 

@@ -30,7 +30,6 @@
   --text: #ffffff;
   --muted: #b8b4e8;
   --muted-on-indigo: #e3e0ff; /* secondary text on an indigo fill (your own row) */
-  --scroll-thumb: #4a46b4; /* the scrollbar on lists */
 
   /* Gabarito for headings and numbers, Onest for reading. */
   --head: 'Gabarito Variable', 'Gabarito', 'Arial Rounded MT Bold', system-ui, sans-serif;

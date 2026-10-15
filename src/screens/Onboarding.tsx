@@ -9,8 +9,9 @@
  */
 import { useEffect, useState } from 'react';
 import { AVATARS } from '../../shared/collections';
+import { DEFAULT_MODE } from '../../shared/modes';
 import { stateName, type StateCode } from '../../shared/places';
-import { cleanName } from '../../shared/protocol';
+import { cleanName, nameChars } from '../../shared/protocol';
 import { Avatar, Icon, Wordmark } from '../components/art';
 import { DemoBoard } from '../components/DemoBoard';
 import { Sheet } from '../components/Sheet';
@@ -22,8 +23,8 @@ import type { Go, Route } from '../lib/router';
 import { useSession } from '../lib/session';
 
 const OPEN = AVATARS.filter((a) => a.lvl === 1);
-/** The first game: Classic against Baba Ayo at his easiest. Instant, and winnable. */
-const FIRST_MODE = 'classic';
+/** The first game: the default game (Fading) against Baba Ayo at his easiest. Instant, and winnable. */
+const FIRST_MODE = DEFAULT_MODE;
 const FIRST_LEVEL = 'jeje';
 
 export function Onboarding({ route, go }: { route: Route; go: Go }) {
@@ -112,7 +113,7 @@ export function Onboarding({ route, go }: { route: Route; go: Go }) {
               maxLength={16}
               autoComplete="off"
               spellCheck={false}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => setName(nameChars(e.target.value))}
             />
             <button type="button" className="icon-btn" aria-label="Another name idea" onClick={() => { setName(suggestNames(1, name)[0]); buzz('tap'); }}>
               <Icon id="i-shuffle" />

@@ -33,7 +33,12 @@ export function pathOf(r: Route): string {
 }
 
 export function useRoute() {
-  const [route, setRoute] = useState<Route>(() => parse(location.pathname));
+  const [route, setRoute] = useState<Route>(() => {
+    const r = parse(location.pathname);
+    // A mistyped address shows Home, so make the address bar say so too.
+    if (pathOf(r) !== location.pathname && r.name !== 'play') history.replaceState(null, '', pathOf(r) + location.search);
+    return r;
+  });
 
   useEffect(() => {
     const onPop = () => setRoute(parse(location.pathname));

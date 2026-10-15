@@ -1,5 +1,5 @@
 /** Play Baba Ayo, the game's bot. Pick how hard he plays. No stakes, no rating. */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { BOT_LEVEL_INFO, BOT_LEVELS, type BotLevel } from '../../shared/bot';
 import { MODES, seriesLabel, type ModeId } from '../../shared/modes';
 import { AURA_BOT } from '../../shared/progression';
@@ -13,9 +13,13 @@ import { toast } from '../lib/toast';
 export function BabaSheet({ open, onClose, mode, go }: { open: boolean; onClose: () => void; mode: ModeId; go: Go }) {
   const { token } = usePlayer();
   const [busy, setBusy] = useState<BotLevel | null>(null);
+  // A double tap must start one game, not two: the state above only updates after a render.
+  const starting = useRef(false);
   const m = MODES[mode];
 
   const play = async (level: BotLevel) => {
+    if (starting.current) return;
+    starting.current = true;
     setBusy(level);
     try {
       const { matchId } = await api.playBot(token, mode, level);
@@ -23,6 +27,7 @@ export function BabaSheet({ open, onClose, mode, go }: { open: boolean; onClose:
       go({ name: 'play', id: matchId });
     } catch (err) {
       toast((err as Error).message);
+      starting.current = false;
       setBusy(null);
     }
   };

@@ -1,6 +1,6 @@
 # Game modes and session length
 
-Status: built. The four modes and series are in `shared/modes.ts` and `shared/rules.ts`, judged by `worker/match.ts`. Baba Ayo plays all four (`shared/bot.ts`): perfect play on Classic at Agba, a look-ahead search in Fading, and a line-scoring player on Big and Pro. Turn clocks: 10 seconds on 3×3, 15 on Big, 20 on Pro, plus 2 seconds on the first move of each game.
+Status: built. The four modes and series are in `shared/modes.ts` and `shared/rules.ts`, judged by `worker/match.ts`. Fading is the default and comes first (Yves, 15 October 2026), then Classic, Big and Pro. Baba Ayo plays all four (`shared/bot.ts`): perfect play on Classic at Agba, a look-ahead search in Fading, and a line-scoring player on Big and Pro. Turn clocks: 10 seconds on 3×3, 15 on Big, 20 on Pro, plus 2 seconds on the first move of each game.
 
 ## The problem
 

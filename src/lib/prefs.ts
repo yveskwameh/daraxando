@@ -3,7 +3,7 @@
  * music, sound and vibration switches. A tiny store any component can read with usePrefs().
  */
 import { useSyncExternalStore } from 'react';
-import type { ModeId } from '../../shared/modes';
+import { DEFAULT_MODE, type ModeId } from '../../shared/modes';
 import { KEYS, store } from './storage';
 
 export interface Prefs {
@@ -17,7 +17,7 @@ export interface Prefs {
   nudges: boolean;
 }
 
-const DEFAULTS: Prefs = { mode: 'classic', stake: 0, friendStake: 0, music: true, sfx: true, haptics: true, nudges: true };
+const DEFAULTS: Prefs = { mode: DEFAULT_MODE, stake: 0, friendStake: 0, music: true, sfx: true, haptics: true, nudges: true };
 
 let current: Prefs = store.json(KEYS.prefs, DEFAULTS);
 const listeners = new Set<() => void>();
