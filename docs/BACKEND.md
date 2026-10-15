@@ -1,6 +1,6 @@
 # Backend and launch plan
 
-Status: planned 15 October 2026, the day Yves signed off the frontend. Launch address: **daraxando.yveskwameh.com**.
+Status: planned 15 October 2026, the day Yves signed off the frontend. Launch address: **daraxando.yveskwameh.com**. Test copy: **https://daraxando-staging.yves-workers.workers.dev**, built from GitHub since 15 October 2026 (first build green, database tables made).
 
 ## What already exists
 
@@ -19,7 +19,7 @@ So the backend phase is about making it ready for real players: keeping progress
 1. **Saving progress:** players keep playing straight away as guests, and "Save your progress" links **Google or a 6-digit email code**. The email is designed in the game's look and shown to Yves before it's built.
 2. **Cost: $0.** No paid plans or subscriptions, ever. Everything below runs on free plans.
 3. **Notifications at launch:** yes, two kinds: "your streak ends tonight" and "your friend joined your room".
-4. **Staging:** yes, a test copy with its own database on a free `workers.dev` address.
+4. **Staging:** yes, a test copy with its own database, on a free workers.dev address under the account name Yves picks.
 
 ## Why Cloudflare's free plan
 

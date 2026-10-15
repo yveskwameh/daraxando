@@ -53,13 +53,17 @@
   // is for `npm run dev` on your Mac. Bindings aren't inherited, so each copy lists its own.
   // Cloudflare builds both from GitHub (Workers Builds); each Worker's build variable
   // CLOUDFLARE_ENV picks its copy, and `npm run release` deploys it (README, "Going live").
-  //   staging:    a test copy on a free workers.dev address. Updates on every push to main.
+  //   staging:    the test copy at daraxando-staging.<account name>.workers.dev. Updates on every push to main.
   //   production: the real game at daraxando.yveskwameh.com. Updates on the production branch.
   // The database ids come from the Cloudflare dashboard (Storage and databases, D1). They aren't secret.
   "env": {
     "staging": {
       "name": "daraxando-staging",
+      // On the free workers.dev address: daraxando-staging.<account name>.workers.dev. The account
+      // name is set in Cloudflare (Workers & Pages, Your subdomain), so renaming it there needs no
+      // change here. No extra preview address per version.
       "workers_dev": true,
+      "preview_urls": false,
       "vars": { "ENVIRONMENT": "staging" },
       "durable_objects": {
         "bindings": [
@@ -81,6 +85,7 @@
     "production": {
       "name": "daraxando",
       "workers_dev": false,
+      "preview_urls": false,
       // Cloudflare makes the DNS record and the HTTPS certificate on the first deploy. The domain
       // must be active on Cloudflare (it is: its nameservers point there).
       "routes": [{ "pattern": "daraxando.yveskwameh.com", "custom_domain": true }],

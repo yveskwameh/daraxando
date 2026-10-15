@@ -106,6 +106,7 @@ Approved on 15 October 2026:
 
 ## Launch address
 
+- The test copy is **https://daraxando-staging.yves-workers.workers.dev**. `yves-workers` is the account's workers.dev name, which Yves picked on 15 October 2026 (it was `2026-portfolio`, which no longer works). If he renames it again, the address follows by itself; nothing in the project names it. It rebuilds from GitHub on every push to `main`.
 - **daraxando.yveskwameh.com** (Yves, 15 October 2026) is where the game launches first. It needs `yveskwameh.com`'s DNS on Cloudflare, then a Custom Domain on the `daraxando` Worker. Yves publishes it himself; never deploy for him. The README's "Going live" has the steps.
 
 ## Stack (decided, ask before changing)
