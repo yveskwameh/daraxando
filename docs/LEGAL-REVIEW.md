@@ -9,7 +9,7 @@ On the test copy: https://daraxando-staging.yves-workers.workers.dev/privacy and
 
 ## Facts the drafts rely on
 
-- **Who runs it:** Yves Kwameh, in Port Harcourt, Rivers State. Dara X&O is his project, not a company. The drafts call it "we" and name Yves as the person responsible (question 14). Contact: hello@yveskwameh.com.
+- **Who runs it:** Yves Kwameh. Dara X&O is his project, not a company. At his request, the drafts and the game don't give his location anywhere. The drafts call it "we" and name Yves as the person responsible (question 14). Contact: hello@yveskwameh.com.
 - **The game is free.** Nothing is sold, there are no ads and no tracking services. Dara Seeds can't be bought, sold, sent or cashed out (as you approved).
 - **Who plays:** Nigerian players, 13 or older by a one-tap confirmation on the first screen. No date of birth is asked for or stored.
 - **What's kept:** every item is listed in the notice under "What we keep, and why". In short: a player name, an animal and a state the player picks; game progress and match history; an email address or a Google account id only if the player saves their progress; a scrambled phone id against seed farming; notification addresses only if turned on; ban records; the days each player played (400 days); error reports (3 days).
@@ -62,15 +62,15 @@ So that the notice is true, a few things changed in the code on 16 October 2026:
 ### Terms
 
 10. **Taking back seeds.** The terms say we may take back seeds won by breaking the rules (for example by farming). You approved seed corrections only for fixing mistakes. Is taking back seeds won by cheating acceptable as a correction?
-11. **Law and courts.** The terms choose the laws of Nigeria and name no court. Should they name one (for example the courts of Rivers State)?
+11. **Law and courts.** The terms choose the laws of Nigeria and name no court. Should they name one (for example a particular state's High Court)?
 12. **Responsibility.** The limit of responsibility keeps players' rights under the Federal Competition and Consumer Protection Act 2018. Is the wording enough?
-13. **Address.** Section 27(1)(a) asks for the controller's identity and contact details. Is "Yves Kwameh, Port Harcourt, Rivers State" with an email enough, or does the notice need a full postal address?
+13. **Contact details.** Section 27(1)(a) asks for the controller's identity and contact details. Yves doesn't want his location in the game or the documents, so the notice gives only his name and an email address. Is that enough, or does the law need a postal address (and could it be a postal box or another address that isn't his home)?
 
 ### The business
 
 14. **The project and Yves.** Dara X&O is a project, not a company. Yves would like the documents to put the project's name forward ("we" means the Dara X&O project) while naming him as the person responsible, as the drafts do. Is that wording right? Our understanding is that the project's legal duties sit with him personally. Is there anything, short of forming a company, that limits his personal exposure (for example the terms' limits of responsibility), and would you recommend a company at some point?
-15. **Protecting Yves.** Yves asked for the strongest protection the law allows. The terms now have: the game "as it is" with no promises; a list of things we aren't responsible for; a cap of ₦10,000 on what we could owe in total; those limits covering the project, Yves and anyone who helps; players covering our reasonable costs if their breach causes a claim against us; write to us first, then 30 days, then mediation, then the Nigerian courts; passing the game on to a company later; and asking players to accept important changes. Please check each against Nigerian law, especially the Federal Competition and Consumer Protection Act 2018:
-    - Is the cap enforceable for a free game, and is ₦10,000 the right figure?
+15. **Protecting Yves.** Yves asked for the strongest protection the law allows. The terms now have: the game "as it is" with no promises; a list of things we aren't responsible for; a cap of ₦5,000 on what we could owe in total; those limits covering the project, Yves and anyone who helps; players covering our reasonable costs if their breach causes a claim against us; write to us first, then 30 days, then mediation, then the Nigerian courts; passing the game on to a company later; and asking players to accept important changes. Please check each against Nigerian law, especially the Federal Competition and Consumer Protection Act 2018:
+    - Is the cap enforceable for a free game, and is ₦5,000 a figure a court would accept?
     - Can a 13 to 17 year old be bound by the indemnity, or should it apply only through their parent or guardian?
     - Should the terms add anything else to protect Yves personally, such as a time limit for bringing claims?
 

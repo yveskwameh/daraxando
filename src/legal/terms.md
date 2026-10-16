@@ -6,7 +6,7 @@
 
 ## Who runs the game
 
-Dara X&O is a project by Yves Kwameh in Port Harcourt, Rivers State, Nigeria. In these terms, "we" and "us" mean the Dara X&O project, which Yves runs, and these terms are an agreement between you and him. You can write to us at [hello@yveskwameh.com](mailto:hello@yveskwameh.com).
+Dara X&O is a project by Yves Kwameh. In these terms, "we" and "us" mean the Dara X&O project, which Yves runs, and these terms are an agreement between you and him. You can write to us at [hello@yveskwameh.com](mailto:hello@yveskwameh.com).
 
 ## Agreeing to these terms
 
@@ -88,7 +88,7 @@ We provide the game "as it is" and "as available". As far as the law allows, we 
   - what other players do;
   - problems with services we don't control, such as your phone, your network, Google, Cloudflare or push services;
   - anything outside our reasonable control, such as power or network failures, natural events, strikes, attacks on the internet or government action.
-- If we are found responsible for anything despite this, the most we will owe you in total is ₦10,000.
+- If we are found responsible for anything despite this, the most we will owe you in total is ₦5,000.
 - These limits protect the Dara X&O project, Yves Kwameh, and anyone who helps run the game.
 - They don't apply where the law doesn't allow them, such as for fraud, or for death or injury caused by our negligence. Nothing in these terms takes away your rights under Nigerian law, including the Federal Competition and Consumer Protection Act 2018 and the Nigeria Data Protection Act 2023.
 

@@ -6,7 +6,7 @@
 
 ## Who's responsible
 
-Dara X&O is a project by Yves Kwameh in Port Harcourt, Rivers State, Nigeria. In this notice, "we" and "us" mean the Dara X&O project. Yves runs it, and he is the person responsible for your information under the Nigeria Data Protection Act 2023.
+Dara X&O is a project by Yves Kwameh. In this notice, "we" and "us" mean the Dara X&O project. Yves runs it, and he is the person responsible for your information under the Nigeria Data Protection Act 2023.
 
 Questions, requests and complaints: [hello@yveskwameh.com](mailto:hello@yveskwameh.com).
 
@@ -131,6 +131,6 @@ If we change how we use your information, we'll update this notice, show it in t
 
 ## Contact
 
-Dara X&O, a project by Yves Kwameh, Port Harcourt, Rivers State, Nigeria. [hello@yveskwameh.com](mailto:hello@yveskwameh.com)
+Dara X&O, a project by Yves Kwameh. [hello@yveskwameh.com](mailto:hello@yveskwameh.com)
 
 See also the [Terms of play](/terms).
