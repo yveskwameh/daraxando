@@ -167,6 +167,9 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   /* --- save your progress and sign in (worker/accounts.ts). The phone may not have a player yet. --- */
   if (path.startsWith('/api/auth/')) return authRoute(req, env, url, tokenFrom(req, url) ? await playerFrom(req, url, env) : null);
 
+  /* --- the public notification key: not secret, so no login needed (phones ask for it before subscribing) --- */
+  if (path === '/api/push' && method === 'GET') return json({ key: pushReady(env) ? env.VAPID_PUBLIC_KEY : null });
+
   const isSocket = req.headers.get('Upgrade') === 'websocket';
   const me = await playerFrom(req, url, env);
   if (!me) return isSocket ? socketError(CLOSE.unauthorized, 'unauthorized') : fail(401, 'unauthorized');
@@ -202,7 +205,6 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   }
 
   /* --- notifications on this phone (worker/push.ts, shared/notify.ts) --- */
-  if (path === '/api/push' && method === 'GET') return json({ key: pushReady(env) ? env.VAPID_PUBLIC_KEY : null });
   if (path === '/api/push' && (method === 'POST' || method === 'PATCH' || method === 'DELETE')) {
     if (!pushReady(env)) return fail(503, "Notifications aren't set up here yet.");
     const b = await body<{ endpoint: string; keys: { p256dh: string; auth: string }; streak: boolean; friends: boolean }>(req);

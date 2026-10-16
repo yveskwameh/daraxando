@@ -33,12 +33,12 @@ const b64ToBytes = (s: string) => {
   return Uint8Array.from(bin, (c) => c.charCodeAt(0));
 };
 
-async function subscription(create: boolean) {
+async function subscription(create: boolean, token: string) {
   const reg = await navigator.serviceWorker.getRegistration();
   if (!reg) return null; // no service worker: the dev server, or it hasn't installed yet
   const had = await reg.pushManager.getSubscription();
   if (had || !create) return had;
-  const { key } = await call<{ key: string | null }>('/api/push', null);
+  const { key } = await call<{ key: string | null }>('/api/push', token);
   if (!key) throw new Error("Notifications aren't set up here yet.");
   return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(key) });
 }
@@ -55,7 +55,7 @@ export async function setPush(token: string, want: PushPrefs): Promise<{ ok: tru
       const answer = await Notification.requestPermission();
       if (answer !== 'granted') return { ok: false, why: answer === 'denied' ? 'blocked' : 'error' };
     }
-    const sub = await subscription(anyOn);
+    const sub = await subscription(anyOn, token);
     if (!sub) {
       if (anyOn) return { ok: false, why: 'unsupported' };
     } else if (!anyOn) {
