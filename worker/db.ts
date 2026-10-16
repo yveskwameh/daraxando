@@ -35,6 +35,7 @@ interface PlayerRow {
   cool_until: number;
   created_at: number;
   habits: string;
+  saved: number;
 }
 
 const toProfile = (r: PlayerRow): Profile => ({
@@ -62,6 +63,7 @@ const toProfile = (r: PlayerRow): Profile => ({
   coolUntil: r.cool_until,
   createdAt: r.created_at,
   habits: tidyHabits(parseHabits(r.habits), dayKey(Date.now())),
+  saved: r.saved === 1,
 });
 
 export const toPublic = (p: Profile): PublicPlayer => ({

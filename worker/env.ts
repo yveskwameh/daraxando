@@ -20,9 +20,24 @@ export interface Env {
   ACTION_LIMITER?: RateLimit;
   /** Room-code checks and error reports per IP: 120 a minute. */
   PEEK_LIMITER?: RateLimit;
+  /** Sign-in codes emailed: 3 a minute per phone and per address. */
+  EMAIL_LIMITER?: RateLimit;
+  /** Code checks, sign-in links and Google sign-ins: 20 a minute per phone. */
+  AUTH_LIMITER?: RateLimit;
   /** Which copy this is: local, staging or production (wrangler.jsonc). */
   ENVIRONMENT?: 'local' | 'staging' | 'production';
   /** Signs player tokens. Local: .dev.vars. Live: a secret on each Worker (Settings, Variables and Secrets). */
   SESSION_SECRET?: string;
+  /** Google sign-in: the "Dara X&O web" client in Google Cloud. Not secret, so it's in wrangler.jsonc. */
+  GOOGLE_CLIENT_ID?: string;
+  /** Google sign-in's secret. Local: .dev.vars. Live: a secret on each Worker. */
+  GOOGLE_CLIENT_SECRET?: string;
+  /** Sends the sign-in code emails through Resend. Local: .dev.vars (optional). Live: a secret on each Worker. */
+  RESEND_API_KEY?: string;
+  /** Who the code emails come from. The domain is verified in Resend. Not secret, so it's in wrangler.jsonc. */
+  EMAIL_FROM?: string;
+  /** Tests only, and only when ENVIRONMENT is local: a stand-in for Google's sign-in page and token address. */
+  GOOGLE_AUTH_URL?: string;
+  GOOGLE_TOKEN_URL?: string;
   ASSETS: Fetcher;
 }

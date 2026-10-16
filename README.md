@@ -92,11 +92,21 @@ Secrets are passwords for the game's server, like the key that signs each player
 
 | Where | What | How to change it |
 | --- | --- | --- |
-| `.dev.vars` (project folder) | Secrets for the game on your Mac (`npm run dev`). Today just `SESSION_SECRET`. | Open it in VS Code, one `NAME=value` per line. |
+| `.dev.vars` (project folder) | Secrets for the game on your Mac (`npm run dev`): `SESSION_SECRET`, plus `GOOGLE_CLIENT_SECRET` if you want Google sign-in on your Mac. | Open it in VS Code, one `NAME=value` per line. |
 | `.dev.vars.example` (on GitHub) | The same names with fake values, so you know what `.dev.vars` needs. No real values, ever. | Add a line whenever a new secret is added. |
 | Cloudflare (live game) | The real secrets for the live game, stored encrypted by Cloudflare, not in any file. Each copy has its own. | Cloudflare dashboard → **Workers & Pages** → **daraxando-staging** or **daraxando** → **Settings** → **Variables and Secrets** → **Add**, type **Secret**. Values can't be read back, only replaced. |
 
-`wrangler.jsonc` and `worker/env.ts` list every setting the server uses, but hold no secret values. The database id in `wrangler.jsonc` isn't secret.
+`wrangler.jsonc` and `worker/env.ts` list every setting the server uses, but hold no secret values. The database id, the Google client id and the email sender in `wrangler.jsonc` aren't secret.
+
+The secrets each copy on Cloudflare needs:
+
+| Secret | What it's for | Where the value comes from |
+| --- | --- | --- |
+| `SESSION_SECRET` | Signs every player's login | `openssl rand -base64 32` in the terminal. A different one per copy. |
+| `GOOGLE_CLIENT_SECRET` | Sign in with Google | Google Cloud, project **Dara X&O** → **Google Auth Platform → Clients → Dara X&O web**. The same client serves both copies. |
+| `RESEND_API_KEY` | Sends the sign-in code emails | resend.com → **API Keys**. One key per copy: `daraxando-staging`, then `daraxando-production` at launch, each with **Sending access** to `noreply.daraxando.yveskwameh.com`. |
+
+On your Mac, sign-in codes are printed in the terminal running `npm run dev` instead of emailed (look for `[sign-in code]`), unless `.dev.vars` has a `RESEND_API_KEY`.
 
 ## 4. Commands
 
@@ -116,7 +126,7 @@ Secrets are passwords for the game's server, like the key that signs each player
 
 ## 5. How the game works
 
-**Players.** A first visit is one screen: the app picks a legend name, an animal and a best guess at your state, and **Play now** starts a game against Baba Ayo straight away. Tapping it also confirms you're 13 or older. Players are guest accounts kept in the browser; signing in to keep progress across phones comes in the backend phase.
+**Players.** A first visit is one screen: the app picks a legend name, an animal and a best guess at your state, and **Play now** starts a game against Baba Ayo straight away. Tapping it also confirms you're 13 or older. Everyone starts as a guest kept in the browser. **Save your progress** (on You, and in Settings) links Google or an email to the player, so it can be signed in to on any phone: **Sign in** on the first screen, or **Another player** in Settings. Email sign-in sends a 6-digit code that works for 10 minutes; the email's code is also a link that does the same. Settings also has **Sign out** (for saved players) and **Delete my account**. The server side is `worker/accounts.ts`, the screens are `src/sheets/SaveSheet.tsx` and `src/screens/Account.tsx`.
 
 **Your own game and Quick match.** Tapping a card on the Deck starts your own game: you pick a stake and the **Matchmaker** looks for someone at the same table, your state first, widening every 4 seconds to your zone, all of Nigeria, then anyone, picking the closest rating. If nobody is around, it offers Baba Ayo, or a busier table with players waiting. **Quick match** does the opposite: it shows games other players are waiting in, one at a time, and **Join** takes you straight into one at the stake its starter picked. With nobody waiting, it keeps looking and shows how many other people are looking right now; you start your own game when you're ready, change the game or stake, or play Baba Ayo.
 
@@ -180,7 +190,7 @@ scripts/             icons.cjs draws the app icons
 ## 7. Roadmap
 
 1. **Frontend: done.** Every screen, state and animation, tested locally with real matches. Signed off 15 October 2026.
-2. **Backend: now.** Sign-in to keep progress across phones, name filtering, stronger checks at high stakes, privacy-friendly analytics, and push notifications (streak reminders, "your friend joined your room"). The plan is `docs/BACKEND.md`.
+2. **Backend: now.** Sign-in to keep progress across phones (built 16 October 2026, testing on the test copy), name filtering, stronger checks at high stakes, privacy-friendly analytics, and push notifications (streak reminders, "your friend joined your room"). The plan is `docs/BACKEND.md`.
 3. **Launch.** Cloudflare account, live database, secrets, domain, and deploys from GitHub.
 
 Approved on 15 October 2026: the native-speaker check of every Yoruba, Igbo and Hausa word and the 20 titles, and the lawyer's opinion on Dara Seeds, including the streak items and the one-tap age confirmation (`docs/COWRIES-REVIEW.md`). Any change to how seeds work, or to the age confirmation on the first screen, goes back to the lawyer first.
@@ -209,12 +219,13 @@ Cloudflare takes the code from GitHub, never from your Mac. On every push it bui
 6. **Only if the build stops at the database step with an "Authentication error":** the key Cloudflare made for builds can't touch databases. (On 15 October 2026 the staging build passed without this step.) In the sidebar, open **Manage account → Account API Tokens**. Find the token named **Workers Builds** followed by today's date, open its menu (**...**) and click **Edit**. Under **Permissions**, click **Add more** and set the new row to **Account**, **D1**, **Edit**. Click **Continue to summary**, then **Update token**.
 7. **Only after step 6, build again.** Open **Workers & Pages → daraxando-staging → Deployments**, open the failed build and click **Retry build**. If there's no such button, run `git commit --allow-empty -m "Build staging again"` and `git push` in the terminal. Wait for the build to turn green (about 2 minutes).
 8. **Add the secret.** In the terminal, run `openssl rand -base64 32` and copy the line it prints. In Cloudflare, open **daraxando-staging → Settings → Variables and Secrets** and click **Add**. Type: **Secret**. Variable name: `SESSION_SECRET`. Value: paste. Click **Deploy**. Keep this value to yourself; it's different from the one in `.dev.vars`.
-9. **Only build `main`.** Still in **Settings**, find **Build → Branch control**. Check the production branch is `main`, and turn off builds for other branches (it saves build minutes). Save.
-10. **Play it.** Open **https://daraxando-staging.yves-workers.workers.dev** on your phone and play Baba Ayo, then a friend room between your phone and laptop. Adding `/api/health` to the address should show `"env":"staging"`.
+9. **Add the sign-in secrets.** Same place, **Add** again for each, type **Secret**, then **Deploy**: `GOOGLE_CLIENT_SECRET` (from Google Cloud) and `RESEND_API_KEY` (the `daraxando-staging` key from Resend). The table under "Secrets" says where each comes from. Without them the app says Google or email sign-in "isn't set up on this copy yet".
+10. **Only build `main`.** Still in **Settings**, find **Build → Branch control**. Check the production branch is `main`, and turn off builds for other branches (it saves build minutes). Save.
+11. **Play it.** Open **https://daraxando-staging.yves-workers.workers.dev** on your phone and play Baba Ayo, then a friend room between your phone and laptop. Adding `/api/health` to the address should show `"env":"staging"`.
 
 **Every update after that:** commit and push from VS Code (section 3). Cloudflare rebuilds the test copy by itself; **Workers & Pages → daraxando-staging → Deployments** shows each build. A failed build changes nothing on the live copy.
 
-**The real game, at launch:** the same steps with `daraxando` everywhere `daraxando-staging` appears, `PRODUCTION_DATABASE_ID` in step 2, `CLOUDFLARE_ENV` set to `production`, a different `SESSION_SECRET`, and **Branch control** set to a `production` branch (on GitHub: **Branches → New branch**, named `production`, from `main`). Step 6, if it's ever needed, is only needed once, because both Workers share the build token. The first build creates `daraxando.yveskwameh.com` and its HTTPS certificate by itself, since the domain's nameservers already point to Cloudflare. If it says the domain has a conflicting record, delete the old `daraxando` record (**yveskwameh.com → DNS**) and retry. From then on, to publish: on GitHub, **Pull requests → New pull request**, base `production`, compare `main`, **Create pull request**, then **Merge**.
+**The real game, at launch:** the same steps with `daraxando` everywhere `daraxando-staging` appears, `PRODUCTION_DATABASE_ID` in step 2, `CLOUDFLARE_ENV` set to `production`, a different `SESSION_SECRET`, the same `GOOGLE_CLIENT_SECRET`, a new Resend key named `daraxando-production`, and **Branch control** set to a `production` branch (on GitHub: **Branches → New branch**, named `production`, from `main`). Step 6, if it's ever needed, is only needed once, because both Workers share the build token. The first build creates `daraxando.yveskwameh.com` and its HTTPS certificate by itself, since the domain's nameservers already point to Cloudflare. If it says the domain has a conflicting record, delete the old `daraxando` record (**yveskwameh.com → DNS**) and retry. From then on, to publish: on GitHub, **Pull requests → New pull request**, base `production`, compare `main`, **Create pull request**, then **Merge**.
 
 If the free plan's 100,000 requests a day ever run out, players see "Dara X&O is resting" until 1:00 am Lagos time, when the count starts again.
 
@@ -228,3 +239,6 @@ If the free plan's 100,000 requests a day ever run out, players see "Dara X&O is
 | "Port 5173 is in use" | Another dev server is still running. Close that Terminal window, or press Ctrl + C in it. |
 | Players or seeds look wrong after a change | Delete the `.wrangler` folder to start from zero players. |
 | "no such column: habits" after pulling new code | Stop the dev server and run `npm run dev` again. It applies new database changes as it starts. |
+| Google says "redirect_uri_mismatch" | Google only knows three return addresses: the test copy, the real game and `http://localhost:5173`. On your Mac, use `localhost:5173`, not the Network address or an ngrok link. Email codes work on any address. |
+| "Google sign-in isn't set up on this copy yet" | That copy has no `GOOGLE_CLIENT_SECRET` (section 8, step 9). On your Mac, add it to `.dev.vars` and restart `npm run dev`. |
+| No sign-in email arrives | On your Mac, the code is in the terminal (`[sign-in code]`). On the test copy, check Spam and Promotions, then Resend's **Emails** page, which shows every email sent and whether it was delivered. |

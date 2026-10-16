@@ -9,13 +9,17 @@ export type Route =
   | { name: 'ranks' }
   | { name: 'profile' }
   | { name: 'search' }
-  | { name: 'play'; id: string };
+  | { name: 'play'; id: string }
+  /** The link in a sign-in code email, /c/<id>/<secret> (worker/accounts.ts): a page that asks before using it. `link` is "<id>.<secret>". */
+  | { name: 'code'; link: string };
 
 export type Go = (r: Route, o?: { replace?: boolean }) => void;
 
 export function parse(path: string): Route {
   const play = path.match(/^\/play\/([A-Za-z0-9]{5,24})\/?$/);
   if (play) return { name: 'play', id: play[1].length === 5 ? play[1].toUpperCase() : play[1] };
+  const code = path.match(/^\/c\/([A-Za-z0-9_-]{8,24})\/([A-Za-z0-9_-]{16,64})\/?$/);
+  if (code) return { name: 'code', link: `${code[1]}.${code[2]}` };
   if (path.startsWith('/ranks')) return { name: 'ranks' };
   if (path.startsWith('/search')) return { name: 'search' };
   if (path.startsWith('/you')) return { name: 'profile' };
@@ -25,6 +29,7 @@ export function parse(path: string): Route {
 export function pathOf(r: Route): string {
   switch (r.name) {
     case 'play': return `/play/${r.id}`;
+    case 'code': return `/c/${r.link.replace('.', '/')}`;
     case 'ranks': return '/ranks';
     case 'search': return '/search';
     case 'profile': return '/you';
@@ -36,7 +41,7 @@ export function useRoute() {
   const [route, setRoute] = useState<Route>(() => {
     const r = parse(location.pathname);
     // A mistyped address shows Home, so make the address bar say so too.
-    if (pathOf(r) !== location.pathname && r.name !== 'play') history.replaceState(null, '', pathOf(r) + location.search);
+    if (pathOf(r) !== location.pathname && r.name !== 'play') history.replaceState(null, '', pathOf(r) + location.search + location.hash);
     return r;
   });
 

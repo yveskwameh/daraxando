@@ -7,7 +7,7 @@
  * Tapping Play now is also how you confirm you're 13 or older, so the age check costs no
  * extra step but is still something you do, not something we assume.
  */
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { AVATARS } from '../../shared/collections';
 import { DEFAULT_MODE } from '../../shared/modes';
 import { stateName, type StateCode } from '../../shared/places';
@@ -21,6 +21,8 @@ import { buzz } from '../lib/haptics';
 import { suggestNames } from '../lib/names';
 import type { Go, Route } from '../lib/router';
 import { useSession } from '../lib/session';
+
+const SaveSheet = lazy(() => import('../sheets/SaveSheet'));
 
 const OPEN = AVATARS.filter((a) => a.lvl === 1);
 /** The first game: the default game (Fading) against Baba Ayo at his easiest. Instant, and winnable. */
@@ -39,6 +41,9 @@ export function Onboarding({ route, go }: { route: Route; go: Go }) {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Someone who saved their progress on another phone. Stays mounted after the first open, so it can slide away.
+  const [signin, setSignin] = useState(false);
+  const [signinUsed, setSigninUsed] = useState(false);
 
   // A best guess from the network, only to fill in the card. The player sees it and can change it.
   useEffect(() => {
@@ -73,7 +78,10 @@ export function Onboarding({ route, go }: { route: Route; go: Go }) {
   return (
     <main className="screen onb welcome" aria-label="Welcome">
       <div className="onb-head">
-        <Wordmark />
+        <div className="onb-top">
+          <Wordmark />
+          <button type="button" className="mini-btn ghost" onClick={() => { setSigninUsed(true); setSignin(true); }}>Sign in</button>
+        </div>
         <p>
           {room
             ? `${host?.name ?? 'Your friend'} invited you to a game. They're waiting for you.`
@@ -100,6 +108,10 @@ export function Onboarding({ route, go }: { route: Route; go: Go }) {
         {busy ? 'Setting up the board' : room ? 'Join the game' : 'Play now'}
       </button>
       <p className="fine age">By tapping {room ? 'Join the game' : 'Play now'}, you confirm you're 13 or older.</p>
+
+      <Suspense fallback={null}>
+        {signinUsed && <SaveSheet open={signin} onClose={() => setSignin(false)} intent="signin" back={room ? `/play/${room}` : '/'} />}
+      </Suspense>
 
       <Sheet open={editing} onClose={() => setEditing(false)} label="Make it yours" closeButton={false}>
         <h2>Make it yours</h2>

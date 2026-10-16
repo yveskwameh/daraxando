@@ -3,8 +3,8 @@
  * signature of it. Only the server knows the secret, so nobody can forge a token for
  * somebody else's id and play as them, even though there are no passwords.
  *
- * Accounts with email or Google sign-in can be added later on top of this: the id stays the
- * same, it just gets linked to a login.
+ * Saving progress (worker/accounts.ts) links Google or an email to that same id, so signing in
+ * on a new phone just hands that phone a token for the id. Nothing about the token changes.
  */
 
 const enc = new TextEncoder();
@@ -19,10 +19,10 @@ function keyFor(secret: string) {
   return key;
 }
 
-const toB64url = (buf: ArrayBuffer) =>
+export const toB64url = (buf: ArrayBuffer | Uint8Array) =>
   btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-function fromB64url(s: string): Uint8Array | null {
+export function fromB64url(s: string): Uint8Array | null {
   try {
     const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
     return Uint8Array.from(bin, (c) => c.charCodeAt(0));
@@ -46,6 +46,37 @@ export async function verifyToken(token: string | null | undefined, secret: stri
   if (!sig) return null;
   const ok = await crypto.subtle.verify('HMAC', await keyFor(secret), sig, enc.encode(id));
   return ok ? id : null;
+}
+
+/** A keyed hash, for storing sign-in codes and link secrets without keeping them. */
+export async function hmac(secret: string, data: string) {
+  return toB64url(await crypto.subtle.sign('HMAC', await keyFor(secret), enc.encode(data)));
+}
+
+/** Compares two strings in constant time, so a wrong guess takes as long as a nearly right one. */
+export function sameText(a: string, b: string) {
+  const x = enc.encode(a);
+  const y = enc.encode(b);
+  let diff = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return diff === 0;
+}
+
+/** Random letters and digits safe for a web address: 16 bytes give 22 characters. */
+export const randomToken = (bytes = 16) => toB64url(crypto.getRandomValues(new Uint8Array(bytes)));
+
+/** A 6-digit code, every value equally likely. */
+export function sixDigits() {
+  const n = new Uint32Array(1);
+  // 4,294,000,000 is the largest multiple of a million below 2^32, so no value is favoured.
+  do crypto.getRandomValues(n);
+  while (n[0] >= 4_294_000_000);
+  return String(n[0] % 1_000_000).padStart(6, '0');
+}
+
+/** SHA-256 in web-address-safe base64, for Google's PKCE check. */
+export async function sha256(text: string) {
+  return toB64url(await crypto.subtle.digest('SHA-256', enc.encode(text)));
 }
 
 /** Bearer header for normal requests, ?token= for websockets, because browsers cannot set headers on those. */

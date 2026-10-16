@@ -76,7 +76,32 @@ export interface Profile {
   createdAt: number;
   /** Streak, Streak Freezes, the streak stake, quests, badges and league. See shared/habits.ts. */
   habits: Habits;
+  /** Google or an email is linked, so the player can sign in on any phone (worker/accounts.ts). */
+  saved: boolean;
 }
+
+/** How a player signs in. */
+export type AuthVia = 'google' | 'email';
+
+/** What a player has linked, for Settings. The addresses are their own. */
+export interface Account {
+  google: string | null;
+  email: string | null;
+}
+
+/**
+ * What signing in with Google or an email code did (worker/accounts.ts).
+ *  - saved: the player on this phone is now saved with it.
+ *  - same: it already belongs to the player on this phone.
+ *  - signedin: this phone had no player, so it's now signed in.
+ *  - switch: it belongs to another player. The app asks before using the token.
+ *  - none: nobody is saved with that Google account.
+ */
+export type AuthResult =
+  | { status: 'saved' | 'same'; via: AuthVia; profile: Profile }
+  | { status: 'signedin' | 'switch'; via: AuthVia; profile: Profile; token: string }
+  | { status: 'none'; via: AuthVia }
+  | { status: 'error'; message: string };
 
 /** What a finished match did for your streak, quests, badges and league. */
 export interface HabitOutcome {

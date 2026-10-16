@@ -10,7 +10,7 @@ export class ApiError extends Error {
   }
 }
 
-async function call<T>(path: string, token: string | null, init: RequestInit = {}): Promise<T> {
+export async function call<T>(path: string, token: string | null, init: RequestInit = {}): Promise<T> {
   let res: Response;
   try {
     res = await fetch(path, {
@@ -51,7 +51,7 @@ export function backAt(now = new Date()) {
 
 export const restingMessage = () => `Dara X&O is resting until ${backAt()}. Your progress is safe.`;
 
-const post = (body: unknown, method = 'POST'): RequestInit => ({ method, body: JSON.stringify(body) });
+export const post = (body: unknown, method = 'POST'): RequestInit => ({ method, body: JSON.stringify(body) });
 
 export interface ProfilePatch { name?: string; avatar?: string; piece?: string; print?: string; state?: StateCode }
 

@@ -11,38 +11,21 @@ import {
   CLOSE, CODE_ALPHABET, CODE_LENGTH, cleanName, isMatchId, isRoomCode, type LiveGame, type Profile, type PublicPlayer,
 } from '../shared/protocol';
 import { fmt, isFriendTable, isTable, sapaReady, tableLock } from '../shared/stakes';
+import { accountOf, authRoute, deleteAccount } from './accounts';
 import { signToken, tokenFrom, verifyToken } from './auth';
 import { claimSapa, createPlayer, getPlayer, leaderboard, rankOf, toPublic, updatePlayer, type ProfilePatch } from './db';
 import type { Env } from './env';
+import { body, fail, json, secretOf } from './http';
 import { askFriend, buyFreeze, dropFriend, friendsOf, leagueFor, placeBet, restore } from './habits';
 import { randomId } from './matchmaker';
 
 export { Match } from './match';
 export { Matchmaker } from './matchmaker';
 
-const json = (data: unknown, status = 200, headers: HeadersInit = {}) =>
-  new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', ...headers } });
-
-const fail = (status: number, error: string) => json({ error }, status);
-
-async function body<T>(req: Request): Promise<Partial<T>> {
-  if (Number(req.headers.get('content-length') ?? 0) > 2_000) return {};
-  try {
-    return (await req.json()) as Partial<T>;
-  } catch {
-    return {};
-  }
-}
-
 const roomCode = () => {
   const bytes = crypto.getRandomValues(new Uint8Array(CODE_LENGTH));
   return Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('');
 };
-
-function secretOf(env: Env) {
-  if (!env.SESSION_SECRET) throw new Error('SESSION_SECRET is not set. Locally it lives in .dev.vars. Live, add it as a secret on the Worker: Settings, Variables and Secrets.');
-  return env.SESSION_SECRET;
-}
 
 async function playerFrom(req: Request, url: URL, env: Env) {
   const id = await verifyToken(tokenFrom(req, url), secretOf(env));
@@ -163,6 +146,9 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     return json({ code, ...room });
   }
 
+  /* --- save your progress and sign in (worker/accounts.ts). The phone may not have a player yet. --- */
+  if (path.startsWith('/api/auth/')) return authRoute(req, env, url, tokenFrom(req, url) ? await playerFrom(req, url, env) : null);
+
   const isSocket = req.headers.get('Upgrade') === 'websocket';
   const me = await playerFrom(req, url, env);
   if (!me) return isSocket ? socketError(CLOSE.unauthorized, 'unauthorized') : fail(401, 'unauthorized');
@@ -173,6 +159,13 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
 
   /* --- your profile --- */
   if (path === '/api/me' && method === 'GET') return json({ profile: me });
+
+  /* --- how you're saved (Settings), and deleting your account --- */
+  if (path === '/api/account' && method === 'GET') return json(await accountOf(env.DB, me.id));
+  if (path === '/api/me' && method === 'DELETE') {
+    await deleteAccount(env.DB, me.id);
+    return json({ deleted: true });
+  }
 
   if (path === '/api/me' && method === 'PATCH') {
     const checked = checkPatch(me, await body<ProfilePatch>(req));

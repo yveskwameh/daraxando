@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { StateCode } from '../../shared/places';
 import type { Profile } from '../../shared/protocol';
 import { ApiError, api, RESTING, type ProfilePatch } from './api';
+import { hosted } from './room';
 import { KEYS, store } from './storage';
 import { toast } from './toast';
 
@@ -27,14 +28,34 @@ interface SessionValue {
   /** The token stopped working (for example the local database was reset). Start over as a new player. */
   reset: () => void;
   retry: () => void;
+  /** Becomes another player: signed in with Google or an email code, or switched to. */
+  signIn: (token: string, profile: Profile) => void;
+  /** Leaves this phone with no player. Only offered to saved players, who can sign back in. */
+  signOut: () => void;
+  /**
+   * Back from Google's sign-in page: the id of the outcome waiting on the server, from the
+   * address (#signin=…). src/screens/Account.tsx collects it, then calls `returned`.
+   */
+  returning: string | null;
+  returned: () => void;
 }
+
+/** Read once as the app loads, and removed from the address so a reload doesn't try it again. */
+const RETURNING = (() => {
+  const m = location.hash.match(/^#signin=([A-Za-z0-9_-]{16,64})$/);
+  if (!m) return null;
+  history.replaceState(history.state, '', location.pathname + location.search);
+  return m[1];
+})();
 
 const Ctx = createContext<SessionValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => store.get(KEYS.token));
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [status, setStatus] = useState<Status>(token ? 'loading' : 'guest');
+  const [returning, setReturning] = useState(RETURNING);
+  // A phone with no player waits on the way back from Google: it may be about to sign in.
+  const [status, setStatus] = useState<Status>(token || returning ? 'loading' : 'guest');
   const [attempt, setAttempt] = useState(0);
   // A player made a moment ago: their profile is already here, no need to fetch it.
   const fresh = useRef<string | null>(null);
@@ -114,9 +135,33 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setStatus('guest');
   }, []);
 
+  const signIn = useCallback((next: string, p: Profile) => {
+    // A friend room belongs to the player who made it.
+    hosted.clear();
+    store.set(KEYS.token, next);
+    fresh.current = next;
+    fetchedAt.current = Date.now();
+    setProfile(p);
+    setToken(next);
+    setStatus('ready');
+  }, []);
+
+  const signOut = useCallback(() => {
+    hosted.clear();
+    reset();
+  }, [reset]);
+
+  const returned = useCallback(() => {
+    setReturning(null);
+    setStatus((s) => (s === 'loading' && !store.get(KEYS.token) ? 'guest' : s));
+  }, []);
+
   const value = useMemo<SessionValue>(
-    () => ({ status, token, profile, start, refresh, setProfile, update, reset, retry: () => { fresh.current = null; setAttempt((n) => n + 1); } }),
-    [status, token, profile, start, refresh, update, reset],
+    () => ({
+      status, token, profile, start, refresh, setProfile, update, reset, signIn, signOut, returning, returned,
+      retry: () => { fresh.current = null; setAttempt((n) => n + 1); },
+    }),
+    [status, token, profile, start, refresh, update, reset, signIn, signOut, returning, returned],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

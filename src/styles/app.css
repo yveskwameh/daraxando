@@ -1166,3 +1166,77 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 /* The free plan's daily limit: Baba Ayo minds the game until it's back. */
 .empty.resting { gap: 12px; }
 .empty.resting p { max-width: 32ch; text-wrap: pretty; }
+
+/* ---------- save your progress and sign in (src/sheets/SaveSheet.tsx, src/screens/Account.tsx) ---------- */
+.onb-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
+.onb-top .mini-btn { min-height: 40px; padding: 0 14px; }
+
+/* You, for a guest: one row that says what saving is for. */
+.save-row > div { flex: 1; }
+.toggle-row .save-ic { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--raise); color: var(--teal); }
+.toggle-row .save-ic svg { width: 20px; height: 20px; }
+.toggle-row > div > span + span { margin-top: 2px; }
+
+/* Google's button, drawn to Google's own rules for the dark style: their fill, ring and type, the mark on the left. */
+.g-btn {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  width: 100%; min-height: 52px; padding: 0 20px;
+  border: 1px solid var(--google-ring); border-radius: 999px;
+  background: var(--google-fill); color: var(--google-text);
+  font: 500 1rem/1.25 'Google Sans', Roboto, var(--body);
+  cursor: pointer; transition: transform 160ms var(--ease-pop);
+}
+.g-btn:active { transform: scale(.97); }
+.g-btn:focus-visible { outline: 3px solid var(--danfo); outline-offset: 2px; }
+.g-btn:disabled { opacity: .6; cursor: default; }
+.g-btn img { flex: none; width: 24px; height: 24px; }
+
+/* "or use your email", with a line each side. */
+.or { display: flex; align-items: center; gap: 10px; font: 700 0.75rem/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.or::before, .or::after { content: ''; flex: 1; height: 2px; border-radius: 1px; background: var(--line); }
+
+.text-in.email { font: 600 1rem/1.2 var(--body); }
+.text-in.email::placeholder { color: var(--muted); }
+
+/* The six code boxes: the same board as the email, in one row. One clear input lies over them. */
+.code-cells {
+  position: relative;
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px;
+  padding: 8px; border-radius: 22px;
+  background: var(--night); box-shadow: inset 0 0 0 2px var(--line);
+}
+.code-cells span {
+  display: grid; place-items: center; height: 60px;
+  border-radius: 14px; background: var(--raise); box-shadow: inset 0 0 0 2px var(--line);
+  font: 900 1.875rem/1 var(--head); color: var(--danfo);
+}
+.code-cells:focus-within span.cur { box-shadow: inset 0 0 0 2px var(--danfo); }
+.code-cells:focus-within span.cur:empty::after { content: ''; width: 2px; height: 26px; border-radius: 1px; background: var(--danfo); animation: caret 1s steps(1) infinite; }
+@keyframes caret { 50% { opacity: 0; } }
+.code-cells.busy span { opacity: .6; }
+.code-cells.shake { animation: shake 400ms var(--ease-out); }
+@keyframes shake { 20% { transform: translateX(-8px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
+.code-in {
+  position: absolute; inset: 0; z-index: 1;
+  width: 100%; height: 100%; padding: 0; border: 0; border-radius: 22px;
+  background: transparent; color: transparent; caret-color: transparent;
+  font-size: 16px; /* 16px or more, so iPhones don't zoom in */
+}
+.code-in:focus { outline: none; }
+.code-in::selection { background: transparent; }
+@media (max-width: 339px) { .code-cells { gap: 4px; padding: 6px; } .code-cells span { height: 52px; font-size: 1.625rem; } }
+@media (prefers-reduced-motion: reduce) { .code-cells.shake { animation: none; } .code-cells:focus-within span.cur:empty::after { animation: none; } }
+
+/* Another player: their card, on the raised colour inside a sheet. */
+.sheet-body .switch-card { background: var(--raise); }
+.switch-card > div > span:last-child .cw { margin-left: 6px; color: var(--text); }
+.switch-card > div > span:last-child .cw svg { color: inherit; }
+
+/* The page the email's link opens. */
+.link-page { gap: 14px; }
+.link-card { flex: 1; min-height: 0; display: grid; align-content: center; justify-items: center; gap: 10px; text-align: center; }
+.link-card h2 { font-size: 1.625rem; text-wrap: balance; }
+.link-card p { color: var(--muted); max-width: 34ch; text-wrap: pretty; }
+.link-card p b { color: var(--text); overflow-wrap: anywhere; }
+.link-ask { flex: 1; min-height: 0; display: grid; align-content: center; gap: 14px; }
+.link-page .empty p { max-width: 32ch; text-wrap: pretty; }

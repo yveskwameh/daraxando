@@ -21,6 +21,9 @@ const Game = lazy(() => load.game().then((x) => ({ default: x.Game })));
 const Search = lazy(() => load.search().then((x) => ({ default: x.Search })));
 const Ranks = lazy(() => load.ranks().then((x) => ({ default: x.Ranks })));
 const Profile = lazy(() => load.profile().then((x) => ({ default: x.Profile })));
+// Signing in: only fetched when an email link or Google's trip back needs it.
+const CodeLink = lazy(() => import('./screens/Account').then((x) => ({ default: x.CodeLink })));
+const AccountReturn = lazy(() => import('./screens/Account').then((x) => ({ default: x.AccountReturn })));
 
 function Loading() {
   return (
@@ -55,7 +58,13 @@ function Shell() {
     idle(prefetch);
   }, []);
 
-  if (session.status === 'loading') return <Loading />;
+  // Back from Google: collect what happened, over whatever screen is showing.
+  const back = session.returning && <Suspense fallback={null}><AccountReturn /></Suspense>;
+
+  // The link in a sign-in code email works with or without a player on this phone.
+  if (route.name === 'code') return <Suspense fallback={<Loading />}><CodeLink link={route.link} go={go} /></Suspense>;
+
+  if (session.status === 'loading') return <><Loading />{back}</>;
 
   // The free plan's requests for the day are used up (docs/BACKEND.md). The app itself still
   // loads, because its files don't count; only the game server is resting until midnight UTC.
@@ -87,7 +96,7 @@ function Shell() {
 
   if (session.status === 'guest' || !session.profile) {
     // The route is kept, so someone who opened a friend's room link lands in that room right after.
-    return <Onboarding route={route} go={go} />;
+    return <><Onboarding route={route} go={go} />{back}</>;
   }
 
   let screen;
@@ -103,6 +112,7 @@ function Shell() {
     <>
       <Suspense fallback={<Loading />}>{screen}</Suspense>
       <RoomWatch route={route} go={go} />
+      {back}
     </>
   );
 }

@@ -3,16 +3,18 @@
  * collections: avatars, your X & O pieces and prints. Locked items show the title that opens
  * them, and the title pill opens the whole ladder. Settings sit behind the gear at the top, where phones keep them.
  */
-import { lazy, Suspense, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { AVATARS, PIECES, PRINTS, pieceById, type Item } from '../../shared/collections';
 import { BADGES, STAR_AURA, badgeStars, badgeValue, type Habits } from '../../shared/habits';
 import { stateName, zoneName, type StateCode } from '../../shared/places';
 import { auraForLevel, levelInfo, tierOf, titleFor } from '../../shared/progression';
-import { cleanName, nameChars } from '../../shared/protocol';
+import { cleanName, nameChars, type Account } from '../../shared/protocol';
+import { fmt } from '../../shared/stakes';
 import { printBg } from '../art/prints';
 import { Avatar, Icon, Piece } from '../components/art';
 import { Sheet } from '../components/Sheet';
 import { StatePicker } from '../components/StatePicker';
+import { auth, shortEmail, type Intent } from '../lib/auth';
 import { isStandalone } from '../lib/device';
 import { buzz } from '../lib/haptics';
 import { promptInstall } from '../lib/install';
@@ -24,11 +26,12 @@ import { toast } from '../lib/toast';
 import { InstallSheet } from '../sheets/InstallSheet';
 
 const TitlesSheet = lazy(() => import('../sheets/TitlesSheet'));
+const SaveSheet = lazy(() => import('../sheets/SaveSheet'));
 
 type Tab = 'badges' | 'avatar' | 'piece' | 'print';
 
 export function Profile({ go }: { go: Go }) {
-  const { profile, update } = usePlayer();
+  const { profile, token, update, signOut } = usePlayer();
   const [tab, setTab] = useState<Tab>('badges');
   const [settings, setSettings] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -36,9 +39,39 @@ export function Profile({ go }: { go: Go }) {
   const [titles, setTitles] = useState(false);
   // Stays mounted after the first open, so it can slide away when it closes.
   const [titlesUsed, setTitlesUsed] = useState(false);
+  // Save your progress, or sign in to another player. Stays mounted after the first open, so it can slide away.
+  const [save, setSave] = useState<Intent | null>(null);
+  const [saveAs, setSaveAs] = useState<Intent>('save');
+  const [saveUsed, setSaveUsed] = useState(false);
+  const [account, setAccount] = useState<Account | null>(null);
+  const [confirm, setConfirm] = useState<'out' | 'delete' | null>(null);
+  const [confirmAs, setConfirmAs] = useState<'out' | 'delete'>('out');
+  const [deleting, setDeleting] = useState(false);
   const lv = levelInfo(profile.aura);
   const next = auraForLevel(lv.level + 1);
   const zone = zoneName(profile.state);
+
+  // What this player is saved with, for Settings. Asked for only while Settings is open.
+  useEffect(() => {
+    if (!settings) return;
+    let live = true;
+    auth.account(token).then((a) => live && setAccount(a), () => {});
+    return () => { live = false; };
+  }, [settings, token, profile.saved]);
+
+  const openSave = (intent: Intent) => {
+    setSaveAs(intent);
+    setSaveUsed(true);
+    setSave(intent);
+  };
+  const ask = (what: 'out' | 'delete') => {
+    setConfirmAs(what);
+    setConfirm(what);
+  };
+  const leave = () => {
+    go({ name: 'home' }, { replace: true });
+    signOut();
+  };
 
   return (
     <main className="screen" aria-label="You">
@@ -68,6 +101,14 @@ export function Profile({ go }: { go: Go }) {
           </div>
         </div>
       </div>
+
+      {!profile.saved && !editing && (
+        <div className="toggle-row save-row">
+          <span className="save-ic"><Icon id="i-shield" className="" /></span>
+          <div><b>Save your progress</b><span>Keep it when you change phones.</span></div>
+          <button type="button" className="mini-btn" onClick={() => openSave('save')}>Save</button>
+        </div>
+      )}
 
       {editing ? (
         <NameEdit
@@ -140,7 +181,56 @@ export function Profile({ go }: { go: Go }) {
 
       <Sheet open={settings} onClose={() => setSettings(false)} label="Settings">
         <h2>Settings</h2>
-        <div className="scroll"><Settings /></div>
+        <div className="scroll">
+          <Settings account={account} onSave={() => openSave('save')} onSignin={() => openSave('signin')} onSignOut={() => ask('out')} onDelete={() => ask('delete')} />
+        </div>
+      </Sheet>
+
+      <Suspense fallback={null}>
+        {saveUsed && <SaveSheet open={save !== null} onClose={() => setSave(null)} intent={saveAs} back="/you" has={saveAs === 'save' ? account : null} />}
+      </Suspense>
+
+      <Sheet open={confirm !== null} onClose={() => setConfirm(null)} label={confirmAs === 'out' ? 'Sign out' : 'Delete my account'} closeButton={false}>
+        {confirmAs === 'out' ? (
+          <>
+            <div>
+              <h2>Sign out of {profile.name}?</h2>
+              <p className="fine">Sign back in any time with {signInWith(account)}. This phone goes back to the first screen.</p>
+            </div>
+            <button type="button" className="btn primary block" onClick={() => { setConfirm(null); toast(`Signed out. Sign back in with ${signInWith(account)}.`, 4000); leave(); }}>Sign out</button>
+            <button type="button" className="btn ghost block" onClick={() => setConfirm(null)}>Stay signed in</button>
+          </>
+        ) : (
+          <>
+            <div>
+              <h2>Delete {profile.name} for good?</h2>
+              <p className="fine">
+                Your player, your {fmt(profile.cowries)} Dara Seeds, your title, streak, badges and match history are deleted
+                {profile.saved ? ', and we forget your email and Google account' : ''}. This can't be undone.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn primary block"
+              disabled={deleting}
+              onClick={async () => {
+                setDeleting(true);
+                try {
+                  await auth.deleteMe(token);
+                  setConfirm(null);
+                  toast('Your account is deleted.', 4000);
+                  leave();
+                } catch (err) {
+                  toast((err as Error).message);
+                  setDeleting(false);
+                }
+              }}
+            >
+              {deleting ? 'Deleting' : 'Delete for good'}
+            </button>
+            <button type="button" className="btn ghost block" onClick={() => setConfirm(null)}>Keep my account</button>
+          </>
+        )}
       </Sheet>
 
       <Suspense fallback={null}>
@@ -167,6 +257,14 @@ export function Profile({ go }: { go: Go }) {
 }
 
 const open = (list: readonly Item[], level: number) => list.filter((x) => x.lvl <= level).length;
+
+/** "Google (tunde@gmail.com)", "tunde@gmail.com", or both. */
+function signInWith(a: Account | null) {
+  if (!a) return 'Google or your email';
+  const g = a.google !== null ? `Google${a.google ? ` (${shortEmail(a.google)})` : ''}` : '';
+  const e = a.email ? shortEmail(a.email) : '';
+  return [g, e].filter(Boolean).join(' or ') || 'Google or your email';
+}
 
 /** Badges: three stars each, for things you do over time. Each star pays Aura once. */
 function Badges({ habits }: { habits: Habits }) {
@@ -326,7 +424,13 @@ function Record({ wins, draws, losses, best, now }: { wins: number; draws: numbe
   );
 }
 
-function Settings() {
+function Settings({ account, onSave, onSignin, onSignOut, onDelete }: {
+  account: Account | null;
+  onSave: () => void;
+  onSignin: () => void;
+  onSignOut: () => void;
+  onDelete: () => void;
+}) {
   const p = usePrefs();
   const { profile } = usePlayer();
   const [steps, setSteps] = useState(false);
@@ -340,6 +444,28 @@ function Settings() {
   return (
     <div className="stack">
       <Record wins={profile.wins} draws={profile.draws} losses={profile.losses} best={profile.bestWinStreak} now={profile.winStreak} />
+      {profile.saved ? (
+        <div className="toggle-row">
+          <div>
+            <b>Your progress is saved</b>
+            {!account && <span>Checking</span>}
+            {account?.google != null && <span>Google{account.google ? `: ${shortEmail(account.google)}` : ''}</span>}
+            {account?.email && <span>Email: {shortEmail(account.email)}</span>}
+          </div>
+          {account && (account.google === null || account.email === null) && (
+            <button type="button" className="mini-btn ghost" onClick={onSave}>{account.google === null ? 'Add Google' : 'Add email'}</button>
+          )}
+        </div>
+      ) : (
+        <div className="toggle-row">
+          <div><b>Save your progress</b><span>Keep your seeds, title and streak on any phone.</span></div>
+          <button type="button" className="mini-btn" onClick={onSave}>Save</button>
+        </div>
+      )}
+      <div className="toggle-row">
+        <div><b>Another player</b><span>Sign in to a player you saved on another phone.</span></div>
+        <button type="button" className="mini-btn ghost" onClick={onSignin}>Sign in</button>
+      </div>
       {rows.map(([k, title, desc]) => (
         <div key={k} className="toggle-row">
           <div><b>{title}</b><span>{desc}</span></div>
@@ -371,6 +497,16 @@ function Settings() {
       <div className="toggle-row">
         <div><b>Test vibration</b><span>Android buzzes. iPhone gives a light tap.</span></div>
         <button type="button" className="mini-btn" onClick={() => buzz('win', true)}>Buzz</button>
+      </div>
+      {profile.saved && (
+        <div className="toggle-row">
+          <div><b>Sign out</b><span>Sign back in any time with Google or your email.</span></div>
+          <button type="button" className="mini-btn ghost" onClick={onSignOut}>Sign out</button>
+        </div>
+      )}
+      <div className="toggle-row">
+        <div><b>Delete my account</b><span>Your player and everything with it, for good.</span></div>
+        <button type="button" className="mini-btn ghost" onClick={onDelete}>Delete</button>
       </div>
       <p className="fine">Dara X&amp;O is for players aged 13 and up. Dara Seeds are for fun: you can't buy, sell, send or cash them out.</p>
       <InstallSheet open={steps} onClose={() => setSteps(false)} />

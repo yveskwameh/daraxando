@@ -27,6 +27,11 @@
   --flame: #ff8a1f;
   --flame-off: #5d58a8;
 
+  /* Google's sign-in button, dark style. Google sets these colours, not us (src/sheets/SaveSheet.tsx). */
+  --google-fill: #131314;
+  --google-ring: #8e918f;
+  --google-text: #e3e3e3;
+
   --text: #ffffff;
   --muted: #b8b4e8;
   --muted-on-indigo: #e3e0ff; /* secondary text on an indigo fill (your own row) */

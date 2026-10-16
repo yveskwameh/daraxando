@@ -60,6 +60,10 @@ Onest's capital I and lowercase l look alike, so room codes skip I, L, O, 0 and 
 | Live game card | Quick match sheet | Who is waiting (avatar, name, state, a teal "Waiting 12s" pill, which moves next to the state on phones under 360px), the mode and its rule, and the stake with the pot. Several games: swipeable cards that snap, the next one peeking in and dimmed, dots under them. Join is the one primary button and joins the card in the middle; "Start my own game" is a small button under it. Nobody waiting: a teal radar that keeps pulsing while it looks, "Looking for 12s" or "2 other players are looking", then Start my own game, with Change game or stake and Play Baba Ayo under it. Nothing starts by itself. |
 | Record card | Settings | Win rate in teal, a bar split into wins (teal), draws (indigo) and losses (grey), and the best run with a Danfo star. |
 | Rotate card | Phones in landscape | CSS only, in `index.html`. |
+| Save sheet | You, Settings, first screen (Sign in) | Built 16 October 2026 for Yves's review. Title and one line on what you keep, Google's button, "or use your email", an email field and **Send me a code** (the one primary). Then **Check your email** with six code boxes: the board from the code email in one row (raised cells with Danfo Gabarito digits on a night tray), a blinking Danfo caret in the next box, a short shake and a pink message on a wrong code, **Use another email** and **New code in 30s** as small ghost buttons. |
+| Google button | Save sheet | Google's dark style, not ours, because Google's rules ask for it: #131314 fill, a thin grey ring, Roboto, Google's mark on the left from Google's own file. A pill, the same height as our buttons. |
+| Switch card | Save sheet, email link page, back from Google | The other player's card (avatar, "Saved player", name, title and seeds), then what happens to the player on this phone in plain words, **Play as {name}**, and **Keep {name}**. |
+| Email link page | `/c/…` | Wordmark, the player's avatar, "Sign in as Tunde" or "Save Amaka's player", the address, one primary button and **Not now**. Used or run-out links say so, with **Open Dara X&O**. |
 
 ## Rules
 
@@ -128,6 +132,7 @@ Reduced motion: near-instant, except the turn clock, which is information. Demo 
 | 2026-10-15 | Inviting a friend: tap the code to copy, sharing keeps the sheet open, Start the game when they join | Yves's test on a second phone |
 | 2026-10-15 | Fading is the default game and the first card on the Deck | Yves: it's the challenging one against a person |
 | 2026-10-15 | Live now shows every waiting game as swipeable cards; the profile chip drops its Aura numbers | Yves's review on his phone |
+| 2026-10-16 | Sign-in email: Baba Ayo's chat header, the code on the game board, editorial PLAY and CREATED BY, a giant cut-off wordmark | Yves picked parts of three of five options |
 
 ## Open gaps
 

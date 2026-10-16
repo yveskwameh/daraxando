@@ -5,7 +5,11 @@
   "name": "daraxando",
   "main": "./worker/index.ts",
   "compatibility_date": "2026-10-01",
-  "vars": { "ENVIRONMENT": "local" },
+  // GOOGLE_CLIENT_ID: the "Dara X&O web" client in Google Cloud (project Dara X&O). Not secret;
+  // its secret is GOOGLE_CLIENT_SECRET, kept in Cloudflare and .dev.vars.
+  // EMAIL_FROM: who sign-in code emails come from. The domain is verified in Resend; the key that
+  // sends is RESEND_API_KEY, a secret. Vars aren't shared with the copies below, so each lists its own.
+  "vars": { "ENVIRONMENT": "local", "GOOGLE_CLIENT_ID": "1069630475668-njcg1281okurjd2t3qqs2llnet64am1f.apps.googleusercontent.com", "EMAIL_FROM": "\"Dara X&O\" <code@noreply.daraxando.yveskwameh.com>" },
 
   "assets": {
     // Any path that is not a file gets index.html, so /r/K7P2Q opens the app.
@@ -40,11 +44,15 @@
   // ACTION_LIMITER: 60 changes a minute per player (anything that isn't a read).
   // PEEK_LIMITER: 120 room-code checks and error reports a minute per IP, so nobody can try
   // codes until they find a stranger's room.
+  // EMAIL_LIMITER: 3 sign-in emails a minute per phone and per address (worker/accounts.ts).
+  // AUTH_LIMITER: 20 code checks, email links and Google sign-ins a minute per phone.
   "ratelimits": [
     { "name": "DEVICE_LIMITER", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } },
     { "name": "IP_LIMITER", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } },
     { "name": "ACTION_LIMITER", "namespace_id": "1003", "simple": { "limit": 60, "period": 60 } },
-    { "name": "PEEK_LIMITER", "namespace_id": "1004", "simple": { "limit": 120, "period": 60 } }
+    { "name": "PEEK_LIMITER", "namespace_id": "1004", "simple": { "limit": 120, "period": 60 } },
+    { "name": "EMAIL_LIMITER", "namespace_id": "1005", "simple": { "limit": 3, "period": 60 } },
+    { "name": "AUTH_LIMITER", "namespace_id": "1006", "simple": { "limit": 20, "period": 60 } }
   ],
 
   "observability": { "enabled": true },
@@ -64,7 +72,7 @@
       // change here. No extra preview address per version.
       "workers_dev": true,
       "preview_urls": false,
-      "vars": { "ENVIRONMENT": "staging" },
+      "vars": { "ENVIRONMENT": "staging", "GOOGLE_CLIENT_ID": "1069630475668-njcg1281okurjd2t3qqs2llnet64am1f.apps.googleusercontent.com", "EMAIL_FROM": "\"Dara X&O\" <code@noreply.daraxando.yveskwameh.com>" },
       "durable_objects": {
         "bindings": [
           { "name": "MATCH", "class_name": "Match" },
@@ -79,7 +87,9 @@
         { "name": "DEVICE_LIMITER", "namespace_id": "2001", "simple": { "limit": 5, "period": 60 } },
         { "name": "IP_LIMITER", "namespace_id": "2002", "simple": { "limit": 60, "period": 60 } },
         { "name": "ACTION_LIMITER", "namespace_id": "2003", "simple": { "limit": 60, "period": 60 } },
-        { "name": "PEEK_LIMITER", "namespace_id": "2004", "simple": { "limit": 120, "period": 60 } }
+        { "name": "PEEK_LIMITER", "namespace_id": "2004", "simple": { "limit": 120, "period": 60 } },
+        { "name": "EMAIL_LIMITER", "namespace_id": "2005", "simple": { "limit": 3, "period": 60 } },
+        { "name": "AUTH_LIMITER", "namespace_id": "2006", "simple": { "limit": 20, "period": 60 } }
       ]
     },
     "production": {
@@ -89,7 +99,7 @@
       // Cloudflare makes the DNS record and the HTTPS certificate on the first deploy. The domain
       // must be active on Cloudflare (it is: its nameservers point there).
       "routes": [{ "pattern": "daraxando.yveskwameh.com", "custom_domain": true }],
-      "vars": { "ENVIRONMENT": "production" },
+      "vars": { "ENVIRONMENT": "production", "GOOGLE_CLIENT_ID": "1069630475668-njcg1281okurjd2t3qqs2llnet64am1f.apps.googleusercontent.com", "EMAIL_FROM": "\"Dara X&O\" <code@noreply.daraxando.yveskwameh.com>" },
       "durable_objects": {
         "bindings": [
           { "name": "MATCH", "class_name": "Match" },
@@ -104,7 +114,9 @@
         { "name": "DEVICE_LIMITER", "namespace_id": "3001", "simple": { "limit": 5, "period": 60 } },
         { "name": "IP_LIMITER", "namespace_id": "3002", "simple": { "limit": 60, "period": 60 } },
         { "name": "ACTION_LIMITER", "namespace_id": "3003", "simple": { "limit": 60, "period": 60 } },
-        { "name": "PEEK_LIMITER", "namespace_id": "3004", "simple": { "limit": 120, "period": 60 } }
+        { "name": "PEEK_LIMITER", "namespace_id": "3004", "simple": { "limit": 120, "period": 60 } },
+        { "name": "EMAIL_LIMITER", "namespace_id": "3005", "simple": { "limit": 3, "period": 60 } },
+        { "name": "AUTH_LIMITER", "namespace_id": "3006", "simple": { "limit": 20, "period": 60 } }
       ]
     }
   }

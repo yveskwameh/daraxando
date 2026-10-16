@@ -51,7 +51,7 @@ Free services used: Google sign-in (free), Resend for email codes (free plan: 3,
 | --- | --- | --- | --- |
 | 1 | **Done 15 October 2026.** Production foundation, built for the free plan | Baba Ayo under 10 ms, Quick match on a live connection instead of polling, the "resting" screen, live and staging settings, security headers, rate limits on every action, error logs, a health check, the database indexes checked, deploy commands | Nothing |
 | 2 | Staging online, built from GitHub | The release script and click-by-click steps (README, "Going live") | Makes the staging database, connects the GitHub repository to Cloudflare, adds the secret, opens the staging link on his phone |
-| 3 | Save your progress | Designs the sign-in email for approval, then builds sign in with Google and email code, sign in on a new phone, sign out, delete my account | Approves the email design, creates the Google sign-in client and the Resend key (steps given), saves the keys as secrets |
+| 3 | Save your progress. **Built 16 October 2026**, waiting for Yves's review on the test copy | Designs the sign-in email for approval, then builds sign in with Google and email code, sign in on a new phone, sign out, delete my account | Approves the email design (done), creates the Google sign-in client and the Resend domain and key (done), saves the keys as secrets, adds Google's mark (`public/google-g.svg`) |
 | 4 | Safety | Name filter, reserved names, limits on farming free seeds with many accounts, a simple admin tool (look up, rename, ban, refund) | Sends the bad-word list to the native speaker for checking |
 | 5 | Notifications | Web Push, the opt-in moment, the two notifications, a Settings switch | Saves the notification keys as secrets |
 | 6 | Knowing how it's doing | Game numbers (matches played, first match finished, Quick match wait times) | Turns on Cloudflare Web Analytics (one click) |
@@ -68,6 +68,20 @@ The code stays plain text, so Gmail's "Copy code" button (Android and iOS, in th
 
 Claude never deploys and never handles secret values. Yves runs every deploy and types every secret into his own terminal.
 
+### Save your progress (built 16 October 2026)
+
+Server: `worker/accounts.ts`, tables in `migrations/0004_accounts.sql`. Screens: `src/sheets/SaveSheet.tsx` (save, sign in, the code boxes, switching players), `src/screens/Account.tsx` (the email link's page, and the trip back from Google), Settings and You in `src/screens/Profile.tsx`, **Sign in** on the first screen.
+
+- **Nothing changes for guests.** A player is still one id with a token. Saving links Google or an email to that id; signing in on a new phone hands that phone a token for the same id. A Google account or an email belongs to one player, and a player has at most one of each.
+- **Google:** a full-page trip to Google and back (no Google script in the app, so no change to the Content Security Policy). The server swaps Google's one-time code for the account using the client secret and PKCE, checks who the answer is for, who made it and when it ends, and keeps only Google's id for the account and its address (scope `openid email`: no name, no photo). The outcome waits up to 5 minutes for the app to collect it, once, and only the phone that started it can.
+- **Email:** a 6-digit code, 10 minutes, 5 wrong tries. Only keyed hashes of the code and of the link's secret are stored, and code rows go after two days. The link in the email opens a page that asks before doing anything, because mail scanners open links on their own. Opened on another phone, it signs that phone in; the phone that asked finds out when it comes back on screen (no polling).
+- **Same address, same player.** A verified Google address that matches a player saved by email signs in to that player, and Google joins it. Typing an address that already has a player sends a sign-in code; the player's name only shows once the code is right.
+- **Switching** to another player always asks first, and says plainly when the player on the phone isn't saved and will be left behind.
+- **Limits** (Resend's free plan sends 100 emails a day): 3 codes a minute per phone and per address, 5 an hour per address, 90 a day in all. 20 code checks, links and Google sign-ins a minute per phone.
+- **Delete my account** removes the player, how they sign in, their codes, ledger, league rows and friend streaks. Finished match rows stay, holding only a random id that now leads nowhere.
+- **Sign out** is only offered to saved players, who can sign back in.
+- Tested on 16 October 2026: 42 server checks (`api-auth`) and a browser run (`e2e-auth`) of every path, Google through a stand-in for Google's servers. The stand-in only works on a Mac copy (`GOOGLE_AUTH_URL` and `GOOGLE_TOKEN_URL`, ignored unless `ENVIRONMENT` is `local`).
+
 ## Accounts and keys
 
 Everything here is free.
@@ -75,8 +89,10 @@ Everything here is free.
 | What | Where it comes from | Cost | Where it lives |
 | --- | --- | --- | --- |
 | `SESSION_SECRET` | Any long random string | Free | Already in `.dev.vars`; live, a secret on each Worker in the Cloudflare dashboard |
-| Google sign-in client id | Google Cloud console | Free | A plain setting in `wrangler.jsonc` (it isn't secret) |
-| `RESEND_API_KEY` | resend.com, sends the email codes | Free (3,000 a month, 100 a day) | Secret |
+| Google sign-in client id | Google Cloud, project Dara X&O, client "Dara X&O web" | Free | A plain setting in `wrangler.jsonc` (it isn't secret) |
+| `GOOGLE_CLIENT_SECRET` | The same Google client | Free | Secret, on each Worker. The app stays in Google's "Testing" mode (only listed test users) until the legal pages exist (milestone 7) |
+| `RESEND_API_KEY` | resend.com, sends the email codes. Domain `noreply.daraxando.yveskwameh.com`, verified 16 October 2026 | Free (3,000 a month, 100 a day) | Secret. Key `daraxando-staging` for the test copy, a separate key at launch |
+| `EMAIL_FROM` | Who the codes come from: `"Dara X&O" <code@noreply.daraxando.yveskwameh.com>` | Free | A plain setting in `wrangler.jsonc` |
 | `VAPID_PRIVATE_KEY` and the public key | Generated with one command | Free | Private: secret. Public: plain setting |
 | `ADMIN_TOKEN` | Any long random string | Free | Secret |
 | Workers Builds token | Made by Cloudflare when GitHub is connected; Yves adds "Account, D1, Edit" once so builds can update the database | Free (3,000 build minutes a month) | Cloudflare, Manage account, Account API Tokens |
@@ -87,7 +103,7 @@ Every new secret also gets a line in `.dev.vars.example`, a field in `worker/env
 
 yveskwameh.com was bought on Hostinger and its nameservers point to Cloudflare, so Cloudflare runs its DNS. That's what a Worker's custom domain needs. Hostinger stays the registrar, so renewals happen there. Adding `daraxando` creates its own DNS record and touches nothing else on the domain. Check that Cloudflare shows the domain as **Active** (Cloudflare dashboard, Websites list), and that there is no existing record named `daraxando`.
 
-Email codes will send from a subdomain such as `send.yveskwameh.com`. Resend gives the DNS records to add in Cloudflare, and they don't affect any email already on the domain.
+Email codes send from `noreply.daraxando.yveskwameh.com` (Resend, Ireland). Its three DNS records (one TXT for DKIM, two CNAMEs for SPF, both DNS only) were added in Cloudflare and verified on 16 October 2026. They don't affect any email already on the domain. Open and click tracking are off in Resend, so the code link in the email stays as it is.
 
 ## Rules for this phase
 

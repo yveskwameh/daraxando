@@ -5,7 +5,7 @@
 #    styles, hence 'unsafe-inline' for styles only, never for scripts.
 #  - connect-src: the game's own API and its WebSockets.
 #  - static.cloudflareinsights.com / cloudflareinsights.com: Cloudflare Web Analytics, once
-#    Yves turns it on. Google sign-in adds accounts.google.com when it's built.
+#    Yves turns it on. Google sign-in is a full-page trip to Google and back, so it needs nothing here.
 #  - blob: for confetti, which draws in a worker.
 /*
   Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' wss: https://cloudflareinsights.com; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
