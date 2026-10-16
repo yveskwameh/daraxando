@@ -7,7 +7,8 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { applyPrints } from './art/prints';
 import { initAnalytics } from './lib/analytics';
-import { markDevice } from './lib/device';
+import { initAsks } from './lib/asks';
+import { markDevice, protectStorage } from './lib/device';
 import { initInstall } from './lib/install';
 import { initPress } from './lib/press';
 import { registerPwa } from './lib/pwa';
@@ -30,6 +31,8 @@ applyPrints();
 initSound();
 initPress();
 initInstall();
+initAsks();
+protectStorage();
 initAnalytics();
 
 createRoot(document.getElementById('root')!).render(

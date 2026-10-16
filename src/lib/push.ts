@@ -8,16 +8,17 @@
  * iPhones only show web notifications for the installed app (Add to Home Screen), not in a
  * Safari tab, so there the asks stay away and Settings says to install the app.
  */
-import { ASK_AGAIN_DAYS } from '../../shared/notify';
 import { call, post } from './api';
+import { protectStorage } from './device';
 import { KEYS, store } from './storage';
 
 export type PushKind = 'streak' | 'friends';
 export type PushPrefs = Record<PushKind, boolean>;
 export type PushState = 'unsupported' | 'blocked' | 'ready';
+/** Where a player turned notifications on, for the 8 am email's count (worker/stats.ts). */
+export type PushFrom = 'streak-ask' | 'friends-ask' | 'settings';
 
 const OFF: PushPrefs = { streak: false, friends: false };
-const DAY_MS = 86_400_000;
 
 export const pushPrefs = (): PushPrefs => store.json<PushPrefs>(KEYS.push, OFF);
 
@@ -47,7 +48,7 @@ async function subscription(create: boolean, token: string) {
  * Changes what this phone gets. Turning anything on asks the phone's permission first, so call
  * it straight from a tap. Returns the prefs now in force, or why it didn't work.
  */
-export async function setPush(token: string, want: PushPrefs): Promise<{ ok: true; prefs: PushPrefs } | { ok: false; why: 'blocked' | 'unsupported' | 'error'; message?: string }> {
+export async function setPush(token: string, want: PushPrefs, from?: PushFrom): Promise<{ ok: true; prefs: PushPrefs } | { ok: false; why: 'blocked' | 'unsupported' | 'error'; message?: string }> {
   if (pushState() === 'unsupported') return { ok: false, why: 'unsupported' };
   const anyOn = want.streak || want.friends;
   try {
@@ -62,9 +63,12 @@ export async function setPush(token: string, want: PushPrefs): Promise<{ ok: tru
       await call('/api/push', token, post({ endpoint: sub.endpoint }, 'DELETE')).catch(() => {});
       await sub.unsubscribe().catch(() => {});
     } else {
-      await call('/api/push', token, post({ ...sub.toJSON(), ...want }));
+      // `from` only when this turns something on, so the count is of players saying yes.
+      const turnsOn = (want.streak && !pushPrefs().streak) || (want.friends && !pushPrefs().friends);
+      await call('/api/push', token, post({ ...sub.toJSON(), ...want, ...(from && turnsOn ? { from } : {}) }));
     }
     store.set(KEYS.push, JSON.stringify(want));
+    if (anyOn) protectStorage();
     return { ok: true, prefs: want };
   } catch (err) {
     return { ok: false, why: 'error', message: (err as Error).message };
@@ -74,25 +78,4 @@ export async function setPush(token: string, want: PushPrefs): Promise<{ ok: tru
 /** An iPhone or iPad in a Safari tab: notifications only work in the installed app there. */
 export const iphoneTab = () => /iphone|ipad/i.test(navigator.userAgent) && !matchMedia('(display-mode: standalone)').matches && !(navigator as { standalone?: boolean }).standalone;
 
-/* ---------- asking at the right moment ---------- */
-
-type Asked = Partial<Record<PushKind, { at: number; n: number }>>;
-let askedThisVisit = false;
-
-/** True if now is a fine time to ask about `kind`: never twice in one visit, and after a "Not now", wait. */
-export function mayAsk(kind: PushKind, now = Date.now()) {
-  if (askedThisVisit || pushState() !== 'ready' || pushPrefs()[kind]) return false;
-  if (iphoneTab()) return false;
-  const last = store.json<Asked>(KEYS.pushAsk, {})[kind];
-  if (!last) return true;
-  const gap = ASK_AGAIN_DAYS[Math.min(last.n - 1, ASK_AGAIN_DAYS.length - 1)];
-  return now - last.at >= gap * DAY_MS;
-}
-
-/** The ask is on screen: count it, so a closed ask waits before coming back. */
-export function markAsked(kind: PushKind, now = Date.now()) {
-  askedThisVisit = true;
-  const all = store.json<Asked>(KEYS.pushAsk, {});
-  all[kind] = { at: now, n: (all[kind]?.n ?? 0) + 1 };
-  store.set(KEYS.pushAsk, JSON.stringify(all));
-}
+// When to ask is in src/lib/asks.ts and shared/asks.ts.

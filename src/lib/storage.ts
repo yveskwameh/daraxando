@@ -35,11 +35,14 @@ export const KEYS = {
   token: 'dara:token',
   prefs: 'dara:prefs',
   device: 'dara:device',
-  install: 'dara:install',
   room: 'dara:room',
   nudge: 'dara:nudge',
   /** Which notifications this phone turned on (src/lib/push.ts). */
   push: 'dara:push',
-  /** When we last asked about notifications, and how many times, per kind. */
+  /** When we last asked about notifications, and how many times, per kind. Read only now: see `asks`. */
   pushAsk: 'dara:push-ask',
+  /** When each ask (save, notifications, install) was last shown, and how many times (src/lib/asks.ts). */
+  asks: 'dara:asks',
+  /** Matches finished on this phone, for the save ask. */
+  matches: 'dara:matches',
 } as const;

@@ -1,6 +1,7 @@
 /**
  * The install suggestion: slides down from the top, over whatever is on screen, never part
- * of a layout. It goes away by itself after 12 seconds. Closing it snoozes it for two weeks.
+ * of a layout. It goes away by itself after 12 seconds. When it comes back is up to the asks
+ * (shared/asks.ts): 14 days after it's shown, then every 30.
  */
 import { useEffect, useState } from 'react';
 import { closeInstallPop, promptInstall, useInstallPop } from '../lib/install';
@@ -14,7 +15,7 @@ export function InstallPop() {
 
   useEffect(() => {
     if (!open) return;
-    const t = setTimeout(() => closeInstallPop(false), 12_000);
+    const t = setTimeout(closeInstallPop, 12_000);
     return () => clearTimeout(t);
   }, [open]);
 
@@ -31,7 +32,7 @@ export function InstallPop() {
             type="button"
             className="mini-btn"
             onClick={async () => {
-              closeInstallPop(false);
+              closeInstallPop();
               if (!(await promptInstall())) setSteps(true);
             }}
           >
@@ -42,7 +43,7 @@ export function InstallPop() {
             className="x-btn"
             aria-label="Not now"
             onClick={() => {
-              closeInstallPop(true);
+              closeInstallPop();
               toast('Okay. Install is always in You, then Settings.');
             }}
           >

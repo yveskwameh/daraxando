@@ -30,6 +30,7 @@ export const FRIEND_PUSH = [
 /**
  * Asking players to turn them on (Yves, 16 October 2026): at the right moment, never on the
  * first visit. If they close the ask, it comes back at the next right moment after these
- * many days, then every 30 days. Settings always has the switches.
+ * many days, then every 30 days. Settings always has the switches. The save ask uses the same
+ * gaps; all the rules for asking are in shared/asks.ts.
  */
 export const ASK_AGAIN_DAYS = [3, 7, 14, 30] as const;

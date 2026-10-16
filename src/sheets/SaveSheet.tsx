@@ -19,7 +19,7 @@ import { fmt } from '../../shared/stakes';
 import { Avatar, Cowries, Icon } from '../components/art';
 import { Sheet } from '../components/Sheet';
 import { api } from '../lib/api';
-import { auth, shortEmail, type Intent } from '../lib/auth';
+import { auth, noteSaveFrom, shortEmail, type Intent } from '../lib/auth';
 import { buzz } from '../lib/haptics';
 import { useSession } from '../lib/session';
 import { toast } from '../lib/toast';
@@ -42,9 +42,11 @@ interface Props {
   back: string;
   /** What the player already has linked: its button is left out. */
   has?: Account | null;
+  /** Opened from the ask on Home (src/lib/asks.ts), for the 8 am email's count. */
+  from?: 'ask';
 }
 
-export default function SaveSheet({ open, onClose, intent, back, has }: Props) {
+export default function SaveSheet({ open, onClose, intent, back, has, from }: Props) {
   const session = useSession();
   const { token, profile } = session;
   const [step, setStep] = useState<Step>({ s: 'pick' });
@@ -113,6 +115,7 @@ export default function SaveSheet({ open, onClose, intent, back, has }: Props) {
     setBusy('google');
     setError('');
     buzz('tap');
+    noteSaveFrom(from);
     try {
       const { url } = await auth.googleStart(token, intent, back);
       location.assign(url);
@@ -131,6 +134,7 @@ export default function SaveSheet({ open, onClose, intent, back, has }: Props) {
     }
     setBusy('email');
     setError('');
+    noteSaveFrom(from);
     try {
       const r = await auth.emailStart(token, to, intent);
       setStep({ s: 'code', id: r.id, email: to.trim().toLowerCase(), kind: r.kind, sentAt: Date.now() });

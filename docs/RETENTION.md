@@ -191,11 +191,50 @@ Familiar patterns were used on purpose, so nobody has to learn anything new:
 
 ### Still to come (backend phase)
 
-1. **Push reminders:** streak saver in the evening, timed about 23.5 hours after your last game, at most one a day, with an off switch.
-2. **"Save your progress" sign-in** at a natural moment.
-3. **Analytics** with Duolingo's five buckets, watching the current user retention rate.
+1. **Push reminders:** streak saver in the evening, timed about 23.5 hours after your last game, at most one a day, with an off switch. Built 16 October 2026 (7 pm Lagos, only when the streak would end that night).
+2. **"Save your progress" sign-in** at a natural moment. Sign-in built 16 October 2026; when to ask is section 7.
+3. **Analytics** with Duolingo's five buckets, watching the current user retention rate. Built 16 October 2026 (the 8 am email).
 
 Optional, any time: **Dara Daily**, one puzzle a day for all of Nigeria, with a shareable result.
+
+## 7. When to ask: saving progress, notifications and installing (built 16 October 2026)
+
+Yves asked for the asks to come back at intervals, at moments when the player has something going on, without being disturbing. He approved this plan and it was built the same day: the rules are in `shared/asks.ts` (tested in `tests/asks.test.ts`), the phone's side in `src/lib/asks.ts`.
+
+### What the research says
+
+- **Never on arrival, never before the player sees why.** Chrome found that sites asking for notifications on arrival get very low acceptance, and it moves sites with very low acceptance to a quieter prompt that's easy to miss. Nielsen Norman Group: never show a pop-up before people get value, and wait until it's relevant to what they're doing.
+- **Ask right after something meaningful is finished.** Duolingo lets people learn without an account and gives "periodic prompts to create an account" after lessons; signing up becomes more compelling as there's more progress to keep. Apple's example for reminders: ask after the person schedules their first task, so they can see what the notifications are for. NN/g: ask after someone completes a top task.
+- **Our own ask first, the phone's box only after "Turn on".** Safari and Firefox only show the box after a tap. Chrome hides its box for 7 days after three dismissals, and a "Block" stays until the player changes their settings, so the phone's box should only appear for people who already said yes. Adding a soft ask raised the NHL app's opt-ins by 36% (Airship).
+- **One at a time, and sparingly** (NN/g).
+- **After a no, wait, then come back.** OneSignal's soft ask waits 3 days, then 7, then 30. Airship's example: once a week, at most three times. Keep a quiet, permanent place for people who said no (OneSignal uses a small bell; we have Settings and the You row).
+- **Guests can lose everything.** EA warns guest players that if something happens to the phone or the app, their progress may be gone. On iPhone, Safari deletes a site's stored data once Safari has been used on 7 days without the site being opened; a game added to the Home Screen doesn't count up those days.
+- **Installing, the same rules.** Google's guide to promoting a web app install: don't show it on first load, wait for "strong interest signals" such as repeat visits, show it after a natural moment, respect a no, and on Android only offer it once Chrome says the app can be installed. On iPhone, installing is also what makes notifications possible, and since iOS 26 anything added to the Home Screen opens as a web app by default. On Android, Chrome is more likely to protect an installed game's data from being cleared when the phone runs out of space (persistent storage, which it grants silently to installed sites and sites with notifications on).
+
+### What the game did before
+
+- **Saving:** never asked. A row at the top of You and the Settings rows.
+- **Streak reminders:** asked on Home after a match, from a 2-day streak, coming back 3, 7, 14, then 30 days after a close. Not in an iPhone Safari tab, where notifications can't work.
+- **Friend joined:** asked only on the room screen, which most hosts never see because they wait on the invite sheet.
+- **Install:** a pop-up on Home 2.5 seconds after it opens, in a browser tab only, at most once every 3 days, 2 weeks after a close, gone by itself after 12 seconds. A new player sees it the first time they reach Home, straight after their first game, which is the first ask they get. On Android it also shows when Chrome hasn't offered an install, and then gives the iPhone-style steps. Settings always has "Install the app".
+- "One ask per visit" only resets when the page reloads, so in the installed app a visit can last days.
+
+### The plan
+
+1. **One moment for asks:** back on Home after a finished match. Never in the first game, in a match, in a room, with a sheet open or another pop-up showing, and not straight after a loss (a judgment call: a fresh loss is a bad moment to ask for anything, and a win or draw usually follows soon).
+2. **One ask per visit,** counting the save ask, the notification asks, the install ask and Baba Ayo's nudge together. A visit starts when the game opens, or when the player comes back after 30 minutes away.
+3. **Save your progress:** first after the player's 3rd finished match. After a close it waits 3 days, then 7, then 14, then 30, and keeps coming back every 30 days at the next good moment until they save. The line names what's at stake with their real numbers ("Keep your title, 1,250 Dara Seeds and 3-day streak if you change phones."). On an iPhone in Safari it adds that Safari can clear games that aren't opened for a week. **Save** opens the save sheet; X closes it.
+4. **Streak reminders:** as now.
+5. **Install:** moves to the same moment, after a match, from the second day a player plays (a repeat visit), in a browser tab only. On Android only when Chrome offers its install box; on iPhone it gives the steps. After a close it waits 14 days, then 30. On an iPhone in Safari it comes before the save ask, because installing protects the game and makes notifications possible there.
+6. **Taking turns:** when more than one ask is due, the one shown longest ago goes first (never shown before goes first, in the order save, streak reminders, install), so a player never gets two in one visit.
+7. **Silent protection on Android:** once the game is installed or has notifications on, it asks Chrome to keep its data when the phone runs low on space. Chrome decides without showing anything; it's skipped on browsers that would show a box.
+8. **Friend joined:** a small button under the waiting line in the invite sheet once the host taps Share ("Tell me when they join", with a bell), the moment they're about to leave for WhatsApp, as well as the pop-up on the room screen. Same back-off. A full row didn't fit a 320 × 568 phone, so it's a button.
+9. **Quiet places stay:** the You row and the Settings switches, including "Install the app". Once saved or turned on, never asked again. If notifications are blocked in the phone's settings, the game doesn't ask; Settings explains how to allow them.
+10. **Count what works:** the 8 am email adds players who saved and who turned on notifications each day, and whether it came from an ask or from You and Settings. Counted with the request that saves or turns them on: no extra requests, no player ids.
+
+**Example, a new player on Android, in Chrome:** day 1, nothing during the first game; after her 3rd match, a win, the save ask, which she closes. Day 2, after her first match, the streak reminder ask for her 2-day streak; when she comes back later that day, the install ask. Day 4, after a match, the save ask again. If she keeps closing it: day 11, day 25, then about once a month, always after a match.
+
+**On an iPhone in Safari:** day 1, the save ask after the 3rd match. Day 2, the install ask with the steps. Once she plays from the Home Screen, the streak reminder ask.
 
 ## Sources
 
@@ -213,6 +252,17 @@ Optional, any time: **Dara Daily**, one puzzle a day for all of Nigeria, with a 
 - [Baymard: current state of checkout UX (2025)](https://baymard.com/blog/current-state-of-checkout-ux)
 - [Coglode: endowed progress effect](https://www.coglode.com/nuggets/endowed-progress-effect)
 - [PocketGamer.biz: Discord social layer and retention](https://www.pocketgamer.biz/discord-brings-social-layer-to-mobile-after-seeing-31-retention-increase-on-pc/)
+- [Chromium Blog: quieter permission UI for notifications](https://blog.chromium.org/2020/01/introducing-quieter-permission-ui-for.html)
+- [Nielsen Norman Group: popups](https://nngroup.com/articles/popups/)
+- [Apple: asking permission to use notifications](https://developer.apple.com/tutorials/data/documentation/usernotifications/asking-permission-to-use-notifications.md)
+- [OneSignal: permission requests and back-off](https://documentation.onesignal.com/docs/permission-requests)
+- [Airship: push opt-in and soft asks](https://www.airship.com/?p=15140)
+- [Pushpad: browsers that need a tap before the notification box](https://pushpad.xyz/blog/the-notification-prompt-can-only-be-triggered-by-a-user-gesture-on-some-browsers)
+- [EA Help: progress when playing as a guest](https://help.ea.com/en-us/help/mobile/can-my-lost-progress-be-restored-for-a-mobile-app-if-i-play-anonymously)
+- [Search Engine Land: Safari's 7-day cap on stored data and Home Screen apps](https://searchengineland.com/what-safaris-7-day-cap-on-script-writeable-storage-means-for-pwa-developers-332519)
+- [web.dev: patterns for promoting PWA installation](https://web.dev/articles/promote-install)
+- [web.dev: persistent storage](https://web.dev/articles/persistent-storage)
+- [heise: iOS 26 opens Home Screen sites as web apps](https://heise.de/-10749652)
 - [TechCrunch: Wordle and New York Times growth](https://techcrunch.com/2022/05/04/wordle-new-york-times-user-growth)
 - [FTC: Epic Games settlement](https://www.ftc.gov/node/80137)
 - [Loeb & Loeb: Epic's $520 million settlements](https://www.loeb.com/en/insights/publications/2023/01/fortnite-video-game-maker-settles-ftc-privacy-deception-claims-for-record-$520-million)

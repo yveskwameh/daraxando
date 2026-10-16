@@ -24,7 +24,7 @@ import { isLite, reducedMotion } from '../lib/device';
 import { buzz } from '../lib/haptics';
 import { babaLine } from '../lib/babaNudge';
 import { prefs } from '../lib/prefs';
-import { markAsked, mayAsk } from '../lib/push';
+import { markAsked, mayAskFriends, noteMatchEnd } from '../lib/asks';
 import { PushAsk } from '../components/PushAsk';
 import { hosted } from '../lib/room';
 import type { Go } from '../lib/router';
@@ -207,9 +207,12 @@ function Match({ id, go }: { id: string; go: Go }) {
     return () => clearTimeout(t);
   }, [waitingReward]);
 
-  // Matches end with a reward. Pull the fresh profile so Home shows it.
+  // Matches end with a reward. Pull the fresh profile so Home shows it, and note the match for
+  // the asks on Home (src/lib/asks.ts).
   useEffect(() => {
-    if (m.reward) void refresh();
+    if (!m.reward) return;
+    noteMatchEnd(m.reward, m.reward.result);
+    void refresh();
   }, [m.reward, refresh]);
 
   useEffect(() => {
@@ -758,7 +761,7 @@ function FriendWaiting({ code, stake, modeName, bo, isHost, onClose }: { code: s
   useEffect(() => {
     if (!isHost) return;
     const t = setTimeout(() => {
-      if (!mayAsk('friends')) return;
+      if (!mayAskFriends()) return;
       markAsked('friends');
       setPushAsk(true);
     }, 1500);

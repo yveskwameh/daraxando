@@ -1325,3 +1325,8 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 .legal-text a, .inline-link { color: var(--text); font-weight: 700; text-decoration: underline; text-decoration-color: var(--indigo-glow); text-decoration-thickness: 2px; text-underline-offset: 3px; }
 .legal-text a:focus-visible, .inline-link:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; border-radius: 4px; }
 .legal-text li > ul { margin-top: var(--space-pair); }
+
+/* "Tell me when they join" under the waiting line in the invite sheet (src/sheets/FriendSheet.tsx). */
+.mini-btn.friend-ask { display: inline-flex; align-items: center; gap: var(--space-pair); justify-self: center; align-self: center; margin-inline: auto; min-height: 44px; }
+.mini-btn.friend-ask svg { width: 18px; height: 18px; color: var(--teal); }
+.nowrap { white-space: nowrap; }

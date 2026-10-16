@@ -19,6 +19,18 @@ export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)'
 /** Opened from the home screen, without the browser's address bar. */
 export const isStandalone = () => matchMedia('(display-mode: standalone)').matches || nav.standalone === true;
 
+/**
+ * Asks Chrome to keep the game's saved data (the player, on a guest's phone) when the phone runs
+ * low on space. Chrome decides by itself, without showing anything, and says yes more readily for
+ * an installed game or one with notifications on, so it's asked then. Only in Chrome and the
+ * browsers built on it: Firefox would show a box for it.
+ */
+export function protectStorage() {
+  if (!('userAgentData' in navigator) || !navigator.storage?.persist) return;
+  if (!isStandalone() && !('Notification' in window && Notification.permission === 'granted')) return;
+  void navigator.storage.persisted().then((done) => (done ? true : navigator.storage.persist())).catch(() => {});
+}
+
 export function markDevice() {
   const root = document.documentElement;
   if (isLite) root.dataset.lite = '';

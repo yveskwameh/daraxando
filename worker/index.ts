@@ -24,7 +24,7 @@ import { adminRoute } from './admin';
 import { pushEndpointOk, pushReady, sendPush } from './push';
 import { NAME_PROBLEM_MESSAGE, nameProblem } from './names';
 import { appealOf, askReview, BANNED_MESSAGE, deviceOf, isBanned } from './safety';
-import { bump, STAT } from './stats';
+import { bump, isPushFrom, STAT } from './stats';
 import { REPORT_CRON, sendReport } from './report';
 
 export { Match } from './match';
@@ -213,7 +213,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   /* --- notifications on this phone (worker/push.ts, shared/notify.ts) --- */
   if (path === '/api/push' && (method === 'POST' || method === 'PATCH' || method === 'DELETE')) {
     if (!pushReady(env)) return fail(503, "Notifications aren't set up here yet.");
-    const b = await body<{ endpoint: string; keys: { p256dh: string; auth: string }; streak: boolean; friends: boolean }>(req);
+    const b = await body<{ endpoint: string; keys: { p256dh: string; auth: string }; streak: boolean; friends: boolean; from?: string }>(req);
     if (!pushEndpointOk(b.endpoint, env)) return fail(400, "This phone's notification address isn't one we know.");
     if (method === 'DELETE') {
       await env.DB.prepare('DELETE FROM push_subs WHERE endpoint = ? AND player_id = ?').bind(b.endpoint, me.id).run();
@@ -240,6 +240,8 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
       env.DB.prepare(
         'DELETE FROM push_subs WHERE player_id = ?1 AND endpoint NOT IN (SELECT endpoint FROM push_subs WHERE player_id = ?1 ORDER BY created_at DESC LIMIT 5)',
       ).bind(me.id),
+      // Where they said yes, for the 8 am email: the phone only sends it when this turns something on.
+      ...(isPushFrom(b.from) && (streak || friends) ? [bump(env.DB, dayKey(now), STAT.pushOn(b.from))] : []),
     ]);
     // A first message straight away, so the player sees that it works.
     if (fresh) {

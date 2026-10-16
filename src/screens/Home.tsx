@@ -19,10 +19,11 @@ import { api } from '../lib/api';
 import { babaNudge, takeNudgeSlot, type Nudge } from '../lib/babaNudge';
 import { reducedMotion } from '../lib/device';
 import { buzz } from '../lib/haptics';
-import { closeInstallPop, maybeShowInstallPop } from '../lib/install';
+import { askAfterMatch, markAsked, takeMoment, takeVisit, visitFree } from '../lib/asks';
+import { closeInstallPop, showInstallPop } from '../lib/install';
 import { prefs, usePrefs } from '../lib/prefs';
-import { markAsked, mayAsk } from '../lib/push';
 import { PushAsk } from '../components/PushAsk';
+import { SaveAsk } from '../components/SaveAsk';
 import { applyUpdate, useUpdateReady } from '../lib/pwa';
 import { useLive } from '../lib/useLive';
 import type { Go } from '../lib/router';
@@ -40,8 +41,10 @@ const QuestsSheet = lazy(() => import('../sheets/QuestsSheet'));
 const LiveSheet = lazy(() => import('../sheets/LiveSheet'));
 // Only banned players ever load this one.
 const BanSheet = lazy(() => import('../sheets/BanSheet'));
+// Only when a guest taps Save on the save ask.
+const SaveSheet = lazy(() => import('../sheets/SaveSheet'));
 
-type SheetName = 'stake' | 'wallet' | 'friend' | 'baba' | 'streak' | 'friends' | 'quests' | 'live' | 'ban' | null;
+type SheetName = 'stake' | 'wallet' | 'friend' | 'baba' | 'streak' | 'friends' | 'quests' | 'live' | 'ban' | 'save' | null;
 
 /** A banned player sees why once each time the app opens, then whenever they tap a way to play someone. */
 let banShown = false;
@@ -55,9 +58,9 @@ export function Home({ go }: { go: Go }) {
   const [ask, setAsk] = useState<FriendView | null>(null);
   const asking = useRef(false);
   const [nudge, setNudge] = useState<Nudge | null>(null);
-  // Asking to turn on the streak reminder (src/lib/push.ts): after a match, once the streak is 2 days or more.
-  const [pushAsk, setPushAsk] = useState(false);
-  const pushAsking = useRef(false);
+  // The ask after a match (src/lib/asks.ts): save your progress or the streak reminder. Install
+  // has its own pop-up (src/components/InstallPop.tsx).
+  const [prompt, setPrompt] = useState<'save' | 'streak' | null>(null);
   const open = (s: SheetName) => {
     setOpened((o) => new Set(o).add(s));
     setSheet(s);
@@ -94,41 +97,41 @@ export function Home({ go }: { go: Go }) {
     }, () => {});
   }, [token, ban]);
 
-  // Baba Ayo, Duolingo-owl style: a nudge when your streak is at risk, has just ended, or
-  // you've been away. At most every few hours, and never with another pop-up showing.
+  // One pop-up per visit, 1.2 seconds after Home opens (src/lib/asks.ts). Back from a match that
+  // wasn't a loss: one of the asks, if one is due. Otherwise Baba Ayo, Duolingo-owl style: a nudge
+  // when your streak is at risk, has just ended, or you've been away (at most every few hours).
+  // Never with a friend streak request or the new-version pop-up showing.
+  const latest = useRef({ profile, nudges: p.nudges, updateReady });
+  latest.current = { profile, nudges: p.nudges, updateReady };
   useEffect(() => {
     const t = setTimeout(() => {
-      if (asking.current || profile.ban || profile.dayStreak < 2) return;
-      if (!streakNow(profile.habits, profile.dayStreak, dayKey(Date.now())).playedToday || !mayAsk('streak')) return;
-      markAsked('streak');
-      pushAsking.current = true;
-      setPushAsk(true);
+      const { profile: pr, nudges, updateReady: busy } = latest.current;
+      const moment = takeMoment();
+      if (asking.current || busy || pr.ban || !visitFree()) return;
+      const kind = moment && moment.result !== 'loss' ? askAfterMatch(pr) : null;
+      if (kind === 'save' || kind === 'streak' || kind === 'install') {
+        takeVisit();
+        markAsked(kind);
+        if (kind === 'install') showInstallPop();
+        else setPrompt(kind);
+        return;
+      }
+      if (!nudges) return;
+      const n = babaNudge(pr.habits, pr.dayStreak, dayKey(Date.now()), pr.lastPlayedDay);
+      if (n && takeNudgeSlot()) {
+        takeVisit();
+        setNudge(n);
+      }
     }, 1200);
     return () => clearTimeout(t);
-    // Once per visit to Home.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!p.nudges) return;
-    const t = setTimeout(() => {
-      if (asking.current || pushAsking.current || profile.ban) return;
-      const n = babaNudge(profile.habits, profile.dayStreak, dayKey(Date.now()), profile.lastPlayedDay);
-      if (n && takeNudgeSlot()) setNudge(n);
-    }, 1200);
-    return () => clearTimeout(t);
-    // Once per visit to Home.
+    // Once each time Home opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     void refresh();
-    const t = setTimeout(() => { if (!asking.current && !pushAsking.current && !nudge) maybeShowInstallPop(); }, 2500);
     // The install pop-up belongs to Home. Leaving Home puts it away.
-    return () => {
-      clearTimeout(t);
-      closeInstallPop(false);
-    };
+    return () => closeInstallPop();
   }, [refresh]);
 
   const aria = `You. Your title: ${lv.title}. ${fmt(profile.aura)} of ${fmt(auraForLevel(lv.level + 1))} Aura to become ${lv.nextTitle}.`;
@@ -192,13 +195,23 @@ export function Home({ go }: { go: Go }) {
         </div>
       </div>
 
-      {pushAsk && !ask && (
+      {prompt === 'streak' && !ask && (
         <PushAsk
           kind="streak"
           title={`Keep your ${profile.dayStreak}-day streak`}
           line="One reminder at 7 pm, only on days you haven't played."
           token={token}
-          onDone={() => setPushAsk(false)}
+          onDone={() => setPrompt(null)}
+        />
+      )}
+      {prompt === 'save' && !ask && !profile.saved && (
+        <SaveAsk
+          profile={profile}
+          onSave={() => {
+            setPrompt(null);
+            open('save');
+          }}
+          onClose={() => setPrompt(null)}
         />
       )}
 
@@ -285,6 +298,7 @@ export function Home({ go }: { go: Go }) {
           <LiveSheet open={sheet === 'live'} onClose={close} go={go} onStartOwn={startOwn} onChange={() => setSheet('stake')} onBaba={() => setSheet('baba')} />
         )}
         {ban && opened.has('ban') && <BanSheet open={sheet === 'ban'} ban={ban} onClose={close} onBaba={() => setSheet('baba')} />}
+        {opened.has('save') && <SaveSheet open={sheet === 'save'} onClose={close} intent="save" back="/" from="ask" />}
       </Suspense>
     </main>
   );

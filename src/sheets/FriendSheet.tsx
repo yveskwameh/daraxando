@@ -14,9 +14,11 @@ import { FRIEND_TABLES, fmt, prize } from '../../shared/stakes';
 import { Avatar, Icon } from '../components/art';
 import { Sheet } from '../components/Sheet';
 import { api, type RoomPeek } from '../lib/api';
+import { markAsked, mayAskFriends } from '../lib/asks';
 import { copyText } from '../lib/clipboard';
 import { buzz } from '../lib/haptics';
 import { prefs } from '../lib/prefs';
+import { pushPrefs, setPush } from '../lib/push';
 import { holdAutoEnter, hosted, useHosted } from '../lib/room';
 import type { Go } from '../lib/router';
 import { usePlayer } from '../lib/session';
@@ -100,6 +102,14 @@ export function FriendSheet({ open, onClose, mode, go }: { open: boolean; onClos
 
 function Invite({ mode, go, onClose }: { mode: ModeId; go: Go; onClose: () => void }) {
   const [shared, setShared] = useState(false);
+  // Once the link is out, the host is about to leave for WhatsApp: the moment to offer a
+  // notification when the friend joins (src/lib/asks.ts).
+  const [friendAsk, setFriendAsk] = useState(false);
+  useEffect(() => {
+    if (!shared || !mayAskFriends()) return;
+    markAsked('friends');
+    setFriendAsk(true);
+  }, [shared]);
   const [roomMode, setRoomMode] = useState<ModeId>(mode);
   const { token, profile } = usePlayer();
   const [code, setCode] = useState<string | null>(null);
@@ -239,9 +249,33 @@ function Invite({ mode, go, onClose }: { mode: ModeId; go: Go; onClose: () => vo
             <i />
             {shared ? `${'share' in navigator ? 'Sent' : 'Copied'}. Waiting for your friend to join.` : 'You can close this. We\'ll tell you when they join.'}
           </p>
+          {friendAsk && <FriendAsk token={token} onDone={() => setFriendAsk(false)} />}
         </>
       )}
     </>
+  );
+}
+
+/**
+ * "Tell me when they join": a small button under the waiting line once the link is shared, so it
+ * fits on a small phone. The phone's own permission box comes after the tap.
+ */
+function FriendAsk({ token, onDone }: { token: string; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const turnOn = async () => {
+    setBusy(true);
+    const r = await setPush(token, { ...pushPrefs(), friends: true }, 'friends-ask');
+    if (r.ok) toast.ok("Done. We'll tell you when your friend joins.");
+    else if (r.why === 'blocked') toast.error("Notifications are blocked. Allow them in your phone's settings.");
+    else if (r.why === 'unsupported') toast.error("This phone can't show notifications here.");
+    else toast.error(r.message ?? "That didn't work. Try again from Settings.");
+    onDone();
+  };
+  return (
+    <button type="button" className="mini-btn ghost friend-ask" disabled={busy} onClick={turnOn}>
+      <Icon id="i-bell" className="" />
+      Tell me when they join
+    </button>
   );
 }
 
