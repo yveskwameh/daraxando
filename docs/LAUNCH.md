@@ -5,7 +5,7 @@ Written 16 October 2026. Everything needed to put Dara X&O in front of players a
 ## Before launch day
 
 - [x] **Approvals.** The native speaker (15 and 16 October 2026) and the lawyer (Dara Seeds, safety, and the privacy notice and terms, 15 and 16 October 2026).
-- [ ] **Load test the test copy** from your Mac: `node scripts/loadtest.mjs` in the VS Code terminal (about 1 minute, 30 players), then send Claude the output. It passed on Claude's local copy (results at the end of this file).
+- [x] **Load test the test copy** (16 October 2026, 30 players, no problems; results at the end of this file). Run `node scripts/loadtest.mjs` again after big server changes.
 - [ ] **Two or three 8 am emails from the test copy** look right: the free plan part reads, and errors are low.
 - [ ] **Ask the lawyer about registering** with the Nigeria Data Protection Commission and a Data Protection Officer (`docs/LEGAL-REVIEW.md`, questions 3 and 4). Not needed on day one, but before the game passes 200 players in six months.
 - [ ] **Decide** whether the test copy keeps sending its own 8 am email (it says "Test copy"). To stop it, delete its `REPORT_EMAIL` secret.
@@ -91,4 +91,4 @@ All in the Cloudflare dashboard (dash.cloudflare.com), except steps 2 and 3 in t
 `scripts/loadtest.mjs` makes players (5 every 6 seconds, under the per-network limit), has them read Home and Ranks, then a third play Baba Ayo at Agba on the 7×7 board (his hardest thinking) while the rest pair up in Quick match, and every match is played to the end. It refuses to run against the real game.
 
 - **16 October 2026, Claude's local copy, 50 players:** every Baba Ayo game and every Quick match finished, no errors. A move was answered in about 20 ms (95% within 100 ms), Quick match paired in under half a second. About 1,000 requests in all. Local runs don't enforce Cloudflare's 10 ms limit, which is why the test copy run matters.
-- **The test copy:** to run from Yves's Mac (Claude's workspace can't reach it). Expect about 30 requests per player, so 30 players use well under 1% of a day's free requests. The load players stay on the test copy's Ranks; that's fine there.
+- **16 October 2026, the test copy, 30 players, run from Yves's Mac:** done in 48 seconds, about 630 requests. Every Baba Ayo game (10, at Agba on 7×7) and every Quick match (20 players) finished, with no errors, so nothing hit Cloudflare's 10 ms limit. Typical times, with all 30 arriving at once: a move answered in 165 ms (95% within 225 ms), Quick match paired in 0.7 s, a new player in 0.6 s, Home's profile in 0.8 s, Ranks in 0.3 s. Most of that is the trip from Nigeria to Cloudflare's servers in Europe, where matches and the database run (`docs/MATCHMAKING.md`), which is fine for a turn-based game. The load players stay on the test copy's Ranks.

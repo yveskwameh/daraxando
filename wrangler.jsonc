@@ -128,7 +128,7 @@
       ],
       "triggers": { "crons": ["0 7 * * *", "0 18 * * *"] },
       "d1_databases": [
-        { "binding": "DB", "database_name": "daraxando", "database_id": "PRODUCTION_DATABASE_ID", "migrations_dir": "migrations" }
+        { "binding": "DB", "database_name": "daraxando", "database_id": "e40f6046-959d-4140-9dfa-08839941ae03", "migrations_dir": "migrations" }
       ],
       "ratelimits": [
         { "name": "DEVICE_LIMITER", "namespace_id": "3001", "simple": { "limit": 5, "period": 60 } },
