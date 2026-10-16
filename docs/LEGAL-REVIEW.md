@@ -1,6 +1,10 @@
 # Dara X&O: privacy notice and terms for legal review
 
-16 October 2026. Prepared for the lawyer who approved Dara Seeds (`docs/COWRIES-REVIEW.md`) and the safety rules (`docs/SAFETY-REVIEW.md`). Nothing here is live: the game is not published yet. The two drafts are in the game's code, so what you approve is exactly what players will read:
+16 October 2026. Prepared for the lawyer who approved Dara Seeds (`docs/COWRIES-REVIEW.md`) and the safety rules (`docs/SAFETY-REVIEW.md`).
+
+**Approved by the lawyer on 16 October 2026, as drafted.** The wording stands as their answer wherever it answers a question below: 13 or older, with a parent's or guardian's permission for under-18s (question 1, option a); tapping Play now accepts the terms, and the Privacy notice is read, not agreed to (2); the legal bases (5); the admin log kept after deletion (6); data outside Nigeria as described (7); players kept until they delete them (8); a reply within 30 days (9); taking back seeds won by cheating (10); the laws and courts of Nigeria (11); a name and an email as contact details (13); the project wording (14); and the protections, with a ₦5,000 cap (15). The "Draft" lines are gone and the texts are dated 16 October 2026.
+
+**Not settled by the wording:** registering with the Nigeria Data Protection Commission and appointing a Data Protection Officer (questions 3 and 4) are things Yves does, not words in the texts. Confirm them with the lawyer before the game passes 200 players in six months (`docs/LAUNCH.md`). The two drafts are in the game's code, so what you approve is exactly what players will read:
 
 - **Privacy notice:** `src/legal/privacy.md`, shown in the game at `/privacy`
 - **Terms of play:** `src/legal/terms.md`, shown in the game at `/terms`

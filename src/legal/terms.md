@@ -1,6 +1,6 @@
 # Terms of play
 
-**Draft for legal review, 16 October 2026.** Not in force until the game launches.
+Last updated 16 October 2026.
 
 > These are the rules for playing Dara X&O. You accept them when you tap Play now. The short version: be 13 or older, play fair and be kind. Dara Seeds are points for fun, with no money value, and you can't buy, sell, send or cash them out. The game is free and comes as it is, so our responsibility for problems is limited.
 

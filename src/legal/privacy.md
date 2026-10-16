@@ -1,6 +1,6 @@
 # Privacy notice
 
-**Draft for legal review, 16 October 2026.** Not in force until the game launches.
+Last updated 16 October 2026.
 
 > **The short version.** To run the game we keep your player (name, animal, state and progress), your games, and your email or Google account only if you save your progress. We never ask for your real name, phone number or exact location. We don't sell anything about you, show ads or track you around the internet. You can delete your player at any time in Settings.
 
