@@ -38,6 +38,31 @@ Pieces take their colours from the parent: `.me-c` (indigo) or `.op-c` (pink), t
 
 Onest's capital I and lowercase l look alike, so room codes skip I, L, O, 0 and 1, and numbers use Gabarito.
 
+Line height: 1.15 for headings, 1.5 for body text and descriptions (Yves, 16 October 2026: titles and descriptions looked jammed together at 1.05). Descriptions under a sheet title are 14px; captions and notes 13px.
+
+### Spacing
+
+Set on 16 October 2026 because the sheets felt cramped (Yves). A 4px base on an 8px rhythm, the system Material Design, Apple and Atlassian all use, and one rule from Gestalt proximity: the closer two things sit, the more they belong together, so every space outside a group is bigger than the spaces inside it. Use the job tokens, never a raw number.
+
+| Token | Value | Job |
+| --- | --- | --- |
+| `--space-pair` | 8px | A title and the line under it, a name and its detail (4px, `--sp-50`, inside a row or card) |
+| `--space-item` | 12px | Things in one group: stacked buttons, rows, options, a field and its note |
+| `--space-block` | 16px | The parts of a sheet |
+| `--space-group` | 24px | A title block and what follows it, the content and the buttons that answer it |
+| `--sheet-l` / `--sheet-r` | 20px | Sheet sides (screens keep 16px, `--gut-l` and `--gut-r`) |
+| `--sheet-top` / `--sheet-bottom` | 16px / 24px | Sheet top under the handle, and bottom above the phone's safe area |
+
+On short phones (640px tall or less) `--space-block` drops to 12px and `--space-group` to 20px, so every sheet still fits a 320 × 568 phone. The order of space never changes.
+
+How sheets use them, in `src/styles/app.css`:
+
+- `.titled` wraps a sheet's `h2` and its description: 8px between them, 24px before what follows.
+- `.actions` wraps the buttons that close a sheet (a primary and a ghost): 12px between them, 24px above them.
+- `.field-group` keeps a field and the line about it together (the code boxes and their status).
+- Rows and cards (`.toggle-row`, `.opt`, `.row-card`, `.hcard`, titles, quests): 14px by 16px inside, a name 4px above its detail, 12px between rows.
+- Empty states: icon, then title and line 8px apart, then the button 24px below.
+
 ## The logo: Sticker
 
 "Dara" in Gabarito 900, with a fuchsia pill sticker reading "X&O", cream border, tilted -4 degrees and pressed right up against the word. Always written with the & symbol. Web addresses and handles spell it out: `daraxando`. App icons are rendered from the same design by `scripts/icons.cjs`.
@@ -61,7 +86,7 @@ Onest's capital I and lowercase l look alike, so room codes skip I, L, O, 0 and 
 | Record card | Settings | Win rate in teal, a bar split into wins (teal), draws (indigo) and losses (grey), and the best run with a Danfo star. |
 | Rotate card | Phones in landscape | CSS only, in `index.html`. |
 | Save sheet | You, Settings, first screen (Sign in) | Built 16 October 2026 for Yves's review. Title and one line on what you keep, Google's button, "or use your email", an email field and **Send me a code** (the one primary). Then **Check your email** with six code boxes: the board from the code email in one row (raised cells with Danfo Gabarito digits on a night tray), a blinking Danfo caret in the next box, a short shake and a pink message on a wrong code, **Use another email** and **New code in 30s** as small ghost buttons. |
-| Google button | Save sheet | Google's dark style, not ours, because Google's rules ask for it: #131314 fill, a thin grey ring, Roboto, Google's mark on the left from Google's own file. A pill, the same height as our buttons. |
+| Google button | Save sheet | Full width like every other button (Yves, 16 October 2026), built to Google's rules for a custom "Sign in with Google" button: Google's dark fill, grey ring and text colour, Google Sans Medium (cut down to letters, 5 KB, loads only with the button), "Continue with Google", and Google's G taken unchanged from their downloaded assets (`public/google/`). The one button in the game that isn't an Ankara sticker, because Google's rules ask for their look. |
 | Switch card | Save sheet, email link page, back from Google | The other player's card (avatar, "Saved player", name, title and seeds), then what happens to the player on this phone in plain words, **Play as {name}**, and **Keep {name}**. |
 | Email link page | `/c/…` | Wordmark, the player's avatar, "Sign in as Tunde" or "Save Amaka's player", the address, one primary button and **Not now**. Used or run-out links say so, with **Open Dara X&O**. |
 
@@ -133,6 +158,7 @@ Reduced motion: near-instant, except the turn clock, which is information. Demo 
 | 2026-10-15 | Fading is the default game and the first card on the Deck | Yves: it's the challenging one against a person |
 | 2026-10-15 | Live now shows every waiting game as swipeable cards; the profile chip drops its Aura numbers | Yves's review on his phone |
 | 2026-10-16 | Sign-in email: Baba Ayo's chat header, the code on the game board, editorial PLAY and CREATED BY, a giant cut-off wordmark | Yves picked parts of three of five options |
+| 2026-10-16 | Spacing scale and job tokens (pair 8, item 12, block 16, group 24), sheets 20px at the sides, headings at 1.15 line height, the Google button full width | Yves: the sign-in sheet and many titles and descriptions felt jam-packed |
 
 ## Open gaps
 

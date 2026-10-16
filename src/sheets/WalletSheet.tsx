@@ -33,9 +33,9 @@ export function WalletSheet({ open, onClose }: { open: boolean; onClose: () => v
 
   return (
     <Sheet open={open} onClose={onClose} label="Your Dara Seeds" closeButton={false}>
-      <div>
+      <div className="titled">
         <h2>Your Dara Seeds</h2>
-        <div className="wallet-big" style={{ marginTop: 8 }}><Cowries n={profile.cowries} /></div>
+        <div className="wallet-big"><Cowries n={profile.cowries} /></div>
       </div>
       <div className="scroll">
         <div className="stack">

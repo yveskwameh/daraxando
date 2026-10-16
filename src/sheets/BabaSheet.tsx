@@ -36,9 +36,9 @@ export function BabaSheet({ open, onClose, mode, go }: { open: boolean; onClose:
     <Sheet open={open} onClose={onClose} label="Play Baba Ayo">
       <div className="sheet-head">
         <Avatar avatar="baba" size={56} />
-        <div>
+        <div className="titled">
           <h2>Play Baba Ayo</h2>
-          <p className="muted" style={{ fontSize: '0.875rem' }}>Baba Ayo is the game's bot. Pick how hard he plays.</p>
+          <p className="muted">Baba Ayo is the game's bot. Pick how hard he plays.</p>
         </div>
       </div>
       <p className="fine">{m.name} · {seriesLabel(m.bo)} · No stake. Your Dara Seeds and rating stay the same.</p>

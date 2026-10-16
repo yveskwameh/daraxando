@@ -30,7 +30,7 @@ function StakeBody({ profile, initial, onGo }: { profile: Profile; initial: numb
 
   return (
     <>
-      <div>
+      <div className="titled">
         <h2>Pick your stake</h2>
         <p className="fine">Both players put in the same amount. The winner takes the pot. A draw gives both stakes back.</p>
       </div>

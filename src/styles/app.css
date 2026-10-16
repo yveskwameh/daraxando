@@ -13,7 +13,7 @@ html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
   color: var(--text);
-  font: 400 1rem/1.45 var(--body);
+  font: 400 1rem/1.5 var(--body);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
   overscroll-behavior: none;
@@ -22,7 +22,7 @@ body {
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; touch-action: manipulation; }
 h1, h2, h3, p { margin: 0; }
-h1, h2, h3 { font-family: var(--head); line-height: 1.05; text-wrap: balance; }
+h1, h2, h3 { font-family: var(--head); line-height: 1.15; text-wrap: balance; }
 :focus-visible { outline: 3px solid var(--danfo); outline-offset: 2px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 svg.ic { width: 22px; height: 22px; flex: none; }
@@ -85,7 +85,7 @@ svg.ic { width: 22px; height: 22px; flex: none; }
 .page-head h1 { font-size: 1.5rem; text-align: center; }
 .kicker { font: 700 0.75rem/1 var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--fuchsia-glow); }
 .muted { color: var(--muted); }
-.fine { font-size: 0.8125rem; color: var(--muted); line-height: 1.4; }
+.fine { font-size: 0.8125rem; color: var(--muted); line-height: 1.5; }
 .fine b { color: var(--text); }
 .pill { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border: 0; border-radius: 999px; background: var(--raise); font: 700 0.75rem/1 var(--body); color: var(--text); white-space: nowrap; }
 .pill svg { width: 13px; height: 13px; }
@@ -458,7 +458,7 @@ svg.ic { width: 22px; height: 22px; flex: none; }
   --sb-out: calc(var(--gut-r) - 3px);
   scrollbar-gutter: stable;
 }
-.sheet-body .scroll { margin: -3px calc(-1 * var(--sb-out)) -3px -3px; padding: 3px calc(var(--sb-out) - var(--sbw, 0px)) 3px 3px; }
+.sheet-body .scroll { --sb-out: calc(var(--sheet-r) - 3px); margin: -3px calc(-1 * var(--sb-out)) -3px -3px; padding: 3px calc(var(--sb-out) - var(--sbw, 0px)) 3px 3px; }
 .screen > .list:not(.pinned) { margin-right: calc(-1 * var(--sb-out)); padding-right: calc(var(--sb-out) - var(--sbw, 0px) + 4px); }
 .screen > .panel { margin-right: calc(-1 * var(--sb-out)); padding-right: calc(var(--sb-out) - var(--sbw, 0px) + 2px); }
 .scroll::-webkit-scrollbar, .list::-webkit-scrollbar, .panel::-webkit-scrollbar, .sb-probe::-webkit-scrollbar { width: 6px; }
@@ -506,25 +506,36 @@ dialog.sheet.closing::backdrop { animation: fade-out 220ms ease-in forwards; }
 @keyframes sheet-down { from { transform: translateY(var(--dy, 0px)); } to { transform: translateY(100%); } }
 @keyframes fade-out { to { opacity: 0; } }
 .sheet-body {
-  display: flex; flex-direction: column; gap: 14px;
+  display: flex; flex-direction: column; gap: var(--space-block);
   width: 100%; min-height: 0;
-  padding: 10px var(--gut-r) calc(18px + var(--safe-b)) var(--gut-l);
+  padding: var(--sheet-top) var(--sheet-r) calc(var(--sheet-bottom) + var(--safe-b)) var(--sheet-l);
 }
+/* A title and the line that explains it: close together, then a clear gap before what follows. */
+.titled { display: grid; gap: var(--space-pair); }
+.sheet-body > .titled, .sheet-body > .sheet-head { margin-bottom: calc(var(--space-group) - var(--space-block)); }
+.sheet-body .titled p, .sheet-head p { font-size: 0.875rem; }
+/* The buttons that answer a sheet: one group, apart from what they answer. */
+.actions { display: grid; gap: var(--space-item); }
+.sheet-body > .actions, .sheet-body > .actions-row { margin-top: calc(var(--space-group) - var(--space-block)); }
+/* A field and the line about it (the code boxes, the email). */
+.field-group { display: grid; gap: var(--space-item); }
 /* The top of every sheet: the grab handle in the middle. The X sits on the title's line, on the right. */
 .sheet-top { flex: none; display: flex; justify-content: center; height: 5px; }
 .sheet-top .grab { width: 44px; height: 5px; border-radius: 3px; background: var(--line); }
 .sheet-body .x-room { margin-right: 46px; }
-.sheet-head { display: flex; align-items: center; gap: 12px; }
+.sheet-head { display: flex; align-items: center; gap: var(--space-block); }
 .sheet-head > div { min-width: 0; flex: 1; }
 .sheet-body h2 { font-size: 1.5rem; font-weight: 900; }
-.sheet-body .scroll { overflow-y: auto; min-height: 0; display: grid; gap: 10px; overscroll-behavior: contain; }
+.sheet-body .scroll { overflow-y: auto; min-height: 0; display: grid; gap: var(--space-item); overscroll-behavior: contain; }
 .opt {
-  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
-  width: 100%; padding: 12px; border: 0; border-radius: 18px;
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--space-item);
+  width: 100%; padding: 14px 16px; border: 0; border-radius: 18px;
   background: var(--raise); text-align: left;
 }
 .opt b { display: block; font: 800 1.0625rem/1.15 var(--head); }
-.opt span { display: block; font-size: 0.8125rem; color: var(--muted); line-height: 1.3; }
+.opt span { display: block; font-size: 0.8125rem; color: var(--muted); line-height: 1.4; }
+.opt b + span { margin-top: var(--sp-50); }
+@media (max-height: 640px) { .opt { padding: 12px 14px; } }
 .opt .tag-xp { display: inline-flex; color: var(--night); font-size: .75rem; line-height: 1; }
 .opt[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--cream); }
 .steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 10px; }
@@ -576,11 +587,12 @@ dialog.sheet.closing::backdrop { animation: fade-out 220ms ease-in forwards; }
 .table-row .lock { width: 18px; height: 18px; color: var(--muted); }
 .wallet-big { display: flex; align-items: center; gap: 10px; font: 900 2.25rem/1 var(--head); font-variant-numeric: tabular-nums; }
 .wallet-big svg { width: 40px; height: 40px; }
-.stack { display: grid; gap: 8px; }
-.row-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 18px; background: var(--raise); }
+.stack { display: grid; gap: var(--space-item); }
+.row-card { display: flex; align-items: center; justify-content: space-between; gap: var(--space-block); padding: 14px 16px; border-radius: 18px; background: var(--raise); }
 .row-card > div { min-width: 0; }
 .row-card b { display: block; font: 800 1rem/1.2 var(--head); }
-.row-card span { display: block; font-size: 0.8125rem; color: var(--muted); }
+.row-card span { display: block; font-size: 0.8125rem; color: var(--muted); line-height: 1.4; }
+.row-card b + span { margin-top: var(--sp-50); }
 
 /* result */
 .result-head { display: grid; gap: 4px; }
@@ -650,7 +662,9 @@ dialog.sheet.closing::backdrop { animation: fade-out 220ms ease-in forwards; }
 .lrow .r { font: 800 1rem/1 var(--head); font-variant-numeric: tabular-nums; }
 .lrow.you { background: var(--indigo); box-shadow: 0 0 0 3px var(--cream); }
 .lrow.you small { color: var(--muted-on-indigo); }
-.empty { display: grid; justify-items: center; gap: 10px; padding: 24px 12px; text-align: center; color: var(--muted); }
+.empty { display: grid; justify-items: center; gap: var(--space-pair); padding: 24px 12px; text-align: center; color: var(--muted); }
+.empty > svg.big, .empty > .av { margin-bottom: var(--space-pair); }
+.empty > .btn { margin-top: calc(var(--space-group) - var(--space-pair)); }
 .empty h2 { color: var(--text); font-size: 1.375rem; }
 .empty svg.big { width: 56px; height: 56px; color: var(--muted); }
 .skeleton { border-radius: 16px; background: var(--deep); height: 52px; animation: blink 1.4s ease-in-out infinite; }
@@ -700,7 +714,7 @@ dialog.sheet.closing::backdrop { animation: fade-out 220ms ease-in forwards; }
 .tile .pc svg { width: 80%; height: 80%; }
 .tile.locked { opacity: .55; }
 .tile .lock { position: absolute; top: 8px; right: 8px; width: 16px; height: 16px; color: var(--muted); }
-.toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 18px; background: var(--deep); }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-block); padding: 14px 16px; border-radius: 18px; background: var(--deep); }
 /* In a sheet (already --deep), rows get the raised fill so each one reads as its own card. */
 .sheet-body .toggle-row { background: var(--raise); }
 .toggle-row > div { min-width: 0; }
@@ -725,9 +739,9 @@ dialog.sheet.closing::backdrop { animation: fade-out 220ms ease-in forwards; }
 .record-bar i { flex: 1 1 0; min-width: 6px; border-radius: 6px; }
 .record-bar .none { background: var(--deep); }
 .record.empty { grid-template-columns: auto minmax(0, 1fr); align-items: center; text-align: left; }
-.record.empty > div { display: grid; gap: 4px; }
+.record.empty > div { display: grid; gap: var(--sp-50); }
 .record.empty b { font: 800 1rem/1.2 var(--head); }
-.record.empty > div > span { font-size: 0.8125rem; line-height: 1.4; color: var(--muted); }
+.record.empty > div > span { font-size: 0.8125rem; line-height: 1.5; color: var(--muted); }
 .record-ic { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--deep); color: var(--danfo); }
 .record-ic svg { width: 22px; height: 22px; }
 .record .w { background: var(--teal); }
@@ -824,7 +838,9 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
   .hstop { padding-top: 64px; }
 }
 @media (max-height: 640px) {
-  .onb .edit small, .onb .fine:not(.age) { display: none; }
+  /* The name editor's hint and the note under the state list. Sign in, also opened over this
+     screen, keeps its lines. */
+  .onb .edit small, .onb .onb-states ~ .fine { display: none; }
   .onb .edit { gap: 8px; padding: 10px; }
   .onb .edit .chips-row button:nth-child(n+3):not(:last-child) { display: none; }
   .onb .edit .ideas { display: none; }
@@ -841,7 +857,7 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
   .install-pop > div > span { display: none; }
   .room-pop > div > span { display: block; }
   /* Short phones: the result and next-game sheets keep every button in view. */
-  .sheet-body { gap: 10px; }
+  dialog.sheet.locked .sheet-body { gap: 10px; }
   .result-head .big { font-size: 1.625rem; }
   .gains div { padding: 8px; }
   .gains b { font-size: 1.25rem; }
@@ -913,21 +929,21 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 .week .today .c { box-shadow: inset 0 0 0 2px var(--danfo); }
 
 /* The streak sheet */
-.streak-body { gap: 12px; }
+.streak-body { gap: var(--space-item); }
 .streak-hero { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .streak-hero .fl { width: 64px; height: 64px; color: var(--flame-off); }
 .streak-hero b { display: block; font: 900 3rem/1 var(--head); font-variant-numeric: tabular-nums; }
 .streak-hero span { font: 700 0.875rem/1 var(--body); color: var(--muted); }
 .streak-hero.lit b { color: var(--flame); }
 .streak-status { text-align: center; font-size: 0.9375rem; }
-.hcard { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px; border-radius: 16px; background: var(--raise); }
+.hcard { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-item); padding: 14px 16px; border-radius: 16px; background: var(--raise); }
 .hcard.restore { box-shadow: inset 0 0 0 2px var(--danfo); }
 .hcard .hi { width: 28px; height: 28px; align-self: start; margin-top: 2px; }
 .hcard .hi.ice { color: var(--ice); }
 .hcard > div { display: grid; gap: 4px; min-width: 0; }
 .hcard b { font: 800 1rem/1.2 var(--head); }
 .hcard b small { margin-left: 6px; font: 700 0.75rem/1 var(--body); color: var(--muted); white-space: nowrap; }
-.hcard span { font-size: 0.8125rem; color: var(--muted); line-height: 1.35; }
+.hcard span { font-size: 0.8125rem; color: var(--muted); line-height: 1.4; }
 .hcard .grow { grid-column: 2 / -1; }
 .hcard .grow ~ .mini-btn { grid-column: 2; justify-self: start; }
 .bar { display: block; height: 8px; border-radius: 4px; background: var(--night); overflow: hidden; }
@@ -950,8 +966,8 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 
 /* daily quests */
 .quest-ic { width: 44px; height: 44px; color: var(--indigo-glow); }
-.quests { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.quests li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px; border-radius: 16px; background: var(--raise); }
+.quests { display: grid; gap: var(--space-item); margin: 0; padding: 0; list-style: none; }
+.quests li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-item); padding: 14px 16px; border-radius: 16px; background: var(--raise); }
 .quests li > div { display: grid; gap: 6px; min-width: 0; }
 .quests b { font: 800 0.9375rem/1.2 var(--head); }
 .quests .qi { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--night); color: var(--indigo-glow); }
@@ -965,9 +981,9 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 
 /* the title ladder: JJC to Idan, yours highlighted */
 .title-pill svg { width: 14px; height: 14px; }
-.titles { position: relative; margin: 0; padding: 3px; list-style: none; gap: 8px; }
-.titles li { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: var(--raise); }
-.titles li > div { display: grid; gap: 2px; min-width: 0; }
+.titles { position: relative; margin: 0; padding: 3px; list-style: none; gap: var(--space-item); }
+.titles li { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: var(--space-item); padding: 12px 14px; border-radius: 16px; background: var(--raise); }
+.titles li > div { display: grid; gap: var(--sp-50); min-width: 0; }
 .titles b { font: 800 1rem/1.15 var(--head); }
 .titles li > div > span { font-size: 0.8125rem; line-height: 1.3; color: var(--text); }
 .titles small { font-size: 0.75rem; line-height: 1.3; color: var(--muted); }
@@ -1024,7 +1040,7 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 .live-own .live-stake { color: var(--text); font-weight: 700; }
 /* Nobody waiting: a radar that keeps sweeping while we look. */
 .live-look { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 16px; padding: 16px; border-radius: 20px; background: var(--raise); }
-.live-look > div { display: grid; gap: 4px; min-width: 0; }
+.live-look > div { display: grid; gap: var(--sp-50); min-width: 0; }
 .live-look b { font: 800 1.125rem/1.15 var(--head); }
 .live-look > div > span { font-size: 0.8125rem; line-height: 1.35; color: var(--muted); font-variant-numeric: tabular-nums; }
 .live-radar { position: relative; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--deep); }
@@ -1086,7 +1102,7 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 .league-head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 12px; border-radius: 16px; background: var(--deep); }
 .league-head .lg-ic { width: 40px; height: 40px; }
 .league-head b { display: block; font: 900 1.25rem/1.1 var(--head); }
-.league-head span { display: block; font-size: 0.8125rem; color: var(--muted); line-height: 1.35; }
+.league-head span { display: block; margin-top: var(--sp-50); font-size: 0.8125rem; color: var(--muted); line-height: 1.4; }
 .lrow.up .n { color: var(--teal); }
 .lrow.down .n { color: var(--fuchsia-glow); }
 .zone { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 2px 0; font: 800 0.6875rem/1 var(--head); letter-spacing: .12em; text-transform: uppercase; }
@@ -1127,7 +1143,7 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 }
 
 /* The result sheet: one clear next step, quieter choices under it, X to go Home. */
-.sheet-x { position: absolute; top: 34px; right: max(10px, calc(var(--gut-r) - 4px)); z-index: 1; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--raise); color: var(--text); }
+.sheet-x { position: absolute; top: 34px; right: max(10px, calc(var(--sheet-r) - 4px)); z-index: 1; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--raise); color: var(--text); }
 .sheet-x::after { content: ""; position: absolute; inset: -4px; } /* 44px to tap */
 .sheet-x svg { width: 16px; height: 16px; }
 /* The choices under the main button: smaller buttons, side by side, never bare text. */
@@ -1175,27 +1191,38 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 .save-row > div { flex: 1; }
 .toggle-row .save-ic { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--raise); color: var(--teal); }
 .toggle-row .save-ic svg { width: 20px; height: 20px; }
-.toggle-row > div > span + span { margin-top: 2px; }
+.toggle-row > div > b + span, .toggle-row > div > span + span { margin-top: var(--sp-50); }
 
-/* Google's button, drawn to Google's own rules for the dark style: their fill, ring and type, the mark on the left. */
+/* Google's button, to Google's rules for a custom one: their colours, Google Sans Medium, their G
+   on the left, sized up evenly from their 40 px button to ours. The font is cut down to letters
+   and loads only when this button shows. */
+@font-face {
+  font-family: 'Google Sans Button';
+  font-weight: 500;
+  font-display: swap;
+  src: url('/google/google-sans-500.woff2') format('woff2');
+}
 .g-btn {
-  display: flex; align-items: center; justify-content: center; gap: 12px;
+  display: flex; align-items: center; justify-content: center; gap: var(--space-item);
   width: 100%; min-height: 52px; padding: 0 20px;
-  border: 1px solid var(--google-ring); border-radius: 999px;
-  background: var(--google-fill); color: var(--google-text);
-  font: 500 1rem/1.25 'Google Sans', Roboto, var(--body);
+  border: 0; border-radius: 999px;
+  background: var(--google-fill); box-shadow: inset 0 0 0 1px var(--google-ring);
+  color: var(--google-text);
+  font: 500 1.0625rem/1.2 'Google Sans Button', 'Google Sans', Roboto, var(--body);
   cursor: pointer; transition: transform 160ms var(--ease-pop);
 }
+.g-btn img { flex: none; width: 24px; height: 24px; }
 .g-btn:active { transform: scale(.97); }
 .g-btn:focus-visible { outline: 3px solid var(--danfo); outline-offset: 2px; }
 .g-btn:disabled { opacity: .6; cursor: default; }
-.g-btn img { flex: none; width: 24px; height: 24px; }
+@media (max-height: 640px) { .g-btn { min-height: 48px; } }
 
 /* "or use your email", with a line each side. */
 .or { display: flex; align-items: center; gap: 10px; font: 700 0.75rem/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .or::before, .or::after { content: ''; flex: 1; height: 2px; border-radius: 1px; background: var(--line); }
 
-.text-in.email { font: 600 1rem/1.2 var(--body); }
+.text-in.email { min-height: 52px; padding: 0 18px; font: 600 1rem/1.2 var(--body); }
+@media (max-height: 640px) { .text-in.email { min-height: 48px; } }
 .text-in.email::placeholder { color: var(--muted); }
 
 /* The six code boxes: the same board as the email, in one row. One clear input lies over them. */

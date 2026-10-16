@@ -130,7 +130,7 @@ function Body({ go, onStartOwn, onChange, onBaba }: Props) {
   if (games === null) {
     return (
       <>
-        <div>
+        <div className="titled">
           <h2>Quick match</h2>
           <p className="fine">Looking for games waiting for a player.</p>
         </div>
@@ -144,7 +144,7 @@ function Body({ go, onStartOwn, onChange, onBaba }: Props) {
     const secs = Math.max(0, Math.round((now - opened) / 1000));
     return (
       <>
-        <div>
+        <div className="titled">
           <h2>Nobody is waiting yet</h2>
           <p className="fine">We'll keep looking while this is open. A game shows up here the moment someone starts one.</p>
         </div>
@@ -171,7 +171,7 @@ function Body({ go, onStartOwn, onChange, onBaba }: Props) {
 
   return (
     <>
-      <div>
+      <div className="titled">
         <h2>Live now</h2>
         <p className="fine">
           {games.length === 1 ? '1 game is waiting for a player.' : `${games.length} games are waiting for a player. Swipe to see them all.`}

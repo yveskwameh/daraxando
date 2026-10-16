@@ -40,11 +40,41 @@
   --head: 'Gabarito Variable', 'Gabarito', 'Arial Rounded MT Bold', system-ui, sans-serif;
   --body: 'Onest Variable', 'Onest', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
+  /* Space, on a 4px base and an 8px rhythm (DESIGN.md, "Spacing"). The names are steps, not pixels. */
+  --sp-50: 4px;
+  --sp-100: 8px;
+  --sp-150: 12px;
+  --sp-200: 16px;
+  --sp-250: 20px;
+  --sp-300: 24px;
+  --sp-400: 32px;
+  /* What each space is for. The closer two things sit, the more they belong together, so every
+     step out is bigger than the one inside it. */
+  --space-pair: var(--sp-100);   /* a title and the line under it, a name and its detail */
+  --space-item: var(--sp-150);   /* things in one group: stacked buttons, rows, options */
+  --space-block: var(--sp-200);  /* the parts of a sheet */
+  --space-group: var(--sp-300);  /* a title block and what follows it, a choice and its buttons */
+  --sheet-top: var(--sp-200);
+  --sheet-bottom: var(--sp-300);
+
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
   --gut-l: max(16px, env(safe-area-inset-left, 0px));
   --gut-r: max(16px, env(safe-area-inset-right, 0px));
+  /* Sheets get a little more room at the sides than screens. */
+  --sheet-l: max(20px, env(safe-area-inset-left, 0px));
+  --sheet-r: max(20px, env(safe-area-inset-right, 0px));
 
   --ease-pop: cubic-bezier(.3, 1.6, .5, 1);
   --ease-out: cubic-bezier(.2, .8, .2, 1);
+}
+
+/* Short phones (a 568 to 640 px tall screen) keep the same order of space, one step tighter. */
+@media (max-height: 640px) {
+  :root {
+    --space-block: var(--sp-150);
+    --space-group: var(--sp-250);
+    --sheet-top: var(--sp-150);
+    --sheet-bottom: var(--sp-200);
+  }
 }

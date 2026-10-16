@@ -34,7 +34,7 @@ function Body() {
 
   return (
     <>
-      <div>
+      <div className="titled">
         <h2>Titles</h2>
         <p className="fine">
           Every match earns Aura. Earn enough and you move up a title. You're <b>{lv.title}</b>, {fmt(lv.toNext)} Aura from {lv.nextTitle}.

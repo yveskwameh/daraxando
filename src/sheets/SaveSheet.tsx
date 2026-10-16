@@ -146,7 +146,7 @@ export default function SaveSheet({ open, onClose, intent, back, has }: Props) {
     <Sheet open={open} onClose={onClose} label={title ?? 'Switch players'}>
       {step.s === 'pick' && (
         <>
-          <div>
+          <div className="titled">
             <h2>{title}</h2>
             <p className="fine">{intent === 'save' && profile ? keepLine(profile) : 'Use the Google account or the email you saved your player with.'}</p>
           </div>
@@ -173,8 +173,8 @@ export default function SaveSheet({ open, onClose, intent, back, has }: Props) {
               </button>
             </form>
           )}
-          <p className={error ? 'form-error' : 'fine'} role={error ? 'alert' : undefined}>
-            {error || 'We only use it to sign you in. Nobody else sees it.'}
+          <p className={error ? 'form-error' : 'fine'} role={error ? 'alert' : 'status'}>
+            {error || (busy === 'google' ? 'Opening Google' : 'We only use it to sign you in. Nobody else sees it.')}
           </p>
         </>
       )}
@@ -297,17 +297,19 @@ function CodeStep({ step, intent, onResult, onOther, onResend, onSavedElsewhere 
   const other = intent === 'save' && step.kind === 'signin';
   return (
     <>
-      <div>
+      <div className="titled">
         <h2>Check your email</h2>
         <p className="fine">
           {other ? 'This email already has a player. ' : ''}We sent a 6-digit code to <b>{shortEmail(step.email)}</b>. Type it here, or tap it in the email.
         </p>
       </div>
-      <CodeCells value={code} shake={shake} busy={busy} onChange={(v) => { setCode(v); if (error && v) setError(''); }} />
-      <p className={error ? 'form-error' : 'fine'} role="status">
-        {error || (busy ? 'Checking the code' : 'It works for 10 minutes. No email? Look in Spam or Promotions.')}
-      </p>
-      <div className="more">
+      <div className="field-group">
+        <CodeCells value={code} shake={shake} busy={busy} onChange={(v) => { setCode(v); if (error && v) setError(''); }} />
+        <p className={error ? 'form-error' : 'fine'} role="status">
+          {error || (busy ? 'Checking the code' : 'It works for 10 minutes. No email? Look in Spam or Promotions.')}
+        </p>
+      </div>
+      <div className="more actions-row">
         <button type="button" className="btn ghost sm" onClick={onOther}>Use another email</button>
         <button
           type="button"
@@ -359,15 +361,15 @@ export function CodeCells({ value, onChange, busy, shake }: { value: string; onC
 }
 
 /**
- * Google's button, drawn to Google's own rules for the dark style (#131314 fill, grey ring, the
- * Google mark on the left). The mark is Google's file, public/google-g.svg, from Google's
- * branding page; until it's there, the button shows its words alone.
+ * Google's button, built to Google's rules for a custom "Sign in with Google" button, so it can be
+ * full width like every other button: their dark fill, ring and text colours, Google Sans Medium,
+ * and Google's own G taken unchanged from the files on Google's branding page (public/google/).
  */
-export function GoogleButton({ busy, disabled, onClick, label = 'Continue with Google' }: { busy?: boolean; disabled?: boolean; onClick: () => void; label?: string }) {
+export function GoogleButton({ busy, disabled, onClick }: { busy?: boolean; disabled?: boolean; onClick: () => void }) {
   return (
-    <button type="button" className="g-btn" disabled={disabled} onClick={onClick}>
-      <img src="/google-g.svg" alt="" width={24} height={24} onError={(e) => { e.currentTarget.hidden = true; }} />
-      <span>{busy ? 'Opening Google' : label}</span>
+    <button type="button" className="g-btn" disabled={disabled} aria-busy={busy || undefined} onClick={onClick}>
+      <img src="/google/g-mark.png" alt="" width={24} height={24} />
+      <span>Continue with Google</span>
     </button>
   );
 }
@@ -385,7 +387,7 @@ export function SwitchCard({ result, current, onSwitch, onKeep, title, lead }: {
   const via: Record<AuthVia, string> = { google: 'That Google account', email: 'That email' };
   return (
     <>
-      <div>
+      <div className="titled">
         <h2>{title ?? `Switch to ${p.name}?`}</h2>
         <p className="fine">{lead ?? `${via[result.via]} already has a player.`}</p>
       </div>
@@ -404,8 +406,10 @@ export function SwitchCard({ result, current, onSwitch, onKeep, title, lead }: {
             : `${current.name}, the player on this phone now, isn't saved. Switching leaves ${current.name} behind for good.`}
         </p>
       )}
-      <button type="button" className="btn primary block" onClick={onSwitch}>Play as {p.name}</button>
-      <button type="button" className="btn ghost block" onClick={onKeep}>{current ? `Keep ${current.name}` : 'Not now'}</button>
+      <div className="actions">
+        <button type="button" className="btn primary block" onClick={onSwitch}>Play as {p.name}</button>
+        <button type="button" className="btn ghost block" onClick={onKeep}>{current ? `Keep ${current.name}` : 'Not now'}</button>
+      </div>
     </>
   );
 }

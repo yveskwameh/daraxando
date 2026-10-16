@@ -609,8 +609,10 @@ function Match({ id, go }: { id: string; go: Go }) {
             ? 'Baba Ayo takes the win if you leave now.'
             : v.stake ? `If you leave now, the match and the ${fmt(prize(v.stake))} pot go to ${opp?.name}.` : `If you leave now, the match goes to ${opp?.name}.`}
         </p>
-        <button type="button" className="btn cream block" onClick={() => setSheet(null)}>Stay and play</button>
-        <button type="button" className="btn ghost block" onClick={() => { send({ t: 'resign' }); go({ name: 'home' }); }}>Leave</button>
+        <div className="actions">
+          <button type="button" className="btn cream block" onClick={() => setSheet(null)}>Stay and play</button>
+          <button type="button" className="btn ghost block" onClick={() => { send({ t: 'resign' }); go({ name: 'home' }); }}>Leave</button>
+        </div>
       </Sheet>
 
       <Sheet open={sheet === 'emote'} onClose={() => setSheet(null)} label="Say something">

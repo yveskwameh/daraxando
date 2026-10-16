@@ -193,42 +193,46 @@ export function Profile({ go }: { go: Go }) {
       <Sheet open={confirm !== null} onClose={() => setConfirm(null)} label={confirmAs === 'out' ? 'Sign out' : 'Delete my account'} closeButton={false}>
         {confirmAs === 'out' ? (
           <>
-            <div>
+            <div className="titled">
               <h2>Sign out of {profile.name}?</h2>
               <p className="fine">Sign back in any time with {signInWith(account)}. This phone goes back to the first screen.</p>
             </div>
-            <button type="button" className="btn primary block" onClick={() => { setConfirm(null); toast(`Signed out. Sign back in with ${signInWith(account)}.`, 4000); leave(); }}>Sign out</button>
-            <button type="button" className="btn ghost block" onClick={() => setConfirm(null)}>Stay signed in</button>
+            <div className="actions">
+              <button type="button" className="btn primary block" onClick={() => { setConfirm(null); toast(`Signed out. Sign back in with ${signInWith(account)}.`, 4000); leave(); }}>Sign out</button>
+              <button type="button" className="btn ghost block" onClick={() => setConfirm(null)}>Stay signed in</button>
+            </div>
           </>
         ) : (
           <>
-            <div>
+            <div className="titled">
               <h2>Delete {profile.name} for good?</h2>
               <p className="fine">
                 Your player, your {fmt(profile.cowries)} Dara Seeds, your title, streak, badges and match history are deleted
                 {profile.saved ? ', and we forget your email and Google account' : ''}. This can't be undone.
               </p>
             </div>
-            <button
-              type="button"
-              className="btn primary block"
-              disabled={deleting}
-              onClick={async () => {
-                setDeleting(true);
-                try {
-                  await auth.deleteMe(token);
-                  setConfirm(null);
-                  toast('Your account is deleted.', 4000);
-                  leave();
-                } catch (err) {
-                  toast((err as Error).message);
-                  setDeleting(false);
-                }
-              }}
-            >
-              {deleting ? 'Deleting' : 'Delete for good'}
-            </button>
-            <button type="button" className="btn ghost block" onClick={() => setConfirm(null)}>Keep my account</button>
+            <div className="actions">
+              <button
+                type="button"
+                className="btn primary block"
+                disabled={deleting}
+                onClick={async () => {
+                  setDeleting(true);
+                  try {
+                    await auth.deleteMe(token);
+                    setConfirm(null);
+                    toast('Your account is deleted.', 4000);
+                    leave();
+                  } catch (err) {
+                    toast((err as Error).message);
+                    setDeleting(false);
+                  }
+                }}
+              >
+                {deleting ? 'Deleting' : 'Delete for good'}
+              </button>
+              <button type="button" className="btn ghost block" onClick={() => setConfirm(null)}>Keep my account</button>
+            </div>
           </>
         )}
       </Sheet>
@@ -238,7 +242,7 @@ export function Profile({ go }: { go: Go }) {
       </Suspense>
 
       <Sheet open={stateOpen} onClose={() => setStateOpen(false)} label="Your state">
-        <div>
+        <div className="titled">
           <h2>Where do you play from?</h2>
           <p className="fine">We match you with nearby players first. We only keep the state you pick.</p>
         </div>

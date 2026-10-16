@@ -24,6 +24,10 @@
 /email/*
   Cache-Control: public, max-age=604800
 
+# Google's "Sign in with Google" button, as Google supplies it.
+/google/*
+  Cache-Control: public, max-age=604800
+
 # The service worker and manifest must always be checked for updates.
 /sw.js
   Cache-Control: no-cache

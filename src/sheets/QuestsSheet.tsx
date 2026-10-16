@@ -43,7 +43,7 @@ function Body() {
     <>
       <div className="sheet-head">
         <Icon id="i-quest" className="quest-ic" />
-        <div>
+        <div className="titled">
           <h2>Daily quests</h2>
           <p className="fine">{done === list.length ? 'All done for today. New quests' : 'New quests'} in {left}.</p>
         </div>

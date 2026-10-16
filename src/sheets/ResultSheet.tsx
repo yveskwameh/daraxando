@@ -283,7 +283,7 @@ function ChangeRematch({ view: v, opp, onAsk, onBack }: Props & { onAsk: (ask: R
 
   return (
     <>
-      <div>
+      <div className="titled">
         <h2>{bot ? 'Change the game' : 'Change the rematch'}</h2>
         <p className="fine">{bot ? 'Pick a game and how hard Baba Ayo plays.' : `Pick a game and a stake. ${opp.name} has to accept before it starts.`}</p>
       </div>
