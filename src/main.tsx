@@ -6,6 +6,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { applyPrints } from './art/prints';
+import { initAnalytics } from './lib/analytics';
 import { markDevice } from './lib/device';
 import { initInstall } from './lib/install';
 import { initPress } from './lib/press';
@@ -29,6 +30,7 @@ applyPrints();
 initSound();
 initPress();
 initInstall();
+initAnalytics();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
