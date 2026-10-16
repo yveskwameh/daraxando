@@ -117,7 +117,7 @@ export function Profile({ go }: { go: Go }) {
           onSave={async (name) => {
             if (await update({ name })) {
               setEditing(false);
-              toast('Name saved. Everyone sees it from your next match.');
+              toast.ok('Name saved. Others see it from your next match.');
             }
           }}
         />
@@ -224,7 +224,7 @@ export function Profile({ go }: { go: Go }) {
                     toast('Your account is deleted.', 4000);
                     leave();
                   } catch (err) {
-                    toast((err as Error).message);
+                    toast.error((err as Error).message);
                     setDeleting(false);
                   }
                 }}
@@ -251,7 +251,7 @@ export function Profile({ go }: { go: Go }) {
             value={profile.state}
             onPick={async (s: StateCode) => {
               setStateOpen(false);
-              if (await update({ state: s })) toast(`Saved. Quick match looks in ${stateName(s)} first.`);
+              if (await update({ state: s })) toast.ok(`Saved. Quick match looks in ${stateName(s)} first.`);
             }}
           />
         </div>
@@ -356,7 +356,7 @@ function NameEdit({ current, onSave, onCancel }: { current: string; onSave: (nam
         e.preventDefault();
         if (!clean) {
           buzz('invalid');
-          toast('Use 2 to 16 letters or numbers.');
+          toast.error('Use 2 to 16 letters or numbers.');
           return;
         }
         onSave(clean);

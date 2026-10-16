@@ -289,7 +289,7 @@ function ChangeRematch({ view: v, opp, onAsk, onBack }: Props & { onAsk: (ask: R
   const pickStake = (n: number) => {
     if (n > profile.cowries) {
       buzz('invalid');
-      toast(`You need ${fmt(n)} Dara Seeds for that stake.`);
+      toast.error(`You need ${fmt(n)} Dara Seeds for that stake.`);
       return;
     }
     buzz('tap');

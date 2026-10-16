@@ -26,7 +26,7 @@ export function BabaSheet({ open, onClose, mode, go }: { open: boolean; onClose:
       onClose();
       go({ name: 'play', id: matchId });
     } catch (err) {
-      toast((err as Error).message);
+      toast.error((err as Error).message);
       starting.current = false;
       setBusy(null);
     }

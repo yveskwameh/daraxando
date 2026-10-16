@@ -41,7 +41,7 @@ export function AccountReturn() {
         case 'saved':
           session.setProfile(r.profile);
           buzz('win');
-          toast('Saved with Google. Your progress is safe on any phone.');
+          toast.ok('Saved with Google. You can sign in on any phone.');
           break;
         case 'same':
           session.setProfile(r.profile);
@@ -50,18 +50,16 @@ export function AccountReturn() {
         case 'signedin':
           buzz('win');
           session.signIn(r.token, r.profile);
-          toast(`Welcome back, ${r.profile.name}.`);
+          toast.ok(`Welcome back, ${r.profile.name}.`);
           break;
         case 'switch':
           setAsk(r);
           return;
         case 'none':
-          toast(token
-            ? 'No player is saved with that Google account. Save this one from You.'
-            : 'No player is saved with that Google account. Tap Play now, then save your progress from You.', 5000);
+          toast.error(token ? 'No player uses that Google account yet.' : 'No player uses that Google account yet. Tap Play now to start.');
           break;
         case 'error':
-          toast(r.message, 4000);
+          toast.error(r.message);
       }
       session.returned();
     });
@@ -81,7 +79,7 @@ export function AccountReturn() {
         onSwitch={() => {
           buzz('win');
           session.signIn(ask.token, ask.profile);
-          toast(`You're now playing as ${ask.profile.name}.`);
+          toast.ok(`You're now playing as ${ask.profile.name}.`);
           done();
         }}
         onKeep={done}
@@ -117,7 +115,7 @@ export function CodeLink({ link, go }: { link: string; go: Go }) {
         case 'saved':
           session.setProfile(r.profile);
           buzz('win');
-          toast('Saved. Your progress is safe on any phone.');
+          toast.ok('Saved. You can sign in on any phone.');
           return home();
         case 'same':
           toast(`You're already playing as ${r.profile.name}.`);
@@ -125,7 +123,7 @@ export function CodeLink({ link, go }: { link: string; go: Go }) {
         case 'signedin':
           buzz('win');
           session.signIn(r.token, r.profile);
-          toast(peek.kind === 'save' ? `Saved. You're playing as ${name} here too.` : `Welcome back, ${name}.`);
+          toast.ok(peek.kind === 'save' ? `Saved. You're playing as ${name} here too.` : `Welcome back, ${name}.`);
           return home();
         case 'switch':
           setAsk(r);
@@ -181,7 +179,7 @@ export function CodeLink({ link, go }: { link: string; go: Go }) {
             onSwitch={() => {
               buzz('win');
               session.signIn(ask.token, ask.profile);
-              toast(`You're now playing as ${ask.profile.name}.`);
+              toast.ok(`You're now playing as ${ask.profile.name}.`);
               home();
             }}
             onKeep={home}

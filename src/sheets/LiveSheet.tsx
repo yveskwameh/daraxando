@@ -122,7 +122,7 @@ function Body({ go, onStartOwn, onChange, onBaba }: Props) {
   const { error } = useLobby(token, queue, onMatched, !!joining, onGone);
   useEffect(() => {
     if (error && joining) {
-      toast(error);
+      toast.error(error);
       setJoining(null);
     }
   }, [error, joining]);

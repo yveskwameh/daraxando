@@ -95,7 +95,7 @@ export function RoomWatch({ route, go }: { route: Route; go: Go }) {
       await api.cancelRoom(token, room.code);
       toast(room.stake ? `Room closed. ${guest.name} gets their stake back.` : 'Room closed.');
     } catch (err) {
-      toast((err as Error).message);
+      toast.error((err as Error).message);
     }
   };
 

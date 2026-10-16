@@ -48,7 +48,7 @@ function StakeBody({ profile, initial, onGo }: { profile: Profile; initial: numb
                 onClick={() => {
                   if (lock) {
                     buzz('invalid');
-                    toast(`${lock}.`);
+                    toast.error(`${lock}.`);
                     return;
                   }
                   buzz('tap');

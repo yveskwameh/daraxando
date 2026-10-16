@@ -319,7 +319,7 @@ export class Match extends DurableObject<Env> {
           if (short.length) {
             const msg = short.includes(player.id)
               ? `You need ${fmt(s.stake)} Dara Seeds to join this room.`
-              : `${host.name} doesn't have ${fmt(s.stake)} Dara Seeds for this room any more.`;
+              : `${host.name} no longer has ${fmt(s.stake)} Dara Seeds for this room.`;
             return this.reject(server, CLOSE.stake, 'stake-short', msg), done();
           }
           s.escrow = true;

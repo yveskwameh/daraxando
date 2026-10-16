@@ -16,6 +16,11 @@ Who we are building for (StatCounter, Nigeria mobile, September 2026): Chrome 68
 
 **Service worker:** `vite-plugin-pwa` 1.3.x with `generateSW` and `registerType: "prompt"`, so an update never reloads the page in the middle of a match. (Version 2.0 came out on 3 October 2026, too new to trust yet.) Precache only the app shell. API calls and WebSockets always go to the network. Add a Cloudflare `_headers` rule so `/assets/*` is cached for a year, which saves players data on every visit.
 
+**How an installed app gets a new version** (16 October 2026, `src/lib/pwa.ts`). Yves found his installed app kept the old version until he pulled down to refresh: bringing an app back from the background doesn't reload it, so the browser never looked for a new version, and a downloaded update waited until every window of the app was fully closed, which Android rarely does.
+- **Looking:** when the app opens, every time it comes back to the front (at most once a minute), and every 30 minutes while it's open. A look fetches only `sw.js`, a static file (free, and `no-cache` in `_headers`).
+- **Downloading:** in the background, while the old version keeps running.
+- **Switching:** Home shows **Reload** at the top. Without a tap, the app switches by itself the moment the player leaves it (switches apps or locks the phone), so it's the new version when they come back. Never during a match or a friend room, on a sign-in link, mid Google sign-in, or with a sheet open. Opened fresh with a new version already waiting, it switches straight away.
+
 **The install pop-up:** it is never part of the Home layout. It slides down from the top, over the screen, and only now and then:
 - Only in a browser tab, never once the game is installed (`display-mode: standalone`, or `navigator.standalone` on iPhone, or after `appinstalled`).
 - Once per visit at most: a few seconds after Home opens, or when the player comes back to Home after finishing a match.

@@ -101,7 +101,7 @@ export async function askReview(db: D1Database, p: Profile, raw: unknown, now: n
   const message = typeof raw === 'string' ? raw.replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '').trim() : '';
   if (message.length < APPEAL_MIN || message.length > APPEAL_MAX) return `Write ${APPEAL_MIN} to ${APPEAL_MAX} characters.`;
   const now0 = await appealOf(db, p.id, p.ban.at);
-  if (now0.askFrom === null) return 'Your request is waiting for an answer. It shows here when it comes.';
+  if (now0.askFrom === null) return 'Your request is still waiting for an answer.';
   if (now0.askFrom > now) {
     return `You can ask again from ${new Date(now0.askFrom).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'Africa/Lagos' })}.`;
   }
@@ -110,6 +110,6 @@ export async function askReview(db: D1Database, p: Profile, raw: unknown, now: n
 }
 
 /** What a banned player sees when they try to play someone. */
-export const BANNED_MESSAGE = "Your account can't play other people right now. You can still play Baba Ayo.";
+export const BANNED_MESSAGE = "You can't play other people right now. Baba Ayo still works.";
 
 export const isBanned = (p: Pick<Profile, 'ban'>) => !!p.ban;

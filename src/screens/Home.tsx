@@ -205,7 +205,7 @@ export function Home({ go }: { go: Go }) {
             onClick={() => {
               const who = ask;
               setAsk(null);
-              api.addFriend(token, who.id).then(() => { buzz('win'); toast(`Friend streak with ${who.name} started.`); }, (err: Error) => toast(err.message));
+              api.addFriend(token, who.id).then(() => { buzz('win'); toast.ok(`Friend streak with ${who.name} started.`); }, (err: Error) => toast.error(err.message));
             }}
           >
             Accept

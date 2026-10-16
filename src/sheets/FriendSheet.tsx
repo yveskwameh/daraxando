@@ -36,7 +36,7 @@ export function inviteText(code: string, stake: number) {
 export async function copyCode(code: string) {
   if (await copyText(code)) {
     buzz('tap');
-    toast(`Code ${code} copied.`);
+    toast.ok(`Code ${code} copied.`);
     return true;
   }
   toast(`Copy did not work here. The code is ${code}.`);
@@ -77,7 +77,7 @@ export async function shareInvite(code: string, stake: number) {
     }
   }
   if (await copyText(`${text} ${url}`)) {
-    toast('Link copied. Send it on WhatsApp.');
+    toast.ok('Link copied. Send it on WhatsApp.');
     return true;
   }
   toast(`Copy did not work here. The code is ${code}.`);
@@ -168,7 +168,7 @@ function Invite({ mode, go, onClose }: { mode: ModeId; go: Go; onClose: () => vo
   const pickStake = async (n: number) => {
     if (n > profile.cowries) {
       buzz('invalid');
-      toast(`You need ${fmt(n)} Dara Seeds for that stake.`);
+      toast.error(`You need ${fmt(n)} Dara Seeds for that stake.`);
       return;
     }
     const before = stake;
@@ -180,7 +180,7 @@ function Invite({ mode, go, onClose }: { mode: ModeId; go: Go; onClose: () => vo
       await api.setRoomStake(token, code, n);
     } catch (err) {
       setStake(before);
-      toast((err as Error).message);
+      toast.error((err as Error).message);
     }
   };
 

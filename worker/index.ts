@@ -94,10 +94,10 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     const device = (req.headers.get('x-device') ?? '').slice(0, 64) || 'none';
     const ip = req.headers.get('cf-connecting-ip') ?? 'local';
     if (env.DEVICE_LIMITER && !(await env.DEVICE_LIMITER.limit({ key: `d:${device}` })).success) {
-      return fail(429, 'Too many new players from this phone. Try again in a minute.');
+      return fail(429, 'Too many new players from this phone. Wait a minute.');
     }
     if (env.IP_LIMITER && !(await env.IP_LIMITER.limit({ key: `ip:${ip}` })).success) {
-      return fail(429, 'Lots of new players on your network right now. Try again in a minute.');
+      return fail(429, 'Lots of new players on your network. Wait a minute.');
     }
     const b = await body<{ name: string; avatar: string; state: string; age: boolean }>(req);
     if (b.age !== true) return fail(400, 'Dara X&O is for players aged 13 and up.');

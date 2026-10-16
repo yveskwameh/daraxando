@@ -67,7 +67,7 @@ export default function SaveSheet({ open, onClose, intent, back, has }: Props) {
       api.me(token).then(({ profile: p }) => {
         session.setProfile(p);
         if (p.saved) {
-          toast('Saved with Google. Your progress is safe on any phone.');
+          toast.ok('Saved with Google. You can sign in on any phone.');
           onClose();
         } else setBusy('');
       }, () => setBusy(''));
@@ -82,7 +82,7 @@ export default function SaveSheet({ open, onClose, intent, back, has }: Props) {
       case 'saved':
         session.setProfile(r.profile);
         buzz('win');
-        toast(r.via === 'google' ? 'Saved with Google. Your progress is safe on any phone.' : 'Saved. Your progress is safe on any phone.');
+        toast.ok(r.via === 'google' ? 'Saved with Google. You can sign in on any phone.' : 'Saved. You can sign in on any phone.');
         onClose();
         return;
       case 'same':
@@ -92,7 +92,7 @@ export default function SaveSheet({ open, onClose, intent, back, has }: Props) {
         return;
       case 'signedin':
         buzz('win');
-        toast(`Welcome back, ${r.profile.name}.`);
+        toast.ok(`Welcome back, ${r.profile.name}.`);
         onClose();
         session.signIn(r.token, r.profile);
         return;
@@ -100,7 +100,7 @@ export default function SaveSheet({ open, onClose, intent, back, has }: Props) {
         setStep({ s: 'switch', result: r });
         return;
       case 'none':
-        setError('No player is saved with that Google account.');
+        setError('No player uses that Google account yet.');
         return;
       case 'error':
         setError(r.message);
@@ -125,7 +125,7 @@ export default function SaveSheet({ open, onClose, intent, back, has }: Props) {
     if (busy) return;
     if (!looksLikeEmail(to)) {
       buzz('invalid');
-      setError('Check your email address. It should look like name@example.com.');
+      setError("That email address doesn't look right.");
       return;
     }
     setBusy('email');
@@ -190,14 +190,14 @@ export default function SaveSheet({ open, onClose, intent, back, has }: Props) {
             try {
               const r = await auth.emailStart(token, step.email, intent);
               setStep({ ...step, id: r.id, kind: r.kind, sentAt: Date.now() });
-              toast('New code sent. Use the newest email.');
+              toast.ok('New code sent. Use the newest email.');
             } catch (err) {
-              toast((err as Error).message);
+              toast.error((err as Error).message);
             }
           }}
           onSavedElsewhere={(p) => {
             session.setProfile(p);
-            toast('Saved. Your progress is safe on any phone.');
+            toast.ok('Saved. You can sign in on any phone.');
             onClose();
           }}
         />
@@ -209,7 +209,7 @@ export default function SaveSheet({ open, onClose, intent, back, has }: Props) {
           current={profile}
           onSwitch={() => {
             buzz('win');
-            toast(`You're now playing as ${step.result.profile.name}.`);
+            toast.ok(`You're now playing as ${step.result.profile.name}.`);
             onClose();
             session.signIn(step.result.token, step.result.profile);
           }}

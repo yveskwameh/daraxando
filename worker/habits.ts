@@ -157,7 +157,7 @@ export const placeBet = (db: D1Database, id: string, now = Date.now()) =>
   spend(db, id, BET_STAKE, 'streak-stake', (h, streak, today) => {
     if (betNow(h, streak, today)?.status === 'on') return { error: 'You already have a streak stake going.' };
     const now = streakNow(h, streak, today);
-    if (now.streak < 1) return { error: 'Play a match first to start a streak, then place your stake.' };
+    if (now.streak < 1) return { error: 'Play a match first to start a streak.' };
     const playedToday = now.playedToday;
     h.bet = { stake: BET_STAKE, days: playedToday ? 1 : 0, placed: today, status: 'on', ended: null };
     return { streak };

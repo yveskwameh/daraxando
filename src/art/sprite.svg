@@ -280,6 +280,7 @@
   <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 5l7 8h-4.5v6h-5v-6H5z" fill="currentColor"/></symbol>
   <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 19l-7-8h4.5V5h5v6H19z" fill="currentColor"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 5.5v8" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="12" cy="18.2" r="1.9" fill="currentColor"/></symbol>
   <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M3 7h3.5c5 0 6 10 11 10H21M3 17h3.5c2 0 3.2-1.6 4.2-3.5M21 7h-3.5c-2 0-3.2 1.6-4.2 3.5M18 4l3 3-3 3M18 14l3 3-3 3" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </defs>
 </svg>

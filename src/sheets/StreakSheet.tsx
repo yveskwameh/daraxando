@@ -62,7 +62,7 @@ function Mine() {
   const buy = async (action: 'freeze' | 'restore' | 'bet', price: number, done: string) => {
     if (profile.cowries < price) {
       buzz('invalid');
-      toast(`You need ${fmt(price)} Dara Seeds for that.`);
+      toast.error(`You need ${fmt(price)} Dara Seeds for that.`);
       return;
     }
     setBusy(action);
@@ -71,10 +71,10 @@ function Mine() {
       setProfile(r.profile);
       buzz('win');
       sfx.found();
-      toast(done);
+      toast.ok(done);
     } catch (err) {
       buzz('invalid');
-      toast((err as Error).message);
+      toast.error((err as Error).message);
     } finally {
       setBusy(null);
     }
@@ -168,7 +168,7 @@ function Mine() {
             onClick={() => {
               if (now.streak < 1) {
                 buzz('invalid');
-                toast('Play a match first to start a streak, then place your stake.');
+                toast.error('Play a match first to start a streak.');
                 return;
               }
               void buy('bet', BET_STAKE, `Stake placed. Keep your streak for ${BET_DAYS} days to get ${fmt(BET_WIN)}.`);
@@ -209,10 +209,10 @@ function Friends() {
     try {
       setData(await api[fn](token, id));
       buzz('tap');
-      if (done) toast(done);
+      if (done) toast.ok(done);
     } catch (err) {
       buzz('invalid');
-      toast((err as Error).message);
+      toast.error((err as Error).message);
     } finally {
       setBusy(null);
     }

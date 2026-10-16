@@ -39,7 +39,7 @@ export default function BanSheet({ open, ban, onClose, onBaba }: {
           onSent={(v) => {
             setView(v);
             setStep('info');
-            toast('Sent. The answer shows here.', 4000);
+            toast.ok('Sent. The answer shows here.');
           }}
         />
       ) : (

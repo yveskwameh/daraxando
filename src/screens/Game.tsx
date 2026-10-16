@@ -381,7 +381,7 @@ function Match({ id, go }: { id: string; go: Go }) {
       'room-full': ['This room is full', 'Two players are already in it. Ask your friend for a new code.'],
       replaced: ['Open in another tab', 'You opened this match somewhere else, so this tab stepped aside.'],
       'stake-short': ['Not enough Dara Seeds', m.error.message],
-      banned: ["You can't play other people right now", m.error.message],
+      banned: ["You can't play other people right now", 'Baba Ayo still works. Find him on Home.'],
     };
     const [head, text] = copy[m.error.code] ?? ['Something is off with this match', m.error.message];
     return (
@@ -753,14 +753,14 @@ function FriendWaiting({ code, stake, modeName, bo, isHost, onClose }: { code: s
   const change = async (n: number) => {
     if (n > profile.cowries) {
       buzz('invalid');
-      toast(`You need ${fmt(n)} Dara Seeds for that stake.`);
+      toast.error(`You need ${fmt(n)} Dara Seeds for that stake.`);
       return;
     }
     try {
       await api.setRoomStake(token, code, n);
       prefs.set({ friendStake: n });
     } catch (err) {
-      toast((err as Error).message);
+      toast.error((err as Error).message);
     }
   };
   return (

@@ -121,7 +121,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return true;
       } catch (err) {
         setProfile(before);
-        toast((err as Error).message);
+        toast.error((err as Error).message);
         return false;
       }
     },

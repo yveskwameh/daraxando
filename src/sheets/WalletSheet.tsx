@@ -24,9 +24,9 @@ export function WalletSheet({ open, onClose }: { open: boolean; onClose: () => v
       const res = await api.sapa(token);
       setProfile(res.profile);
       buzz('win');
-      toast(`Sapa relief: you have ${fmt(SAPA_TO)} Dara Seeds again.`);
+      toast.ok(`Sapa relief: you have ${fmt(SAPA_TO)} Dara Seeds again.`);
     } catch (err) {
-      toast((err as Error).message);
+      toast.error((err as Error).message);
     }
     setBusy(false);
   };

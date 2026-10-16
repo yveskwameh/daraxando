@@ -190,7 +190,7 @@ export async function authRoute(req: Request, env: Env, url: URL, me: Profile | 
   /* --- Google, step 1: where to send the player --- */
   if (path === '/api/auth/google/start' && method === 'POST') {
     if (await limited(env.AUTH_LIMITER, `g:${phone}`)) return fail(429, SLOW);
-    if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return fail(503, "Google sign-in isn't set up on this copy yet. Use your email instead.");
+    if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return fail(503, "Google sign-in isn't set up here yet. Use your email.");
     const b = await body<{ intent: Intent; back: string }>(req);
     const intent = isIntent(b.intent) ? b.intent : 'save';
     // Back to the screen they left: You, Home, or a friend's room they were invited to.
@@ -249,7 +249,7 @@ export async function authRoute(req: Request, env: Env, url: URL, me: Profile | 
     // Only the phone that started it can collect a player. An iPhone may finish Google in Safari
     // instead of the installed app: the save still happened, so say where to go.
     if (d.r !== (me?.id ?? null)) {
-      const message = d.saved ? 'Saved with Google. Go back to the Dara X&O app to keep playing.' : 'Google sign-in started on another screen. Try again here.';
+      const message = d.saved ? 'Saved with Google. Go back to the Dara X&O app.' : 'Google sign-in started somewhere else. Try again here.';
       return json({ status: 'error', message } satisfies AuthResult);
     }
     return json(await outcome(env, 'google', d.t, me?.id ?? null, d.saved));
@@ -259,15 +259,15 @@ export async function authRoute(req: Request, env: Env, url: URL, me: Profile | 
   if (path === '/api/auth/email/start' && method === 'POST') {
     const b = await body<{ email: string; intent: Intent }>(req);
     const email = cleanEmail(b.email);
-    if (!email) return fail(400, 'Check your email address. It should look like name@example.com.');
+    if (!email) return fail(400, "That email address doesn't look right.");
     const intent = isIntent(b.intent) ? b.intent : 'save';
     if (await limited(env.EMAIL_LIMITER, `s:${phone}`)) return fail(429, 'Wait a minute before asking for another code.');
     const [recent, today] = await db.batch<{ n: number }>([
       db.prepare('SELECT COUNT(*) AS n FROM email_codes WHERE email = ? AND created_at > ?').bind(email, now - 3_600_000),
       db.prepare('SELECT COUNT(*) AS n FROM email_codes WHERE created_at > ?').bind(now - 86_400_000),
     ]);
-    if ((recent.results[0]?.n ?? 0) >= CODES_PER_HOUR) return fail(429, 'We sent a few codes to this address already. Use the newest one, or try again in an hour.');
-    if ((today.results[0]?.n ?? 0) >= EMAILS_PER_DAY) return fail(503, 'Email codes are resting for today. Use Google, or try again tomorrow.');
+    if ((recent.results[0]?.n ?? 0) >= CODES_PER_HOUR) return fail(429, 'Use the newest code we sent, or try again in an hour.');
+    if ((today.results[0]?.n ?? 0) >= EMAILS_PER_DAY) return fail(503, 'Email codes are done for today. Use Google, or try tomorrow.');
 
     // Who the code is for. Nothing here says whose player an address belongs to: that only shows once the code is typed.
     const owner = await playerByEmail(db, email);
@@ -276,9 +276,9 @@ export async function authRoute(req: Request, env: Env, url: URL, me: Profile | 
     let name: string;
     if (owner) {
       // Its own address, by email or through Google: codes to it already sign in to this player.
-      if (owner === me?.id) return fail(409, 'This email already signs in to this player. Use it with a code on any phone.');
+      if (owner === me?.id) return fail(409, 'This email already signs in to this player.');
       const p = await getPlayer(db, owner);
-      if (!p) return fail(404, 'No player is saved with this email.');
+      if (!p) return fail(404, 'No player uses this email.');
       kind = 'signin';
       name = p.name;
     } else if (me && intent === 'save') {
@@ -288,7 +288,7 @@ export async function authRoute(req: Request, env: Env, url: URL, me: Profile | 
       playerId = me.id;
       name = me.name;
     } else {
-      return fail(404, 'No player is saved with this email. Check the spelling, or use Google if you saved with Google.');
+      return fail(404, 'No player uses this email. Check the spelling.');
     }
 
     // Per address too, counted only when an email would really go out.
@@ -313,9 +313,9 @@ export async function authRoute(req: Request, env: Env, url: URL, me: Profile | 
     else if (sent !== 'sent') {
       await db.prepare('DELETE FROM email_codes WHERE id = ?').bind(id).run();
       const why = {
-        unset: "Email codes aren't set up on this copy yet. Use Google instead.",
+        unset: "Email codes aren't set up here yet. Use Google.",
         busy: 'Email codes are busy. Try again in a minute, or use Google.',
-        quota: 'Email codes are resting for today. Use Google, or try again tomorrow.',
+        quota: 'Email codes are done for today. Use Google, or try tomorrow.',
         failed: "We couldn't send the email. Check the address, then try again.",
       }[sent];
       return fail(503, why);
@@ -349,7 +349,7 @@ export async function authRoute(req: Request, env: Env, url: URL, me: Profile | 
       }
       if (!sameText(row.code_hash, await hmac(key, `code:${row.id}:${code}`))) {
         const left = CODE_TRIES - row.attempts;
-        return fail(400, left > 0 ? `That code isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : "That code isn't right, and that was the last try. Ask for a new code.");
+        return fail(400, left > 0 ? `That code isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : "Wrong code, and no tries left. Ask for a new one.");
       }
     }
     // One use only, even if the code and the link arrive at the same moment.
@@ -393,7 +393,7 @@ export async function authRoute(req: Request, env: Env, url: URL, me: Profile | 
 
 /** Why a code can't be used any more, or null if it can. The link isn't limited by wrong code tries. */
 function unusable(row: CodeRow, now: number, byLink: boolean) {
-  if (row.used_at) return 'That code was already used. Ask for a new one if you need it.';
+  if (row.used_at) return 'That code was already used. Ask for a new one.';
   if (row.expires_at <= now) return 'That code has run out. Ask for a new one.';
   if (!byLink && row.attempts >= CODE_TRIES) return 'Too many wrong tries. Ask for a new code.';
   return null;
@@ -439,7 +439,7 @@ async function fromGoogle(env: Env, url: URL, asked: { v: string; p: string | nu
     }
   } catch (err) {
     console.error('[google]', err);
-    return { k: 'error', m: "Couldn't reach Google. Check your connection, then try again." };
+    return { k: 'error', m: "Couldn't reach Google. Check your connection and try again." };
   }
   const claims = readIdToken(data.id_token, env.GOOGLE_CLIENT_ID!, now);
   if (!claims) return { k: 'error', m: "Google sign-in didn't finish. Try again." };
