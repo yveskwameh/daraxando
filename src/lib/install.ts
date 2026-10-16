@@ -5,13 +5,12 @@
  * so our own Install button can show the browser's one-tap prompt. Safari has no such event,
  * so iPhones get step-by-step directions instead.
  *
- * The pop-up that suggests installing appears only in a browser tab, only on Home, at most
- * once every three days, and never again for two weeks after someone closes it. Settings
- * always has "Install the app".
+ * The pop-up that suggests installing is one of the asks (src/lib/asks.ts, shared/asks.ts): on
+ * Home after a match, from the second day a player plays, only in a browser tab, and on Android
+ * only once the browser has offered its install box. Settings always has "Install the app".
  */
 import { useSyncExternalStore } from 'react';
-import { isStandalone } from './device';
-import { KEYS, store } from './storage';
+import { protectStorage } from './device';
 
 interface InstallEvent extends Event {
   prompt(): Promise<void>;
@@ -20,12 +19,8 @@ interface InstallEvent extends Event {
 
 let deferred: InstallEvent | null = null;
 let popOpen = false;
-let shownThisVisit = false;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
-
-const GAP_MS = 3 * 86_400_000;
-const SNOOZE_MS = 14 * 86_400_000;
 
 export function initInstall() {
   addEventListener('beforeinstallprompt', (e) => {
@@ -36,6 +31,7 @@ export function initInstall() {
     deferred = null;
     popOpen = false;
     emit();
+    protectStorage();
   });
 }
 
@@ -53,24 +49,15 @@ export async function promptInstall() {
   return true;
 }
 
-/** Asks for the pop-up. It only appears if the rules above allow it. */
-export function maybeShowInstallPop() {
-  if (shownThisVisit || isStandalone()) return;
-  const saved = store.json(KEYS.install, { lastShown: 0, snoozeUntil: 0 });
-  const now = Date.now();
-  if (now < saved.snoozeUntil || now - saved.lastShown < GAP_MS) return;
-  shownThisVisit = true;
-  store.set(KEYS.install, JSON.stringify({ ...saved, lastShown: now }));
+/** Shows the pop-up. src/lib/asks.ts decides when. */
+export function showInstallPop() {
   popOpen = true;
   emit();
 }
 
-export function closeInstallPop(snooze: boolean) {
+export function closeInstallPop() {
+  if (!popOpen) return;
   popOpen = false;
-  if (snooze) {
-    const saved = store.json(KEYS.install, { lastShown: 0, snoozeUntil: 0 });
-    store.set(KEYS.install, JSON.stringify({ ...saved, snoozeUntil: Date.now() + SNOOZE_MS }));
-  }
   emit();
 }
 

@@ -8,6 +8,11 @@
  */
 import type { Kind } from '../shared/progression';
 
+/** Where notifications were turned on (the phone sends it: src/lib/push.ts). */
+export const PUSH_FROM = ['streak-ask', 'friends-ask', 'settings'] as const;
+export type PushFrom = (typeof PUSH_FROM)[number];
+export const isPushFrom = (x: unknown): x is PushFrom => typeof x === 'string' && (PUSH_FROM as readonly string[]).includes(x);
+
 /** One counter, added to by `by`. Goes in the same batch as the change it counts, where there is one. */
 export const bump = (db: D1Database, day: string, name: string, by = 1) =>
   db.prepare('INSERT INTO stat_days (day, name, n) VALUES (?1, ?2, ?3) ON CONFLICT (day, name) DO UPDATE SET n = n + ?3').bind(day, name, by);
@@ -38,6 +43,10 @@ export const STAT = {
   joinMissed: 'qm:join-missed',
   /** Friend rooms made. Friend matches played are `m:friend:*`. */
   roomMade: 'room:made',
+  /** A guest saved their progress from the ask on Home (src/lib/asks.ts). All saves are counted from `identities`. */
+  savedFromAsk: 'ask:save',
+  /** Notifications turned on: from the streak ask on Home, the friend ask, or the Settings switches. */
+  pushOn: (from: PushFrom) => `push:on:${from}`,
   /** Set once the report for a day has gone out, so a retried run doesn't send it twice. */
   reportSent: 'report:sent',
 } as const;

@@ -16,7 +16,7 @@ export function PushAsk({ kind, title, line, token, onDone }: { kind: PushKind; 
   const [busy, setBusy] = useState(false);
   const turnOn = async () => {
     setBusy(true);
-    const r = await setPush(token, { ...pushPrefs(), [kind]: true });
+    const r = await setPush(token, { ...pushPrefs(), [kind]: true }, kind === 'streak' ? 'streak-ask' : 'friends-ask');
     if (r.ok) toast.ok(DONE[kind]);
     else if (r.why === 'blocked') toast.error("Notifications are blocked. Allow them in your phone's settings.");
     else if (r.why === 'unsupported') toast.error("This phone can't show notifications here.");

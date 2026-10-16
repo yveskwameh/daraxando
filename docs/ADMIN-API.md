@@ -117,7 +117,7 @@ Added 16 October 2026 (milestone 6, `docs/BACKEND.md`, "Game numbers"). Reading 
 
 | Request | What you get |
 | --- | --- |
-| `GET /api/admin/stats?day=2026-10-16` | One day's numbers as JSON: `players` (played, Duolingo's buckets, at risk, `curr`), `first` (the first-game funnel), `matches` (by kind, mode and stake), `quick` (Quick match joins and waits), `extra`, and `usage` (the free plan, or `null` without the analytics secrets). Today's numbers grow as the day goes on |
+| `GET /api/admin/stats?day=2026-10-16` | One day's numbers as JSON: `players` (played, Duolingo's buckets, at risk, `curr`), `first` (the first-game funnel), `matches` (by kind, mode and stake), `quick` (Quick match joins and waits), `extra` (phones with notifications on, reminders sent, open ban reviews, `savedFromAsk` and `pushOn` by where), and `usage` (the free plan, or `null` without the analytics secrets). Today's numbers grow as the day goes on |
 | `GET /api/admin/report?day=2026-10-16` | The 8 am email for that day, as a web page. Add `&format=text` for the plain-text version |
 | `POST /api/admin/report?day=2026-10-16` | Sends that day's email now to `REPORT_EMAIL`, even if it already went. 409 if the copy has no `REPORT_EMAIL` |
 

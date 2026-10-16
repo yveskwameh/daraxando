@@ -452,7 +452,7 @@ function NotifyRows() {
   }
   const flip = async (k: PushKind) => {
     setBusy(true);
-    const r = await setPush(token, { ...on, [k]: !on[k] });
+    const r = await setPush(token, { ...on, [k]: !on[k] }, 'settings');
     setBusy(false);
     if (r.ok) {
       setOn(r.prefs);

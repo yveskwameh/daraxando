@@ -22,6 +22,8 @@ import { getPlayer } from './db';
 import { codeEmail, type Email } from './email';
 import type { Env } from './env';
 import { body, fail, json, phoneKey, secretOf } from './http';
+import { bump, STAT } from './stats';
+import { dayKey } from '../shared/progression';
 
 export const CODE_MINUTES = 10;
 export const CODE_TRIES = 5;
@@ -164,6 +166,10 @@ async function outcome(env: Env, via: AuthVia, target: string, requester: string
   return { status: requester ? 'switch' : 'signedin', via, profile, token: await signToken(target, secretOf(env)) };
 }
 
+/** A save that started from the ask on Home, for the 8 am email. Never stops the save itself. */
+const countAskSave = (db: D1Database, now: number) =>
+  bump(db, dayKey(now), STAT.savedFromAsk).run().then(() => undefined, (err) => console.error('[stats]', err));
+
 /** Deletes a player and everything kept about them. Finished match rows stay, holding only a random id that now leads nowhere. */
 export async function deleteAccount(db: D1Database, id: string) {
   await db.batch([
@@ -240,7 +246,7 @@ export async function authRoute(req: Request, env: Env, url: URL, me: Profile | 
   /* --- Google, step 3: the app collects what happened --- */
   if (path === '/api/auth/finish' && method === 'POST') {
     if (await limited(env.AUTH_LIMITER, `f:${phone}`)) return fail(429, SLOW);
-    const b = await body<{ id: string }>(req);
+    const b = await body<{ id: string; from?: string }>(req);
     const row = typeof b.id === 'string' && /^[A-Za-z0-9_-]{16,64}$/.test(b.id)
       ? await db.prepare("DELETE FROM auth_handoffs WHERE id = ? AND kind = 'result' RETURNING data, expires_at").bind(b.id).first<{ data: string; expires_at: number }>()
       : null;
@@ -254,7 +260,9 @@ export async function authRoute(req: Request, env: Env, url: URL, me: Profile | 
       const message = d.saved ? 'Saved with Google. Go back to the Dara X&O app.' : 'Google sign-in started somewhere else. Try again here.';
       return json({ status: 'error', message } satisfies AuthResult);
     }
-    return json(await outcome(env, 'google', d.t, me?.id ?? null, d.saved));
+    const result = await outcome(env, 'google', d.t, me?.id ?? null, d.saved);
+    if (result.status === 'saved' && b.from === 'ask') await countAskSave(db, now);
+    return json(result);
   }
 
   /* --- email, step 1: send a code --- */
@@ -328,7 +336,7 @@ export async function authRoute(req: Request, env: Env, url: URL, me: Profile | 
   /* --- email, step 2: the code, or the link from the email --- */
   if (path === '/api/auth/email/verify' && method === 'POST') {
     if (await limited(env.AUTH_LIMITER, `v:${phone}`)) return fail(429, SLOW);
-    const b = await body<{ id: string; code: string; link: string }>(req);
+    const b = await body<{ id: string; code: string; link: string; from?: string }>(req);
     const key = secretOf(env);
     let row: CodeRow | null;
     if (typeof b.link === 'string') {
@@ -359,6 +367,7 @@ export async function authRoute(req: Request, env: Env, url: URL, me: Profile | 
     if (!claimed) return fail(410, 'That code was already used.');
     const result = await useCode(env, row, me, now);
     if (result.status !== 'error') await db.prepare('UPDATE email_codes SET result = ? WHERE id = ?').bind(result.status, row.id).run();
+    if (result.status === 'saved' && b.from === 'ask') await countAskSave(db, now);
     return json(result);
   }
 

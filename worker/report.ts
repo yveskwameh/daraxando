@@ -18,7 +18,7 @@ import { dayKey } from '../shared/progression';
 import { KEEP_CODES_MS, sendEmail, type Sent } from './accounts';
 import type { Email } from './email';
 import type { Env } from './env';
-import { STAT, WAIT_BUCKETS } from './stats';
+import { PUSH_FROM, STAT, WAIT_BUCKETS, type PushFrom } from './stats';
 
 const DAY_MS = 86_400_000;
 /** 8 am Lagos, all year (Lagos doesn't change its clocks). The same line is in wrangler.jsonc. */
@@ -86,7 +86,15 @@ export interface Report {
     leftWaits: Buckets;
     leftAvgS: number | null;
   };
-  extra: { notifyPhones: number; reminders: number | null; appealsOpen: number };
+  extra: {
+    notifyPhones: number;
+    reminders: number | null;
+    appealsOpen: number;
+    /** Saves that started from the ask on Home. All saves are `players.saved`. */
+    savedFromAsk: number;
+    /** Notifications turned on, by where (worker/stats.ts, STAT.pushOn). */
+    pushOn: Record<PushFrom, number>;
+  };
   usage: Usage | null;
 }
 
@@ -214,7 +222,13 @@ export async function gameNumbers(env: Env, day: string): Promise<Omit<Report, '
       leftWaits,
       leftAvgS: avg(stats.get(STAT.leftMs) ?? 0, left),
     },
-    extra: { notifyPhones: num(one(11).n), reminders, appealsOpen: num(one(12).n) },
+    extra: {
+      notifyPhones: num(one(11).n),
+      reminders,
+      appealsOpen: num(one(12).n),
+      savedFromAsk: stats.get(STAT.savedFromAsk) ?? 0,
+      pushOn: Object.fromEntries(PUSH_FROM.map((f) => [f, stats.get(STAT.pushOn(f)) ?? 0])) as Record<PushFrom, number>,
+    },
   };
 }
 
@@ -415,10 +429,22 @@ export function reportEmail(r: Report): Email {
     ],
   });
 
-  const extraRows: Rowx[] = [['Phones with notifications on', fmt(r.extra.notifyPhones)]];
+  // The asks on Home (src/lib/asks.ts): how many said yes, and where.
+  const on = r.extra.pushOn;
+  const turnedOn = on['streak-ask'] + on['friends-ask'] + on.settings;
+  sections.push({
+    title: 'Saving and notifications',
+    rows: [
+      ['Saved their progress', fmt(p.saved), `${fmt(r.extra.savedFromAsk)} from the ask on Home`],
+      ['Turned on notifications', fmt(turnedOn), turnedOn ? `${fmt(on['streak-ask'])} from the streak ask, ${fmt(on['friends-ask'])} from the friend ask, ${fmt(on.settings)} in Settings` : undefined],
+      ['Phones with notifications on', fmt(r.extra.notifyPhones)],
+    ],
+  });
+
+  const extraRows: Rowx[] = [];
   if (r.extra.reminders !== null) extraRows.push(['Streak reminders sent at 7 pm', fmt(r.extra.reminders)]);
   if (r.extra.appealsOpen) extraRows.push(['Ban reviews waiting for you', fmt(r.extra.appealsOpen), 'Answer them through the admin API']);
-  sections.push({ title: 'Also', rows: extraRows });
+  if (extraRows.length) sections.push({ title: 'Also', rows: extraRows });
 
   // The free plan.
   let planHtml = '';

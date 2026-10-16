@@ -23,8 +23,9 @@ Who we are building for (StatCounter, Nigeria mobile, September 2026): Chrome 68
 
 **The install pop-up:** it is never part of the Home layout. It slides down from the top, over the screen, and only now and then:
 - Only in a browser tab, never once the game is installed (`display-mode: standalone`, or `navigator.standalone` on iPhone, or after `appinstalled`).
-- Once per visit at most: a few seconds after Home opens, or when the player comes back to Home after finishing a match.
-- It hides itself after 12 seconds. The × snoozes it for 14 days.
+- One of the asks (16 October 2026, `shared/asks.ts`, `docs/RETENTION.md` section 7): on Home after a match that wasn't a loss, from the second day a player plays, one ask per visit. On Android only once Chrome has offered its install box (`beforeinstallprompt`); on an iPhone in Safari it comes before the save ask.
+- It hides itself after 12 seconds. Once shown, it waits 14 days, then every 30, before it can come back.
+- Installed (or with notifications on), the game asks Chrome to keep its data when the phone runs low on space (`protectStorage` in `src/lib/device.ts`). Chrome decides silently; skipped on browsers that would show a box.
 - "Install the app" stays in You, then Settings, permanently.
 - Chrome, Opera and Samsung Internet on Android fire `beforeinstallprompt`. We keep the event, and Install opens the browser's own one-tap install.
 - iPhone has no install event. Install opens a sheet with the steps for iOS 26:
