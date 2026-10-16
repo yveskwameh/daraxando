@@ -30,8 +30,10 @@
     { "tag": "v1", "new_sqlite_classes": ["Match", "Matchmaker"] },
     { "tag": "v2", "new_sqlite_classes": ["Notifier"] }
   ],
-  // The 7 pm streak reminders (shared/notify.ts): 18:00 UTC is 7 pm in Lagos.
-  "triggers": { "crons": ["0 18 * * *"] },
+  // Two daily jobs (worker/index.ts, scheduled): the 8 am report (worker/report.ts) at 07:00 UTC and
+  // the 7 pm streak reminders (shared/notify.ts) at 18:00 UTC. The free plan allows 5 schedules per
+  // account, and each copy uses 2.
+  "triggers": { "crons": ["0 7 * * *", "0 18 * * *"] },
 
   // Player profiles, ratings and match history. On your Mac this is a local database
   // (in .wrangler), so the id below is a placeholder that never leaves your machine.
@@ -90,7 +92,7 @@
         { "tag": "v1", "new_sqlite_classes": ["Match", "Matchmaker"] },
         { "tag": "v2", "new_sqlite_classes": ["Notifier"] }
       ],
-      "triggers": { "crons": ["0 18 * * *"] },
+      "triggers": { "crons": ["0 7 * * *", "0 18 * * *"] },
       "d1_databases": [
         { "binding": "DB", "database_name": "daraxando-staging", "database_id": "d8f9b78c-21fc-45d1-82a3-cb5b3effbc13", "migrations_dir": "migrations" }
       ],
@@ -122,7 +124,7 @@
         { "tag": "v1", "new_sqlite_classes": ["Match", "Matchmaker"] },
         { "tag": "v2", "new_sqlite_classes": ["Notifier"] }
       ],
-      "triggers": { "crons": ["0 18 * * *"] },
+      "triggers": { "crons": ["0 7 * * *", "0 18 * * *"] },
       "d1_databases": [
         { "binding": "DB", "database_name": "daraxando", "database_id": "PRODUCTION_DATABASE_ID", "migrations_dir": "migrations" }
       ],

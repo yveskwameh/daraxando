@@ -7,6 +7,7 @@ import { isBotLevel, type BotLevel } from '../shared/bot';
 import { AVATARS, isOpen, PIECES, PRINTS } from '../shared/collections';
 import { DEFAULT_MODE, isModeId, type ModeId } from '../shared/modes';
 import { isStateCode, zoneOf } from '../shared/places';
+import { dayKey } from '../shared/progression';
 import {
   CLOSE, CODE_ALPHABET, CODE_LENGTH, cleanName, isMatchId, isRoomCode, type LiveGame, type Profile, type PublicPlayer,
 } from '../shared/protocol';
@@ -22,6 +23,8 @@ import { adminRoute } from './admin';
 import { pushEndpointOk, pushReady, sendPush } from './push';
 import { NAME_PROBLEM_MESSAGE, nameProblem } from './names';
 import { appealOf, askReview, BANNED_MESSAGE, deviceOf, isBanned } from './safety';
+import { bump, STAT } from './stats';
+import { REPORT_CRON, sendReport } from './report';
 
 export { Match } from './match';
 export { Matchmaker } from './matchmaker';
@@ -261,7 +264,10 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     for (let attempt = 0; attempt < 5; attempt++) {
       const code = roomCode();
       const stub = env.MATCH.get(env.MATCH.idFromName(code));
-      if ((await stub.init({ id: code, kind: 'friend', mode, stake, players: [toPublic(me)] })).ok) return json({ matchId: code });
+      if ((await stub.init({ id: code, kind: 'friend', mode, stake, players: [toPublic(me)] })).ok) {
+        await bump(env.DB, dayKey(now), STAT.roomMade).run().catch((err) => console.error('[stats]', err));
+        return json({ matchId: code });
+      }
     }
     return fail(503, 'Could not make a room. Try again.');
   }
@@ -397,8 +403,10 @@ async function cachedTop(env: Env, url: URL, state: string | null) {
 
 export default {
   /** 7 pm Lagos time (wrangler.jsonc): the streak reminders (worker/notifier.ts). */
-  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(env.NOTIFIER.get(env.NOTIFIER.idFromName('streak')).start());
+  /** The two daily jobs in wrangler.jsonc: the 8 am report (07:00 UTC) and the 7 pm streak reminders (18:00 UTC). */
+  async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    if (event.cron === REPORT_CRON) ctx.waitUntil(sendReport(env).then((r) => console.log('[report]', r.day, r.sent), (err) => console.error('[report]', err)));
+    else ctx.waitUntil(env.NOTIFIER.get(env.NOTIFIER.idFromName('streak')).start());
   },
 
   async fetch(req: Request, env: Env): Promise<Response> {

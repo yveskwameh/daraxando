@@ -1,6 +1,6 @@
 # Admin API
 
-Built 16 October 2026 (milestone 4). The server side of the admin dashboard Yves builds after launch: find a player, see their history, rename them, ban and unban them, answer ban reviews, correct their Dara Seeds, and test notifications. There is no admin screen in the game itself. Code: `worker/admin.ts`.
+Built 16 October 2026 (milestone 4). The server side of the admin dashboard Yves builds after launch: find a player, see their history, rename them, ban and unban them, answer ban reviews, correct their Dara Seeds, test notifications, and read the game numbers. There is no admin screen in the game itself. Code: `worker/admin.ts`.
 
 ## Turning it on
 
@@ -110,6 +110,22 @@ Answering a ban review (each request is answered once; 409 after that):
 Seed corrections are only for fixing mistakes, never prizes or anything linked to money (`docs/SAFETY-REVIEW.md`). Any new kind of change that touches seeds goes to the lawyer first.
 
 A ban takes effect on the player's next request. A match already under way finishes normally, but no rematch starts.
+
+## Game numbers
+
+Added 16 October 2026 (milestone 6, `docs/BACKEND.md`, "Game numbers"). Reading only, so nothing goes in the admin log. `day` is a Lagos date like `2026-10-16`, today or earlier; without it, yesterday.
+
+| Request | What you get |
+| --- | --- |
+| `GET /api/admin/stats?day=2026-10-16` | One day's numbers as JSON: `players` (played, Duolingo's buckets, at risk, `curr`), `first` (the first-game funnel), `matches` (by kind, mode and stake), `quick` (Quick match joins and waits), `extra`, and `usage` (the free plan, or `null` without the analytics secrets). Today's numbers grow as the day goes on |
+| `GET /api/admin/report?day=2026-10-16` | The 8 am email for that day, as a web page. Add `&format=text` for the plain-text version |
+| `POST /api/admin/report?day=2026-10-16` | Sends that day's email now to `REPORT_EMAIL`, even if it already went. 409 if the copy has no `REPORT_EMAIL` |
+
+To see yesterday's email in your browser without waiting for 8 am, save the page and open it:
+
+```
+curl -H "Authorization: Bearer KEY" "https://daraxando-staging.yves-workers.workers.dev/api/admin/report" -o report.html && open report.html
+```
 
 ## Notifications
 

@@ -11,6 +11,7 @@ import type { StateCode } from '../shared/places';
 import type { LeaderRow, Profile, PublicPlayer } from '../shared/protocol';
 import { COOL_LOSSES, COOL_MS, DAILY_COWRIES, HIGH_TABLE, SAPA_BELOW, SAPA_EVERY_MS, SAPA_TO, START_COWRIES } from '../shared/stakes';
 import { tidyHabits } from './habits';
+import { bump, matchStat } from './stats';
 
 export interface PlayerRow {
   id: string;
@@ -244,7 +245,14 @@ export interface MatchRecord {
  * the daily cowries are worked out in SQL from the row as it is, so a player who finishes
  * two matches at the same moment can't be paid twice.
  */
-export async function recordSeries(db: D1Database, inputs: SeriesInput[], match: MatchRecord | null, now = Date.now()) {
+export async function recordSeries(
+  db: D1Database,
+  inputs: SeriesInput[],
+  match: MatchRecord | null,
+  now = Date.now(),
+  /** For the game numbers (worker/stats.ts): every finished match, Baba Ayo's included. */
+  tally: { kind: Kind; mode: string; stake: number } | null = null,
+) {
   const today = dayKey(now);
   const yesterday = dayKey(now - 86_400_000);
   const matchId = match ? `${match.id}-${now}` : null;
@@ -307,6 +315,16 @@ export async function recordSeries(db: D1Database, inputs: SeriesInput[], match:
         .bind(matchId, match.mode, match.kind, match.stake, match.xId, match.oId, match.winner, match.reason, match.score, match.moves, match.paid ? 1 : 0, now),
     );
   }
+
+  // The game numbers, after everything read back above: the day each player played, how their
+  // very first match went, and one counter for the match.
+  for (const p of inputs) {
+    statements.push(
+      db.prepare('INSERT OR IGNORE INTO player_days (day, player_id) VALUES (?, ?)').bind(today, p.id),
+      db.prepare('UPDATE players SET first_result = ? WHERE id = ? AND first_result IS NULL').bind(p.result, p.id),
+    );
+  }
+  if (tally) statements.push(bump(db, today, matchStat(tally.kind, tally.mode, tally.stake)));
 
   const results = await db.batch<Record<string, unknown>>(statements);
   const out = new Map<string, SeriesOutput>();

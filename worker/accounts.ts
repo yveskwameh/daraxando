@@ -174,6 +174,7 @@ export async function deleteAccount(db: D1Database, id: string) {
     db.prepare('DELETE FROM ledger WHERE player_id = ?').bind(id),
     db.prepare('DELETE FROM appeals WHERE player_id = ?').bind(id),
     db.prepare('DELETE FROM push_subs WHERE player_id = ?').bind(id),
+    db.prepare('DELETE FROM player_days WHERE player_id = ?').bind(id),
     db.prepare('DELETE FROM players WHERE id = ?').bind(id),
   ]);
 }
@@ -309,7 +310,7 @@ export async function authRoute(req: Request, env: Env, url: URL, me: Profile | 
     ]);
     // Two path parts, no dot, so nothing mistakes the link for a file.
     const codeUrl = `${url.origin}/c/${id}/${secret}`;
-    const sent = await sendEmail(env, email, codeEmail({ code, kind, name, origin: url.origin, minutes: CODE_MINUTES, codeUrl }), id);
+    const sent = await sendEmail(env, email, codeEmail({ code, kind, name, origin: url.origin, minutes: CODE_MINUTES, codeUrl }), `code-${id}`);
     if (sent === 'logged') console.log(`[sign-in code] ${email}: ${code}  link: ${codeUrl}`);
     else if (sent !== 'sent') {
       await db.prepare('DELETE FROM email_codes WHERE id = ?').bind(id).run();
@@ -461,18 +462,21 @@ async function fromGoogle(env: Env, url: URL, asked: { v: string; p: string | nu
   return { k: 'none' };
 }
 
-type Sent = 'sent' | 'logged' | 'unset' | 'busy' | 'quota' | 'failed';
+export type Sent = 'sent' | 'logged' | 'unset' | 'busy' | 'quota' | 'failed';
 
-/** Sends through Resend. On your Mac without a key, the code is printed in the terminal instead. */
-async function sendEmail(env: Env, to: string, mail: Email, id: string): Promise<Sent> {
+/**
+ * Sends through Resend. On your Mac without a key, the code is printed in the terminal instead.
+ * `key` stops Resend sending the same email twice if a request is retried.
+ */
+export async function sendEmail(env: Env, to: string | string[], mail: Email, key: string): Promise<Sent> {
   if (!env.RESEND_API_KEY) return isLocal(env) ? 'logged' : 'unset';
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json', 'idempotency-key': `code-${id}` },
+      headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json', 'idempotency-key': key },
       body: JSON.stringify({
         from: env.EMAIL_FROM ?? '"Dara X&O" <code@noreply.daraxando.yveskwameh.com>',
-        to: [to],
+        to: Array.isArray(to) ? to : [to],
         subject: mail.subject,
         html: mail.html,
         text: mail.text,

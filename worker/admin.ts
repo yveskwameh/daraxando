@@ -15,6 +15,8 @@ import type { Env } from './env';
 import { body } from './http';
 import { NAME_PROBLEM_MESSAGE, nameProblem } from './names';
 import { dropSubs, sendPush, type PushSub } from './push';
+import { buildReport, reportDay, reportEmail, reportTo, sendReport } from './report';
+import { dayKey } from '../shared/progression';
 
 /** Shorter than this and the key is too easy to guess, so the API stays off. */
 const MIN_TOKEN = 32;
@@ -120,6 +122,25 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
     const notifier = env.NOTIFIER.get(env.NOTIFIER.idFromName('streak'));
     if (method === 'GET') return send(await notifier.status());
     if (method === 'POST') return send(await notifier.start(undefined, url.searchParams.get('again') === '1'));
+  }
+
+  /* --- game numbers (worker/report.ts): one day's numbers, the morning email, or sending it now --- */
+  if (path === '/api/admin/stats' || path === '/api/admin/report') {
+    const day = url.searchParams.get('day') ?? reportDay();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || Number.isNaN(Date.parse(day)) || day > dayKey(Date.now())) return fail(400, 'day is a date like 2026-10-16, today or earlier (Lagos time).');
+    if (path === '/api/admin/stats' && method === 'GET') return send(await buildReport(env, day));
+    if (method === 'GET') {
+      const mail = reportEmail(await buildReport(env, day));
+      const text = url.searchParams.get('format') === 'text';
+      return new Response(text ? `${mail.subject}\n\n${mail.text}` : mail.html, {
+        headers: { 'content-type': text ? 'text/plain; charset=utf-8' : 'text/html; charset=utf-8', 'cache-control': 'no-store', ...cors },
+      });
+    }
+    if (method === 'POST') {
+      if (!reportTo(env).length) return fail(409, 'This copy has no REPORT_EMAIL secret, so there is nobody to send it to.');
+      const r = await sendReport(env, { day, force: true });
+      return r.sent === 'sent' || r.sent === 'logged' ? send({ sent: true, day: r.day, to: reportTo(env).length }) : fail(502, `The email didn't go (${r.sent}). Check RESEND_API_KEY.`);
+    }
   }
 
   /* --- ban reviews: banned players asking for their ban to be looked at again --- */

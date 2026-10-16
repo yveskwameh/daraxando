@@ -16,3 +16,11 @@ ADMIN_TOKEN=
 # pair from `node scripts/vapid-keys.mjs`, added as two Secrets, and keeps it for good.
 VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
+
+# The 8 am report (worker/report.ts). Optional on your Mac: with REPORT_EMAIL set and no
+# RESEND_API_KEY, the report prints in the terminal. Live, all three are secrets on each Worker.
+REPORT_EMAIL=
+# Optional: the free plan part of the report. The account id from the dashboard's address, and an
+# Account API token with only "Account Analytics: Read".
+CF_ACCOUNT_ID=
+CF_ANALYTICS_TOKEN=

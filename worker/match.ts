@@ -944,7 +944,7 @@ export class Match extends DurableObject<Env> {
     let out: Awaited<ReturnType<typeof recordSeries>> | null = null;
     for (let attempt = 0; attempt < 2 && !out; attempt++) {
       try {
-        out = await recordSeries(this.env.DB, inputs, record, now);
+        out = await recordSeries(this.env.DB, inputs, record, now, { kind: s.kind, mode: s.mode, stake: held });
       } catch (err) {
         // The match still ended for both players. Only the stats are missing, and the log says why.
         console.error('Could not record result', s.id, attempt, err);

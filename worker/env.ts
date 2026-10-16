@@ -51,8 +51,21 @@ export interface Env {
    */
   VAPID_PUBLIC_KEY?: string;
   VAPID_PRIVATE_KEY?: string;
+  /**
+   * The 8 am report (worker/report.ts): who gets it, up to 3 addresses separated by commas. A secret
+   * on each Worker, so the address stays off GitHub. Not set means no report from that copy.
+   */
+  REPORT_EMAIL?: string;
+  /**
+   * The free plan numbers in the report: the Cloudflare account id and a read-only API token with
+   * "Account Analytics: Read". Both secrets. Without them the report leaves that part out.
+   */
+  CF_ACCOUNT_ID?: string;
+  CF_ANALYTICS_TOKEN?: string;
   /** Web addresses allowed to call the admin API from a browser, comma separated. Optional. */
   ADMIN_ORIGIN?: string;
+  /** Tests only, and only when ENVIRONMENT is local: a stand-in for Cloudflare's analytics API. */
+  CF_GRAPHQL_URL?: string;
   /** Tests only, and only when ENVIRONMENT is local: a stand-in for Google's sign-in page and token address. */
   GOOGLE_AUTH_URL?: string;
   GOOGLE_TOKEN_URL?: string;

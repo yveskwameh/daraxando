@@ -30,6 +30,7 @@ import { CLOSE, type LiveGame, type LobbyServerMsg, type Nearby, type PublicPlay
 import { HIGH_TABLE, PAIR_DAILY_MAX, tableLock, type StakeCheck } from '../shared/stakes';
 import type { Env } from './env';
 import type { InitResult } from './match';
+import { bump, STAT, waitBucket } from './stats';
 
 interface Ticket extends PublicPlayer {
   mode: ModeId;
@@ -120,6 +121,9 @@ export class Matchmaker extends DurableObject<Env> {
   }
 
   async webSocketClose(ws: WebSocket) {
+    // Someone who started their own game and left before anyone came: the game numbers count it.
+    const t = this.isWatcher(ws) ? null : this.ticket(ws);
+    if (t && !t.matched && !t.target) this.count([[STAT.left(waitBucket(Date.now() - t.since)), 1], [STAT.leftMs, Date.now() - t.since]]);
     try { ws.close(); } catch { /* already closed */ }
     // A game that was waiting, or someone who was looking, just left.
     this.broadcast();
@@ -200,6 +204,14 @@ export class Matchmaker extends DurableObject<Env> {
     return { games, looking: looking.size - (looking.has(viewer) ? 1 : 0) };
   }
 
+  /** Adds to the game numbers (worker/stats.ts) without holding anyone up. A failure only loses a count. */
+  private count(items: [string, number][]) {
+    if (!items.length) return;
+    const db = this.env.DB;
+    const day = dayKey(Date.now());
+    this.ctx.waitUntil(db.batch(items.map(([name, by]) => bump(db, day, name, by))).then(() => undefined, (err) => console.error('[stats]', err)));
+  }
+
   private ticket(ws: WebSocket): Ticket | null {
     try {
       return (ws.deserializeAttachment() as Ticket | null) ?? null;
@@ -259,10 +271,13 @@ export class Matchmaker extends DurableObject<Env> {
     await Promise.all(pairs.map(([a, b]) => this.start(a, b)));
 
     // A join that didn't pair just now won't: the game was taken, closed, or can't be played today.
+    let missed = 0;
     for (const { ws, t } of this.waiting()) {
       if (!t.target) continue;
+      missed++;
       try { ws.send(JSON.stringify({ t: 'gone' } satisfies LobbyServerMsg)); ws.close(CLOSE.gone, 'gone'); } catch { /* left */ }
     }
+    if (missed) this.count([[STAT.joinMissed, missed]]);
 
     // Tell everyone still waiting how busy their search is, so the screen can say so honestly,
     // and point them at the busiest other table in case theirs is empty.
@@ -302,10 +317,15 @@ export class Matchmaker extends DurableObject<Env> {
         const stub = this.env.MATCH.get(this.env.MATCH.idFromName(matchId));
         const res: InitResult = await stub.init({ id: matchId, kind: 'quick', mode: a.t.mode, stake: a.t.stake, players: [strip(a.t), strip(b.t)] });
         if (res.ok) {
+          const now = Date.now();
+          const tally: [string, number][] = [];
           for (const x of [a, b]) {
             x.ws.serializeAttachment({ ...x.t, matched: matchId } satisfies Ticket);
             try { x.ws.send(JSON.stringify({ t: 'matched', matchId } satisfies LobbyServerMsg)); } catch { /* left */ }
+            if (x.t.target) tally.push([STAT.joined, 1]);
+            else tally.push([STAT.paired(waitBucket(now - x.t.since)), 1], [STAT.pairedMs, now - x.t.since]);
           }
+          this.count(tally);
           return;
         }
         if (res.reason === 'stake-short') {
