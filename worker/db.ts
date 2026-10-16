@@ -41,6 +41,9 @@ export interface PlayerRow {
   device: string | null;
   banned_at: number | null;
   ban_reason: string | null;
+  /** The terms they accepted (shared/legal.ts) and when. Null for players made before 16 October 2026. */
+  terms_version?: string | null;
+  terms_at?: number | null;
 }
 
 export const toProfile = (r: PlayerRow): Profile => ({
@@ -89,16 +92,16 @@ export async function getPlayer(db: D1Database, id: string): Promise<Profile | n
 }
 
 /** `device` is the keyed hash of the phone's random id (worker/safety.ts), or null if the app didn't send one. */
-export async function createPlayer(db: D1Database, p: { name: string; avatar: string; state: StateCode; device: string | null }): Promise<Profile> {
+export async function createPlayer(db: D1Database, p: { name: string; avatar: string; state: StateCode; device: string | null; terms: string }): Promise<Profile> {
   const id = crypto.randomUUID();
   const now = Date.now();
   const [, created] = await db.batch<PlayerRow>([
     db.prepare("INSERT INTO ledger (player_id, delta, reason, created_at) VALUES (?, ?, 'start', ?)").bind(id, START_COWRIES, now),
     db
       .prepare(
-        'INSERT INTO players (id, name, avatar, state, rating, cowries, device, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
+        'INSERT INTO players (id, name, avatar, state, rating, cowries, device, terms_version, terms_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
       )
-      .bind(id, p.name, p.avatar, p.state, START_RATING, START_COWRIES, p.device, now, now),
+      .bind(id, p.name, p.avatar, p.state, START_RATING, START_COWRIES, p.device, p.terms, now, now, now),
   ]);
   const row = created.results?.[0];
   if (!row) throw new Error('Could not create player');

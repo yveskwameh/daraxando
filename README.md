@@ -190,6 +190,7 @@ scripts/             icons.cjs draws the app icons, vapid-keys.mjs makes notific
 | `docs/STAKES.md` | Dara Seeds, the pot, and the rules that keep it a game and not gambling |
 | `docs/COWRIES-REVIEW.md` | The streak and age changes the lawyer approved (written before Dara Cowries became Dara Seeds) |
 | `docs/SAFETY-REVIEW.md` | The safety changes for the lawyer: farming rules, bans, seed corrections, the name filter |
+| `docs/LEGAL-REVIEW.md` | The privacy notice and terms for the lawyer, with the questions to answer. The drafts themselves are `src/legal/privacy.md` and `src/legal/terms.md` |
 | `docs/NAMES-REVIEW.md` | The Pidgin, Yoruba, Igbo and Hausa words the name filter blocks, for the native speaker to check |
 | `docs/ADMIN-API.md` | The admin API: turning it on, every request, and keeping the key safe |
 | `docs/BACKEND.md` | The backend and launch plan: decisions, milestones, who does what, keys and the domain |
@@ -200,7 +201,7 @@ scripts/             icons.cjs draws the app icons, vapid-keys.mjs makes notific
 ## 7. Roadmap
 
 1. **Frontend: done.** Every screen, state and animation, tested locally with real matches. Signed off 15 October 2026.
-2. **Backend: now.** Done on 16 October 2026: sign-in to keep progress across phones, safety (name filter, rules against farming seeds, bans, ban reviews, the admin API) and notifications (the 7 pm streak reminder, "your friend joined your room"). Game numbers and the 8 am report followed the same day. Still to do: the privacy notice and terms, then launch. The plan is `docs/BACKEND.md`.
+2. **Backend: now.** Done on 16 October 2026: sign-in to keep progress across phones, safety (name filter, rules against farming seeds, bans, ban reviews, the admin API) and notifications (the 7 pm streak reminder, "your friend joined your room"). Game numbers and the 8 am report followed the same day. The privacy notice and terms are drafted and with the lawyer (`docs/LEGAL-REVIEW.md`). Then launch. The plan is `docs/BACKEND.md`.
 3. **Launch.** Cloudflare account, live database, secrets, domain, and deploys from GitHub.
 
 Approved on 15 October 2026: the native-speaker check of every Yoruba, Igbo and Hausa word and the 20 titles, and the lawyer's opinion on Dara Seeds, including the streak items and the one-tap age confirmation (`docs/COWRIES-REVIEW.md`). Any change to how seeds work, or to the age confirmation on the first screen, goes back to the lawyer first. Approved on 16 October 2026: the lawyer on the safety changes (`docs/SAFETY-REVIEW.md`) and the native speaker on the name filter's words (`docs/NAMES-REVIEW.md`).

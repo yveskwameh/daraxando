@@ -15,7 +15,7 @@
 import { addDays } from '../shared/habits';
 import { MODES, type ModeId } from '../shared/modes';
 import { dayKey } from '../shared/progression';
-import { sendEmail, type Sent } from './accounts';
+import { KEEP_CODES_MS, sendEmail, type Sent } from './accounts';
 import type { Email } from './email';
 import type { Env } from './env';
 import { STAT, WAIT_BUCKETS } from './stats';
@@ -572,7 +572,15 @@ export async function sendReport(env: Env, opts: { day?: string; force?: boolean
   const now = opts.now ?? Date.now();
   const day = opts.day ?? reportDay(now);
   const to = reportTo(env);
-  if (!opts.force) await env.DB.prepare('DELETE FROM player_days WHERE day < ?').bind(addDays(dayKey(now), -KEEP_DAYS)).run().catch(() => {});
+  // The daily tidy-up (docs/BACKEND.md, privacy): play days past 400 days, sign-in codes past 2 days
+  // and Google sign-in hand-offs past their 5 minutes, even on days nobody asks for a code.
+  if (!opts.force) {
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM player_days WHERE day < ?').bind(addDays(dayKey(now), -KEEP_DAYS)),
+      env.DB.prepare('DELETE FROM email_codes WHERE created_at < ?').bind(now - KEEP_CODES_MS),
+      env.DB.prepare('DELETE FROM auth_handoffs WHERE expires_at < ?').bind(now),
+    ]).catch((err) => console.error('[tidy]', err));
+  }
   if (!to.length) return { sent: 'off', day };
   if (!opts.force) {
     const first = await env.DB.prepare('INSERT INTO stat_days (day, name, n) VALUES (?, ?, 1) ON CONFLICT (day, name) DO NOTHING').bind(day, STAT.reportSent).run();

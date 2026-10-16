@@ -49,6 +49,8 @@ const summary = (r: PlayerRow) => ({
   rating: r.rating,
   saved: r.saved === 1,
   ban: r.banned_at ? { at: r.banned_at, reason: r.ban_reason ?? '' } : null,
+  /** Which terms they accepted, and when (shared/legal.ts). */
+  terms: r.terms_version ? { version: r.terms_version, at: r.terms_at ?? null } : null,
   createdAt: r.created_at,
 });
 

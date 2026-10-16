@@ -4,8 +4,9 @@
  * Change opens a sheet to pick your own. Someone who arrived through a friend's room link
  * joins the room instead.
  *
- * Tapping Play now is also how you confirm you're 13 or older, so the age check costs no
- * extra step but is still something you do, not something we assume.
+ * Tapping Play now is also how you confirm you're 13 or older and accept the Terms of play
+ * (shared/legal.ts records which version), so it costs no extra step but is still something you
+ * do, not something we assume.
  */
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { AVATARS } from '../../shared/collections';
@@ -21,6 +22,7 @@ import { buzz } from '../lib/haptics';
 import { suggestNames } from '../lib/names';
 import type { Go, Route } from '../lib/router';
 import { useSession } from '../lib/session';
+import { LegalLink } from '../components/LegalLink';
 
 const SaveSheet = lazy(() => import('../sheets/SaveSheet'));
 
@@ -107,7 +109,10 @@ export function Onboarding({ route, go }: { route: Route; go: Go }) {
       <button type="button" className="btn primary block lg" disabled={!clean || busy} onClick={play}>
         {busy ? 'Setting up the board' : room ? 'Join the game' : 'Play now'}
       </button>
-      <p className="fine age">By tapping {room ? 'Join the game' : 'Play now'}, you confirm you're 13 or older.</p>
+      <p className="fine age">
+        By tapping {room ? 'Join the game' : 'Play now'}, you agree to the <LegalLink doc="terms">Terms of play</LegalLink>, confirm
+        you're 13 or older, and have read the <LegalLink doc="privacy">Privacy notice</LegalLink>.
+      </p>
 
       <Suspense fallback={null}>
         {signinUsed && <SaveSheet open={signin} onClose={() => setSignin(false)} intent="signin" back={room ? `/play/${room}` : '/'} />}

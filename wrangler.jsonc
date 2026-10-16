@@ -63,7 +63,9 @@
     { "name": "AUTH_LIMITER", "namespace_id": "1006", "simple": { "limit": 20, "period": 60 } }
   ],
 
-  "observability": { "enabled": true },
+  // Logs keep the game's own console lines (errors) for 3 days on the free plan. Invocation logs
+  // are off: they would record request addresses, and some carry login tokens or sign-in links.
+  "observability": { "enabled": true, "logs": { "invocation_logs": false } },
 
   // The two copies on Cloudflare, each with its own database (docs/BACKEND.md). Everything above
   // is for `npm run dev` on your Mac. Bindings aren't inherited, so each copy lists its own.

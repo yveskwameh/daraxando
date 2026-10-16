@@ -25,6 +25,7 @@ import type { Go } from '../lib/router';
 import { usePlayer } from '../lib/session';
 import { toast } from '../lib/toast';
 import { InstallSheet } from '../sheets/InstallSheet';
+import { LegalRow } from '../components/LegalLink';
 
 const TitlesSheet = lazy(() => import('../sheets/TitlesSheet'));
 const SaveSheet = lazy(() => import('../sheets/SaveSheet'));
@@ -552,6 +553,8 @@ function Settings({ account, onSave, onSignin, onSignOut, onDelete }: {
         <div><b>Test vibration</b><span>Android buzzes. iPhone gives a light tap.</span></div>
         <button type="button" className="mini-btn" onClick={() => buzz('win', true)}>Buzz</button>
       </div>
+      <LegalRow doc="privacy" title="Privacy notice" line="What the game keeps about you, and your rights." />
+      <LegalRow doc="terms" title="Terms of play" line="The rules for playing the game." />
       {profile.saved && (
         <div className="toggle-row">
           <div><b>Sign out</b><span>Sign back in any time with Google or your email.</span></div>

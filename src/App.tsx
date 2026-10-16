@@ -24,6 +24,7 @@ const Profile = lazy(() => load.profile().then((x) => ({ default: x.Profile })))
 // Signing in: only fetched when an email link or Google's trip back needs it.
 const CodeLink = lazy(() => import('./screens/Account').then((x) => ({ default: x.CodeLink })));
 const AccountReturn = lazy(() => import('./screens/Account').then((x) => ({ default: x.AccountReturn })));
+const LegalPage = lazy(() => import('./legal/Legal').then((x) => ({ default: x.LegalPage })));
 
 function Loading() {
   return (
@@ -63,6 +64,8 @@ function Shell() {
 
   // The link in a sign-in code email works with or without a player on this phone.
   if (route.name === 'code') return <Suspense fallback={<Loading />}><CodeLink link={route.link} go={go} /></Suspense>;
+  // The privacy notice and terms open for anyone, player or not.
+  if (route.name === 'legal') return <Suspense fallback={<Loading />}><LegalPage key={route.doc} doc={route.doc} go={go} /></Suspense>;
 
   if (session.status === 'loading') return <><Loading />{back}</>;
 

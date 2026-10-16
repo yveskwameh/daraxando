@@ -8,6 +8,7 @@ import { AVATARS, isOpen, PIECES, PRINTS } from '../shared/collections';
 import { DEFAULT_MODE, isModeId, type ModeId } from '../shared/modes';
 import { isStateCode, zoneOf } from '../shared/places';
 import { dayKey } from '../shared/progression';
+import { TERMS_VERSION } from '../shared/legal';
 import {
   CLOSE, CODE_ALPHABET, CODE_LENGTH, cleanName, isMatchId, isRoomCode, type LiveGame, type Profile, type PublicPlayer,
 } from '../shared/protocol';
@@ -104,13 +105,15 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     if (env.IP_LIMITER && !(await env.IP_LIMITER.limit({ key: `ip:${ip}` })).success) {
       return fail(429, 'Lots of new players on your network. Wait a minute.');
     }
-    const b = await body<{ name: string; avatar: string; state: string; age: boolean }>(req);
+    const b = await body<{ name: string; avatar: string; state: string; age: boolean; terms: string }>(req);
     if (b.age !== true) return fail(400, 'Dara X&O is for players aged 13 and up.');
+    // Tapping Play now accepts the terms on screen, and that version is kept as the record.
+    if (b.terms !== TERMS_VERSION) return fail(409, 'The terms have changed. Close the app, open it again, then tap Play now.');
     const checked = checkPatch(null, { name: b.name, avatar: b.avatar, state: b.state });
     if (typeof checked === 'string') return fail(400, checked);
     if (!checked.name || !checked.avatar || !checked.state) return fail(400, 'Pick a name, an avatar and your state.');
     const profile = await createPlayer(env.DB, {
-      name: checked.name, avatar: checked.avatar, state: checked.state as Profile['state'], device: await deviceOf(req, env),
+      name: checked.name, avatar: checked.avatar, state: checked.state as Profile['state'], device: await deviceOf(req, env), terms: TERMS_VERSION,
     });
     return json({ token: await signToken(profile.id, secretOf(env)), profile });
   }

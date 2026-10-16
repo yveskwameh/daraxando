@@ -127,6 +127,9 @@ export function Sheet({ open, onClose, label, locked, closeButton = !locked, clo
   });
 
   const down = (e: PointerEvent<HTMLDialogElement>) => {
+    // A sheet opened from inside this one (into the page body) passes its events up through
+    // React, not the page: only touches on this sheet drag it.
+    if (!ref.current?.contains(e.target as Node)) return;
     if (locked || !open || (e.pointerType === 'mouse' && e.button !== 0)) return;
     if ((e.target as HTMLElement).closest(OWN_TOUCH)) return;
     const now = performance.now();
@@ -184,6 +187,8 @@ export function Sheet({ open, onClose, label, locked, closeButton = !locked, clo
       className={`sheet${locked ? ' locked' : ''}`}
       aria-label={label}
       onCancel={(e) => {
+        // Escape on a sheet opened from inside this one closes only that one.
+        if (e.target !== ref.current) return;
         e.preventDefault();
         if (!locked) onClose();
       }}

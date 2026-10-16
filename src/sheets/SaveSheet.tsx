@@ -23,6 +23,7 @@ import { auth, shortEmail, type Intent } from '../lib/auth';
 import { buzz } from '../lib/haptics';
 import { useSession } from '../lib/session';
 import { toast } from '../lib/toast';
+import { LegalLink } from '../components/LegalLink';
 
 type Switch = Extract<AuthResult, { token: string }>;
 type Step =
@@ -174,7 +175,7 @@ export default function SaveSheet({ open, onClose, intent, back, has }: Props) {
             </form>
           )}
           <p className={error ? 'form-error' : 'fine'} role={error ? 'alert' : 'status'}>
-            {error || (busy === 'google' ? 'Opening Google' : 'We only use it to sign you in. Nobody else sees it.')}
+            {error || (busy === 'google' ? 'Opening Google' : <>We only use it to sign you in. Nobody else sees it. <LegalLink doc="privacy">Privacy notice</LegalLink></>)}
           </p>
         </>
       )}

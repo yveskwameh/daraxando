@@ -1309,3 +1309,19 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 .link-card p b { color: var(--text); overflow-wrap: anywhere; }
 .link-ask { flex: 1; min-height: 0; display: grid; align-content: center; gap: 14px; }
 .link-page .empty p { max-width: 32ch; text-wrap: pretty; }
+
+/* ---------- the privacy notice and terms (src/legal/) ---------- */
+/* Reading text: a comfortable line length, body size, and room between sections. */
+.legal-text { display: grid; gap: var(--space-item); align-content: start; max-width: 62ch; padding-bottom: var(--space-group); }
+.legal-text h2 { font-size: 1.125rem; margin-top: var(--space-block); }
+.legal-text h3 { font-size: 1rem; margin-top: var(--space-pair); }
+.legal-text p, .legal-text li { font-size: 0.9375rem; line-height: 1.6; color: var(--muted-on-indigo); }
+.legal-text b { color: var(--text); }
+.legal-text ul { display: grid; gap: var(--space-pair); margin: 0; padding-left: 1.25em; }
+.legal-text li::marker { color: var(--indigo-glow); }
+.legal-text .callout { display: grid; gap: var(--space-pair); padding: var(--space-block); border-radius: 16px; background: var(--raise); }
+.legal-text .callout p { color: var(--text); }
+.inline-link { white-space: nowrap; }
+.legal-text a, .inline-link { color: var(--text); font-weight: 700; text-decoration: underline; text-decoration-color: var(--indigo-glow); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.legal-text a:focus-visible, .inline-link:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; border-radius: 4px; }
+.legal-text li > ul { margin-top: var(--space-pair); }

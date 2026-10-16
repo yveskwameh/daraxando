@@ -64,7 +64,7 @@ export interface RoomPeek {
 }
 
 export const api = {
-  createPlayer: (p: { name: string; avatar: string; state: StateCode; age: boolean }) =>
+  createPlayer: (p: { name: string; avatar: string; state: StateCode; age: boolean; terms: string }) =>
     call<{ token: string; profile: Profile }>('/api/session', null, { ...post(p), headers: { 'x-device': deviceId() } }),
 
   where: () => call<{ state: StateCode | null }>('/api/where', null),

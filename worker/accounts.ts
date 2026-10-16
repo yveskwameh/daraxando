@@ -33,7 +33,7 @@ const EMAILS_PER_DAY = 90;
 const GOOGLE_MS = 10 * 60_000;
 /** Time for the app to collect the outcome once Google sends the player back. */
 const RESULT_MS = 5 * 60_000;
-const KEEP_CODES_MS = 2 * 86_400_000;
+export const KEEP_CODES_MS = 2 * 86_400_000;
 
 const GOOGLE_AUTH = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN = 'https://oauth2.googleapis.com/token';

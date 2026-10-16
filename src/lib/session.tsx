@@ -9,6 +9,7 @@ import { ApiError, api, RESTING, type ProfilePatch } from './api';
 import { hosted } from './room';
 import { KEYS, store } from './storage';
 import { toast } from './toast';
+import { TERMS_VERSION } from '../../shared/legal';
 
 type Status = 'loading' | 'guest' | 'ready' | 'offline' | 'resting';
 
@@ -92,7 +93,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [token, attempt]);
 
   const start = useCallback(async (p: { name: string; avatar: string; state: StateCode }, first?: (token: string) => Promise<void>) => {
-    const res = await api.createPlayer({ ...p, age: true });
+    const res = await api.createPlayer({ ...p, age: true, terms: TERMS_VERSION });
     store.set(KEYS.token, res.token);
     // If the first game can't be set up, they still land on Home, signed in.
     if (first) await first(res.token).catch(() => {});
