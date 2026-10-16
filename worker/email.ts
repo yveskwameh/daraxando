@@ -1,13 +1,26 @@
 /**
  * The sign-in code email, in the game's Owambe Night look.
  *
- * Mail apps are not browsers, so this is written the old way on purpose: tables for layout,
- * styles inline on each element, pictures for the logo and Baba Ayo (public/email/), and a
- * plain-text copy for apps that show no HTML. The card is dark in every mail app; the
- * `color-scheme` tags tell Apple Mail it is already dark so it doesn't repaint it.
+ * The design (Yves, 16 October 2026) mixes three of the five options he saw: Baba Ayo's chat
+ * header from "Chat with Baba Ayo", the game board from "On the board", and the type, links
+ * and giant cropped logo of "Editorial". Top to bottom:
+ *   1. Baba Ayo's header bar with the logo, and his one-line greeting as a chat bubble.
+ *   2. The code on the game board (tap a square and the game fills the code in).
+ *   3. What to do with it, how long it works, and "Not you?" as plain editorial text.
+ *   4. PLAY and CREATED BY links, then the giant Dara X&O cut off by the bottom of the email.
+ *
+ * Mail apps are not browsers, so this is written the old way on purpose:
+ *  - Tables for layout and styles inline on every element. Gmail drops a <style> block for some
+ *    accounts, so the <style> below only adds phone tweaks; the email reads fine without it.
+ *  - No scripts (no mail app runs them), no SVG, no CSS animation, no positioning or transforms.
+ *    Pictures are PNGs from the game's own address (public/email/), each with alt text.
+ *  - Gmail doesn't load web fonts, so headings fall back to Arial there. Outlook on Windows
+ *    ignores rounded corners, so every rounded shape still reads as a square.
+ *  - The code is also printed in one piece as plain text, so mail apps can spot it (Gmail's
+ *    "Copy code", iPhone autofill). No mail app copies text on a tap by itself, so the board
+ *    squares link to the game with the code filled in.
  *
  * Instructions in plain standard English (CLAUDE.md, writing rules). No emojis.
- * Design approved by Yves before sending is built (docs/BACKEND.md, milestone 3).
  */
 
 export type CodeEmailKind = 'save' | 'signin';
@@ -19,10 +32,12 @@ export interface CodeEmailInput {
   kind: CodeEmailKind;
   /** The player's name, if the email belongs to a player already. */
   name?: string;
-  /** Where the pictures live, such as https://daraxando.yveskwameh.com. No trailing slash. */
+  /** Where the game and its pictures live, such as https://daraxando.yveskwameh.com. No trailing slash. */
   origin: string;
   /** How long the code works. */
   minutes: number;
+  /** Opens the game with the code filled in. Without it, the code is plain text. */
+  codeUrl?: string;
 }
 
 export interface Email {
@@ -34,20 +49,23 @@ export interface Email {
 const C = {
   night: '#0b0a2a',
   deep: '#17164a',
+  raise: '#24226a',
   line: '#34318a',
-  fuchsia: '#dc0fa1',
+  label: '#9b8fff',
   glow: '#ff4fb8',
-  cream: '#fff4e0',
+  danfo: '#ffc921',
   muted: '#b8b4e8',
   white: '#ffffff',
 };
 
-/** The credit at the bottom of every email (Yves, 15 October 2026). */
+/** Every email links to the game and credits its creator (Yves, 15 and 16 October 2026). */
+const CREATOR = 'Yves Kwameh';
 const CREDIT_URL = 'https://yveskwameh.com';
 const CREDIT_SITE = 'yveskwameh.com';
 
 const HEAD = "'Gabarito', 'Arial Rounded MT Bold', 'Helvetica Neue', Helvetica, Arial, sans-serif";
 const BODY = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+const T = 'role="presentation" cellpadding="0" cellspacing="0" border="0"';
 
 function esc(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -60,30 +78,104 @@ function possessive(name: string) {
 
 function words(o: CodeEmailInput) {
   const save = o.kind === 'save';
-  const title = save ? 'Save your progress' : 'Welcome back';
+  const how = o.codeUrl ? 'Tap the code, or type it in Dara X&O,' : 'Type this code in Dara X&O';
+  const whose = o.name ? possessive(o.name) : 'your';
   const lead = save
-    ? o.name
-      ? `Type this code in Dara X&O to save ${possessive(o.name)} seeds, streak and title. Then they follow you to any phone.`
-      : 'Type this code in Dara X&O to save your seeds, streak and title. Then they follow you to any phone.'
-    : o.name
-      ? `Type this code in Dara X&O to sign in as ${o.name}. Your seeds, streak and title are waiting.`
-      : 'Type this code in Dara X&O to sign in. Your seeds, streak and title are waiting.';
+    ? `${how} to save ${whose} seeds, streak and title. Then they follow you to any phone.`
+    : `${how} to sign in${o.name ? ` as ${o.name}` : ''}. Your seeds, streak and title are waiting.`;
+  const hello = save
+    ? `Here's your code${o.name ? `, ${o.name}` : ''}.`
+    : `Welcome back${o.name ? `, ${o.name}` : ''}.`;
   const expiry = `It works once, for ${o.minutes} minutes.`;
-  const safety = "Didn't ask for this code? Ignore this email and your game stays as it is. Nobody from Dara X&O will ever ask you for it.";
+  const notYou = "If you didn't ask for this code, ignore this email and your game stays as it is. Nobody from Dara X&O will ever ask you for it.";
   const preheader = save
     ? `Type it in the game to save your progress. It works for ${o.minutes} minutes.`
     : `Type it in the game to sign in. It works for ${o.minutes} minutes.`;
-  return { title, lead, expiry, safety, preheader };
+  const tag = save ? 'Save your progress' : 'Sign in';
+  return { lead, hello, expiry, notYou, preheader, tag };
 }
 
 export function codeEmail(o: CodeEmailInput): Email {
   const w = words(o);
   const img = (f: string) => `${o.origin}/email/${f}`;
   const subject = `Your Dara X&O code is ${o.code}`;
+  const site = o.origin.replace(/^https?:\/\//, '');
 
   // Hidden text some apps show after the subject in the inbox. The padding stops them from
   // pulling in the first words of the email after it.
   const pad = '&#8199;&#847;'.repeat(60);
+
+  const link = (href: string, label: string, extra = '') =>
+    `<a href="${esc(href)}" style="color:${C.glow};text-decoration:underline;${extra}">${esc(label)}</a>`;
+  const tap = (inner: string, color: string) =>
+    o.codeUrl ? `<a href="${esc(o.codeUrl)}" style="color:${color};text-decoration:none;">${inner}</a>` : inner;
+  const caps = (color: string = C.label) =>
+    `color:${color};font:700 11px/18px ${BODY};letter-spacing:0.14em;text-transform:uppercase;`;
+  const p = (text: string, style: string) => `<p style="margin:0;${style}">${text}</p>`;
+  const rule = `<tr><td colspan="2" style="padding:0;border-top:2px solid ${C.line};font-size:0;line-height:0;">&nbsp;</td></tr>`;
+
+  // 1. Baba Ayo's header bar: his picture and name on the left, the logo on the right.
+  const header = `
+<tr><td colspan="2" style="padding:0 0 12px;">
+<table ${T} width="100%" bgcolor="${C.deep}" style="background-color:${C.deep};border:2px solid ${C.line};border-radius:20px;border-collapse:separate;"><tr>
+<td width="44" valign="middle" style="width:44px;padding:10px 10px 10px 12px;"><img src="${img('baba.png')}" width="40" height="40" alt="Baba Ayo" style="display:block;width:40px;height:40px;border:0;"></td>
+<td valign="middle" style="padding:10px 0;">
+<div style="color:${C.white};font:800 17px/1.2 ${HEAD};">Baba Ayo</div>
+<div style="color:${C.label};font:400 13px/1.3 ${BODY};">Dara X&amp;O</div>
+</td>
+<td valign="middle" align="right" style="padding:10px 14px 10px 0;"><img src="${img('wordmark.png')}" width="88" height="27" alt="Dara X&amp;O" style="display:block;width:88px;height:27px;border:0;color:${C.white};font:800 16px ${HEAD};"></td>
+</tr></table>
+</td></tr>
+<tr><td colspan="2" style="padding:0 0 34px;">
+<table ${T} style="border-collapse:separate;"><tr>
+<td bgcolor="${C.raise}" style="background-color:${C.raise};border-radius:4px 18px 18px 18px;padding:12px 16px;color:${C.white};font:400 16px/1.45 ${BODY};">${esc(w.hello)}</td>
+</tr></table>
+</td></tr>`;
+
+  // 2. The code on the game board, left-aligned like the rest of the type.
+  const cell = (d: string) =>
+    `<td style="padding:4px;"><table ${T} style="border-collapse:separate;"><tr><td class="cell" width="62" height="66" align="center" valign="middle" bgcolor="${C.raise}" style="width:62px;height:66px;background-color:${C.raise};border:2px solid ${C.line};border-radius:14px;color:${C.danfo};font:800 38px/1 ${HEAD};">${tap(esc(d), C.danfo)}</td></tr></table></td>`;
+  const digits = o.code.split('');
+  const board = `
+<tr>
+<td style="padding:0 0 10px;${caps()}">Your code</td>
+<td align="right" style="padding:0 0 10px;${caps(C.muted)}">${esc(w.tag)}</td>
+</tr>
+${rule}
+<tr><td colspan="2" style="padding:22px 0 12px;">
+<table ${T} bgcolor="${C.night}" style="background-color:${C.night};border:2px solid ${C.line};border-radius:24px;border-collapse:separate;padding:8px;">
+<tr>${digits.slice(0, 3).map(cell).join('')}</tr>
+<tr>${digits.slice(3).map(cell).join('')}</tr>
+</table>
+</td></tr>
+<tr><td colspan="2" style="padding:0 0 26px;">${p(`<span style="${caps()}">In one piece</span>&nbsp;&nbsp;<span style="color:${C.white};font:700 15px/1 ${BODY};letter-spacing:3px;white-space:nowrap;">${tap(esc(o.code), C.white)}</span>`, 'line-height:18px;')}</td></tr>`;
+
+  // 3. The words, set like the editorial option.
+  const copy = `
+<tr><td colspan="2" style="padding:0 0 10px;">${p(esc(w.lead), `max-width:460px;color:${C.white};font:400 17px/1.5 ${BODY};`)}</td></tr>
+<tr><td colspan="2" style="padding:0 0 32px;">${p(esc(w.expiry), `color:${C.muted};font:400 15px/1.5 ${BODY};`)}</td></tr>
+${rule}
+<tr><td colspan="2" style="padding:18px 0 18px;">
+<div style="${caps()}padding:0 0 4px;">Not you?</div>
+${p(esc(w.notYou), `max-width:460px;color:${C.muted};font:400 14px/1.55 ${BODY};`)}
+</td></tr>
+${rule}`;
+
+  // 4. The links, then the giant logo cut off by the bottom of the email.
+  const credits = `
+<tr><td colspan="2" style="padding:18px 0 0;">
+<table ${T} width="100%">
+<tr>
+<td class="cl" valign="top" style="padding:0 16px 10px 0;width:1%;white-space:nowrap;${caps()}">Play</td>
+<td class="cv" valign="top" style="padding:0 0 10px;font:600 15px/18px ${BODY};">${link(o.origin, site)}</td>
+</tr>
+<tr>
+<td class="cl" valign="top" style="padding:0 16px 0 0;width:1%;white-space:nowrap;${caps()}">Created by</td>
+<td class="cv" valign="top" style="padding:0;color:${C.white};font:600 15px/18px ${BODY};">${CREATOR}, ${link(CREDIT_URL, CREDIT_SITE, 'font-weight:400;')}</td>
+</tr>
+</table>
+</td></tr>
+<tr><td colspan="2" style="padding:22px 0 0;">${p('You got this email because this address was typed into&nbsp;Dara&nbsp;X&amp;O.', `color:${C.muted};font:400 12px/1.5 ${BODY};`)}</td></tr>`;
 
   const html = `<!doctype html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -99,72 +191,34 @@ export function codeEmail(o: CodeEmailInput): Email {
 @font-face { font-family: 'Gabarito'; font-weight: 400 900; font-display: swap; src: url('${img('gabarito.woff2')}') format('woff2'); }
 body { margin: 0 !important; padding: 0 !important; width: 100% !important; background: ${C.night}; }
 a { color: ${C.glow}; }
-@media (max-width: 480px) {
-  .card { padding: 26px 20px 22px !important; border-radius: 22px !important; }
-  .title { font-size: 26px !important; }
+@media (max-width: 379px) {
+  .cell { width: 52px !important; height: 58px !important; font-size: 32px !important; }
+  .cl, .cv { display: block !important; width: auto !important; padding: 0 0 2px !important; }
+  .cv { padding: 0 0 12px !important; }
 }
-@media (max-width: 359px) {
-  .outer { padding: 16px 8px 24px !important; }
-  .card { padding: 22px 14px 20px !important; }
-  .code { font-size: 32px !important; letter-spacing: 6px !important; padding: 12px 20px 12px 26px !important; }
+@media (max-width: 339px) {
+  .outer { padding-left: 10px !important; padding-right: 10px !important; }
+  .cell { width: 46px !important; height: 52px !important; font-size: 28px !important; }
 }
 </style>
 </head>
 <body style="margin:0;padding:0;background:${C.night};">
 <div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;">${esc(w.preheader)}${pad}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.night}" style="background-color:${C.night};background-image:url('${img('stage.png')}');background-size:115px 115px;">
-<tr><td class="outer" align="center" style="padding:28px 12px 32px;">
+<table ${T} width="100%" bgcolor="${C.night}" style="background-color:${C.night};background-image:url('${img('stage.png')}');background-size:115px 115px;">
+<tr><td class="outer" align="center" style="padding:24px 16px 0;">
 <!--[if mso]><table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
-
-<tr><td class="card" bgcolor="${C.deep}" style="background-color:${C.deep};border:2px solid ${C.line};border-radius:28px;padding:32px 32px 28px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-
-<tr><td align="center" style="padding:0 0 22px;">
-<img src="${img('wordmark.png')}" width="156" height="48" alt="Dara X&amp;O" style="display:block;width:156px;height:48px;border:0;color:${C.white};font:800 24px ${HEAD};">
-</td></tr>
-
-<tr><td align="center" style="padding:0 0 10px;">
-<h1 class="title" style="margin:0;color:${C.white};font:800 28px/1.15 ${HEAD};letter-spacing:-0.01em;">${esc(w.title)}</h1>
-</td></tr>
-
-<tr><td align="center" style="padding:0 0 24px;">
-<p style="margin:0;max-width:400px;color:${C.muted};font:400 16px/1.5 ${BODY};text-wrap:balance;">${esc(w.lead)}</p>
-</td></tr>
-
-<tr><td align="center" style="padding:0 0 14px;">
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;">
-<tr><td class="code" bgcolor="${C.fuchsia}" style="background-color:${C.fuchsia};background-image:url('${img('sticker.png')}');background-size:44px 44px;border:3px solid ${C.cream};border-radius:999px;padding:12px 26px 12px 34px;color:${C.white};font:800 40px/1.1 ${HEAD};letter-spacing:8px;font-variant-numeric:tabular-nums;white-space:nowrap;mso-line-height-rule:exactly;">${esc(o.code)}</td></tr>
+<table ${T} width="100%" style="max-width:560px;">
+<tr><td style="padding:0;">
+<table ${T} width="100%">
+${header}
+${board}
+${copy}
+${credits}
 </table>
 </td></tr>
-
-<tr><td align="center" style="padding:0 0 26px;">
-<p style="margin:0;color:${C.white};font:600 15px/1.4 ${BODY};">${esc(w.expiry)}</p>
+<tr><td style="padding:40px 0 0;font-size:0;line-height:0;">
+<a href="${esc(o.origin)}" style="text-decoration:none;"><img src="${img('wordmark-giant.png')}" width="560" alt="Dara X&amp;O" style="display:block;width:100%;max-width:560px;height:auto;border:0;"></a>
 </td></tr>
-
-<tr><td style="padding:0;border-top:2px solid ${C.line};font-size:0;line-height:0;">&nbsp;</td></tr>
-
-<tr><td style="padding:20px 0 0;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr>
-<td width="52" valign="top" style="width:52px;padding:2px 14px 0 0;">
-<img src="${img('baba.png')}" width="52" height="53" alt="Baba Ayo" style="display:block;width:52px;height:53px;border:0;">
-</td>
-<td valign="top" style="padding:0;">
-<p style="margin:0;color:${C.muted};font:400 14px/1.5 ${BODY};">${esc(w.safety)}</p>
-</td>
-</tr>
-</table>
-</td></tr>
-
-</table>
-</td></tr>
-
-<tr><td align="center" style="padding:22px 16px 0;">
-<p style="margin:0 0 6px;color:${C.muted};font:400 13px/1.5 ${BODY};">Dara X&amp;O, created by Yves Kwameh. <a href="${CREDIT_URL}" style="color:${C.glow};text-decoration:underline;">${CREDIT_SITE}</a></p>
-<p style="margin:0;color:${C.muted};font:400 13px/1.5 ${BODY};">You got this email because this address was typed into Dara X&amp;O.</p>
-</td></tr>
-
 </table>
 <!--[if mso]></td></tr></table><![endif]-->
 </td></tr>
@@ -173,18 +227,19 @@ a { color: ${C.glow}; }
 </html>`;
 
   const text = [
-    w.title,
-    '',
-    w.lead,
+    w.hello,
     '',
     o.code,
+    ...(o.codeUrl ? ['', `Tap to fill it in: ${o.codeUrl}`] : []),
     '',
+    w.lead,
     w.expiry,
     '',
-    w.safety,
+    `Not you? ${w.notYou}`,
     '',
-    'Dara X&O, created by Yves Kwameh.',
-    CREDIT_URL,
+    `Play Dara X&O: ${o.origin}`,
+    `Created by ${CREATOR}: ${CREDIT_URL}`,
+    '',
     'You got this email because this address was typed into Dara X&O.',
   ].join('\n');
 

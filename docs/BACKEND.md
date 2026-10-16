@@ -60,7 +60,11 @@ Free services used: Google sign-in (free), Resend for email codes (free plan: 3,
 
 ### The sign-in email
 
-`worker/email.ts` builds it: subject, the HTML and a plain-text copy. Two versions share one design: "Save your progress" (a guest adds an email) and "Welcome back" (signing in on another phone). It's dark in every mail app, uses tables and inline styles because mail apps aren't browsers, and shows the code as one of the game's Ankara stickers so it can be long-pressed and copied in one piece. Its pictures are in `public/email/` (the logo, Baba Ayo, the two print tiles and the heading font) and load from the game's own address, never from a third party. Gmail doesn't load fonts from emails, so there the headings fall back to Arial; the layout and colours stay the same. The service worker leaves `public/email/` out, so players never download it. Waiting for Yves's approval (15 October 2026).
+`worker/email.ts` builds it: subject, HTML and a plain-text copy, in two versions ("Save your progress" for a guest adding an email, "Welcome back" for signing in on another phone). Every version links to the game and credits Yves with a link to yveskwameh.com (15 and 16 October 2026). The design (16 October 2026) mixes three of five options Yves saw: Baba Ayo's chat header and greeting bubble, the code on the game board, and editorial type with PLAY and CREATED BY links above a giant Dara X&O cut off by the bottom of the email. Approved by Yves on 16 October 2026.
+
+Rules for any email: tables and inline styles, no scripts, SVG, animation, positioning or transforms; pictures are PNGs from the game's own address (`public/email/`, which the service worker skips), each with alt text; every print has a solid colour behind it for Outlook; the layout works without the `<style>` block, which Gmail drops for some accounts; under 102 KB so Gmail doesn't clip it. Gmail doesn't load web fonts, so headings fall back to Arial there.
+
+The code stays plain text, so Gmail's "Copy code" button (Android and iOS, in the inbox list) and iPhone's code autofill can find it. No mail app copies text on a tap, so the code is also a link that opens the game with the code filled in. Building that link needs care: mail scanners open links on their own, so the link opens a page with a confirm button, and only that button uses the code.
 
 Claude never deploys and never handles secret values. Yves runs every deploy and types every secret into his own terminal.
 
