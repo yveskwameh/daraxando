@@ -33,6 +33,7 @@ import { LINES, line } from './baba';
 import { recordSeries, refund, takeStakes, type SeriesInput } from './db';
 import type { Env } from './env';
 import { afterMatch } from './habits';
+import { tellHostFriendJoined } from './push';
 import { BANNED_MESSAGE, bannedAmong, stakeBack } from './safety';
 
 interface Seat extends PublicPlayer {
@@ -327,6 +328,12 @@ export class Match extends DurableObject<Env> {
         s.seats[1] = seatFor(player);
         seat = 1;
         this.ctx.waitUntil(this.ctx.storage.put('state', s));
+        // The host has left the app (not on the room, not watching it from elsewhere in the
+        // app): tell them on their phone, if they turned that on (shared/notify.ts).
+        const host = s.seats[0]!;
+        if (!here(host) && this.watchers().length === 0) {
+          this.ctx.waitUntil(tellHostFriendJoined(this.env, host.id, player.name, s.id).catch((err) => console.error('Could not tell the host', s.id, err)));
+        }
       } finally {
         this.joining = false;
       }

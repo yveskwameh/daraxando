@@ -14,6 +14,7 @@ import { toProfile, type PlayerRow } from './db';
 import type { Env } from './env';
 import { body } from './http';
 import { NAME_PROBLEM_MESSAGE, nameProblem } from './names';
+import { dropSubs, sendPush, type PushSub } from './push';
 
 /** Shorter than this and the key is too easy to guess, so the API stays off. */
 const MIN_TOKEN = 32;
@@ -114,6 +115,13 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
     return send({ actions: results.map((a) => ({ ...a, detail: a.detail ? JSON.parse(a.detail) : null })) });
   }
 
+  /* --- notifications: today's 7 pm streak reminders, started now (for testing), and how the last run went --- */
+  if (path === '/api/admin/push/streak') {
+    const notifier = env.NOTIFIER.get(env.NOTIFIER.idFromName('streak'));
+    if (method === 'GET') return send(await notifier.status());
+    if (method === 'POST') return send(await notifier.start(undefined, url.searchParams.get('again') === '1'));
+  }
+
   /* --- ban reviews: banned players asking for their ban to be looked at again --- */
   if (path === '/api/admin/appeals' && method === 'GET') {
     const status = url.searchParams.get('status') ?? 'open';
@@ -161,7 +169,7 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
     return send({ player: row ? summary(row) : null });
   }
 
-  const one = path.match(/^\/api\/admin\/players\/([0-9a-f-]{36})(?:\/(rename|ban|unban|seeds))?$/);
+  const one = path.match(/^\/api\/admin\/players\/([0-9a-f-]{36})(?:\/(rename|ban|unban|seeds|push))?$/);
   if (!one) return fail(404, 'not found');
   const id = one[1];
   const act = one[2];
@@ -252,6 +260,16 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
       log('unban', { was: { at: row.banned_at, reason: row.ban_reason } }),
     ]);
     return send({ player: summary((await fresh())!) });
+  }
+
+  /* --- a test notification to every phone where this player turned notifications on --- */
+  if (act === 'push') {
+    const text = (b as { body?: unknown }).body;
+    const note = { title: 'Dara X&O', body: typeof text === 'string' && text.trim() ? text.trim().slice(0, 140) : 'A test notification from Dara X&O.', url: '/', tag: 'test' };
+    const { results } = await db.prepare('SELECT endpoint, p256dh, auth FROM push_subs WHERE player_id = ?').bind(id).all<PushSub>();
+    const sent = await Promise.all(results.map(async (s) => [s.endpoint, await sendPush(env, s, note, 3600)] as const));
+    await dropSubs(db, sent.filter(([, r]) => r === 'gone').map(([e]) => e));
+    return send({ phones: results.length, sent: sent.filter(([, r]) => r === 'ok').length, gone: sent.filter(([, r]) => r === 'gone').length });
   }
 
   /* --- add or take seeds, for fixing mistakes. Never below 0, and always with a reason. --- */

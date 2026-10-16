@@ -20,6 +20,7 @@ import { buzz } from '../lib/haptics';
 import { promptInstall } from '../lib/install';
 import { suggestNames } from '../lib/names';
 import { prefs, usePrefs, type Prefs } from '../lib/prefs';
+import { iphoneTab, pushPrefs, pushState, setPush, type PushKind, type PushPrefs } from '../lib/push';
 import type { Go } from '../lib/router';
 import { usePlayer } from '../lib/session';
 import { toast } from '../lib/toast';
@@ -428,6 +429,54 @@ function Record({ wins, draws, losses, best, now }: { wins: number; draws: numbe
   );
 }
 
+/** Notifications on this phone (src/lib/push.ts): the two kinds, or why they can't be on here. */
+function NotifyRows() {
+  const { token } = usePlayer();
+  const [state, setState] = useState(pushState);
+  const [on, setOn] = useState<PushPrefs>(pushPrefs);
+  const [busy, setBusy] = useState(false);
+  if (state === 'unsupported' || iphoneTab()) {
+    return (
+      <div className="toggle-row">
+        <div><b>Notifications</b><span>{iphoneTab() ? 'On iPhone, install the app first, then turn them on here.' : "This browser can't show notifications. Try Chrome."}</span></div>
+      </div>
+    );
+  }
+  if (state === 'blocked') {
+    return (
+      <div className="toggle-row">
+        <div><b>Notifications are blocked</b><span>Allow them for Dara X&amp;O in your phone's settings, then come back here.</span></div>
+      </div>
+    );
+  }
+  const flip = async (k: PushKind) => {
+    setBusy(true);
+    const r = await setPush(token, { ...on, [k]: !on[k] });
+    setBusy(false);
+    if (r.ok) {
+      setOn(r.prefs);
+      return;
+    }
+    setState(pushState());
+    if (r.why === 'unsupported') toast.error("This phone can't show notifications here.");
+    else if (r.why !== 'blocked') toast.error(r.message ?? "That didn't work. Try again.");
+  };
+  const rows: [PushKind, string, string][] = [
+    ['streak', 'Streak reminder', 'One at 7 pm, only on days your streak would end that night.'],
+    ['friends', 'Friend joined your room', 'The moment they join, even if you left the app.'],
+  ];
+  return (
+    <>
+      {rows.map(([k, title, desc]) => (
+        <div key={k} className="toggle-row">
+          <div><b>{title}</b><span>{desc}</span></div>
+          <button type="button" className="sw-toggle" role="switch" aria-checked={on[k]} aria-label={title} disabled={busy} onClick={() => void flip(k)} />
+        </div>
+      ))}
+    </>
+  );
+}
+
 function Settings({ account, onSave, onSignin, onSignOut, onDelete }: {
   account: Account | null;
   onSave: () => void;
@@ -487,6 +536,7 @@ function Settings({ account, onSave, onSignin, onSignOut, onDelete }: {
           />
         </div>
       ))}
+      <NotifyRows />
       <div className="toggle-row">
         <div><b>Install the app</b><span>Play full screen from your home screen.</span></div>
         <button

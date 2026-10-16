@@ -35,6 +35,17 @@ Who we are building for (StatCounter, Nigeria mobile, September 2026): Chrome 68
   5. Tap Add.
 - Opera Mini's data-saving mode renders pages on Opera's servers and cannot run a live game. Detect it and show "Open in Chrome to play".
 
+## Notifications
+
+Built 16 October 2026 (milestone 5). Rules, copy and the server side are in `docs/BACKEND.md`, "Notifications".
+
+- **Which phones:** Chrome, Opera and Samsung Internet on Android show them in a browser tab and in the installed app. iPhone shows them only in the installed app (Add to Home Screen, iOS 16.4 or later), never in a Safari tab, so on iPhone the asks stay away and Settings says to install the app first. Opera Mini can't show them.
+- **Asking:** the game's own pop-up comes first, at a moment the notification is useful (a streak worth keeping, a friend room waiting). The phone's permission box only appears after **Turn on**, straight from that tap, because iPhone refuses to ask any other way and a "Block" can't be undone by the game. The player then fixes it in the phone's settings, which Settings in the game explains.
+- **What it looks like:** the app icon, a title (Baba Ayo for the streak reminder, Dara X&O for the rest) and one line. Android's status bar shows a small white X&O sticker (`public/icons/badge-96.png`, drawn by `node scripts/icons.cjs badge`), because Android paints the status bar icon in one colour from its shape. A newer message of the same kind replaces an older one instead of stacking.
+- **Tapping one** opens the game where it points (Home for the streak, the room for a friend), in the window already open if there is one (`public/push-sw.js`, loaded into the service worker).
+- **Data and battery:** each message is a few hundred bytes, delivered by the phone's own push service (Google's on Android, Apple's on iPhone), which the phone keeps open anyway. The game doesn't need to be running.
+- **Data saver and battery saver** on Android can hold messages back until the phone wakes up. Push services drop a friend's "joined your room" after 10 minutes and the streak reminder at midnight, so a late one never shows.
+
 ## Portrait only
 
 - Phones held sideways see a full-screen "Turn your phone upright" card. The rule targets phones only:

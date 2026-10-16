@@ -1,6 +1,6 @@
 # Admin API
 
-Built 16 October 2026 (milestone 4). The server side of the admin dashboard Yves builds after launch: find a player, see their history, rename them, ban and unban them, and correct their Dara Seeds. There is no admin screen in the game itself. Code: `worker/admin.ts`.
+Built 16 October 2026 (milestone 4). The server side of the admin dashboard Yves builds after launch: find a player, see their history, rename them, ban and unban them, answer ban reviews, correct their Dara Seeds, and test notifications. There is no admin screen in the game itself. Code: `worker/admin.ts`.
 
 ## Turning it on
 
@@ -110,6 +110,22 @@ Answering a ban review (each request is answered once; 409 after that):
 Seed corrections are only for fixing mistakes, never prizes or anything linked to money (`docs/SAFETY-REVIEW.md`). Any new kind of change that touches seeds goes to the lawyer first.
 
 A ban takes effect on the player's next request. A match already under way finishes normally, but no rematch starts.
+
+## Notifications
+
+Added 16 October 2026 (milestone 5, `docs/BACKEND.md`). These don't change anything about a player, so they aren't written to the admin log. Both need the copy's notification keys (`/api/health` shows `"push":true`).
+
+| Request | Body | What it does |
+| --- | --- | --- |
+| `POST /api/admin/players/<id>/push` | `{ "body": "Testing, one two." }` (optional, up to 140 characters) | Sends a test message titled Dara X&O to every phone where this player turned notifications on. Answers `{ "phones": 2, "sent": 2, "gone": 0 }`; a phone counted as `gone` had removed the app or turned them off, and is forgotten |
+| `GET /api/admin/push/streak` | none | How today's 7 pm streak reminders went: `{ "day": "2026-10-16", "sent": 41 }` |
+| `POST /api/admin/push/streak` | none | Starts today's streak reminders now instead of at 7 pm, for testing. Does nothing if they already ran today, unless you add `?again=1`, which sends them once more to players already reminded today. Only players whose streak ends at midnight get one, and nothing goes out after 10 pm Lagos time |
+
+To test on your own phone: turn notifications on in the game (You, then Settings), find your player id with `GET /api/admin/players?q=` and your name, then send yourself a test message:
+
+```
+curl -X POST -H "Authorization: Bearer KEY" -H "Content-Type: application/json" -d '{"body":"Testing"}' "https://daraxando-staging.yves-workers.workers.dev/api/admin/players/PLAYER_ID/push"
+```
 
 ## Adding to it
 

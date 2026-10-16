@@ -24,6 +24,8 @@ import { isLite, reducedMotion } from '../lib/device';
 import { buzz } from '../lib/haptics';
 import { babaLine } from '../lib/babaNudge';
 import { prefs } from '../lib/prefs';
+import { markAsked, mayAsk } from '../lib/push';
+import { PushAsk } from '../components/PushAsk';
 import { hosted } from '../lib/room';
 import type { Go } from '../lib/router';
 import { usePlayer } from '../lib/session';
@@ -750,6 +752,18 @@ function RoomWaiting({ view: v, opp, host, onLeave }: { view: MatchView; opp: Se
  */
 function FriendWaiting({ code, stake, modeName, bo, isHost, onClose }: { code: string; stake: number; modeName: string; bo: number; isHost: boolean; onClose: () => void }) {
   const { token, profile } = usePlayer();
+  // The host is about to send the link and wait, often outside the app: the moment to offer a
+  // notification when the friend joins (src/lib/push.ts).
+  const [pushAsk, setPushAsk] = useState(false);
+  useEffect(() => {
+    if (!isHost) return;
+    const t = setTimeout(() => {
+      if (!mayAsk('friends')) return;
+      markAsked('friends');
+      setPushAsk(true);
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [isHost]);
   const change = async (n: number) => {
     if (n > profile.cowries) {
       buzz('invalid');
@@ -783,6 +797,15 @@ function FriendWaiting({ code, stake, modeName, bo, isHost, onClose }: { code: s
         </button>
         {isHost && <button type="button" className="btn ghost block" onClick={onClose}>Close the room</button>}
       </div>
+      {pushAsk && (
+        <PushAsk
+          kind="friends"
+          title="Know when your friend joins"
+          line="We'll tell you, even if you leave the app."
+          token={token}
+          onDone={() => setPushAsk(false)}
+        />
+      )}
     </section>
   );
 }

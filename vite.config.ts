@@ -56,6 +56,8 @@ export default defineConfig({
         // The sign-in email's pictures are fetched by mail apps, never by the game. Google's
         // button only loads when the save sheet opens, so it isn't worth every player's download.
         globIgnores: ['email/**', 'google/**'],
+        // Shows notifications and opens the app when one is tapped (src/lib/push.ts).
+        importScripts: ['push-sw.js'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
         cleanupOutdatedCaches: true,

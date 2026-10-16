@@ -38,4 +38,8 @@ export const KEYS = {
   install: 'dara:install',
   room: 'dara:room',
   nudge: 'dara:nudge',
+  /** Which notifications this phone turned on (src/lib/push.ts). */
+  push: 'dara:push',
+  /** When we last asked about notifications, and how many times, per kind. */
+  pushAsk: 'dara:push-ask',
 } as const;

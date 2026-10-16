@@ -1,7 +1,7 @@
 /**
  * Renders the app icons from the Sticker logo: "Dara" with the fuchsia X&O sticker pressed
  * right up against it. Run with `node scripts/icons.cjs` (needs Playwright's Chromium).
- * Writes PNGs to public/icons/.
+ * Writes PNGs to public/icons/, including the white badge Android shows with notifications.
  */
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -37,7 +37,19 @@ const mark = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
   </g>
 </svg>`;
 
+// Android's status bar badge for notifications: one colour on clear, so the sticker is a
+// white pill with X&O cut out of it, tilted like the logo.
+const badge = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs><mask id="m"><rect width="120" height="120" fill="#fff"/>
+    <text x="60" y="61" text-anchor="middle" dominant-baseline="central" font-family="G" font-weight="900" font-size="46" fill="#000" transform="rotate(-8 60 60)">X&amp;O</text>
+  </mask></defs>
+  <rect x="4" y="28" width="112" height="64" rx="32" fill="#fff" mask="url(#m)" transform="rotate(-8 60 60)"/>
+</svg>`;
+
+// `node scripts/icons.cjs badge` redraws only the badge.
+const only = process.argv[2];
 const jobs = [
+  ['badge-96.png', 96, badge],
   ['icon-192.png', 192, art()],
   ['icon-512.png', 512, art()],
   ['icon-maskable-512.png', 512, art(14, false)],
@@ -48,7 +60,7 @@ const jobs = [
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage();
-  for (const [name, size, svg] of jobs) {
+  for (const [name, size, svg] of jobs.filter(([n]) => !only || n.startsWith(only))) {
     await page.setViewportSize({ width: size, height: size });
     await page.setContent(`<style>${faces}html,body{margin:0;background:transparent}svg{display:block;width:${size}px;height:${size}px}</style>${svg}`);
     await page.evaluate(() => document.fonts.ready);

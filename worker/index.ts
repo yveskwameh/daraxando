@@ -12,18 +12,20 @@ import {
 } from '../shared/protocol';
 import { fmt, isFriendTable, isTable, sapaReady, tableLock } from '../shared/stakes';
 import { accountOf, authRoute, deleteAccount } from './accounts';
-import { signToken, tokenFrom, verifyToken } from './auth';
+import { fromB64url, signToken, tokenFrom, verifyToken } from './auth';
 import { claimSapa, createPlayer, getPlayer, leaderboard, rankOf, toPublic, updatePlayer, type ProfilePatch } from './db';
 import type { Env } from './env';
 import { body, fail, json, secretOf } from './http';
 import { askFriend, buyFreeze, dropFriend, friendsOf, leagueFor, placeBet, restore } from './habits';
 import { randomId } from './matchmaker';
 import { adminRoute } from './admin';
+import { pushEndpointOk, pushReady, sendPush } from './push';
 import { NAME_PROBLEM_MESSAGE, nameProblem } from './names';
 import { appealOf, askReview, BANNED_MESSAGE, deviceOf, isBanned } from './safety';
 
 export { Match } from './match';
 export { Matchmaker } from './matchmaker';
+export { Notifier } from './notifier';
 
 const roomCode = () => {
   const bytes = crypto.getRandomValues(new Uint8Array(CODE_LENGTH));
@@ -133,7 +135,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   /* --- is it up? For checks after a deploy. No player needed. --- */
   // `signIn` says whether each sign-in secret is set on this copy (never the values), so a missing one is easy to spot.
   if (path === '/api/health' && method === 'GET') {
-    return json({ ok: true, env: env.ENVIRONMENT ?? 'local', signIn: { google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.RESEND_API_KEY } });
+    return json({ ok: true, env: env.ENVIRONMENT ?? 'local', signIn: { google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.RESEND_API_KEY }, push: pushReady(env) });
   }
 
   /* --- an error on a player's phone, so bugs on real phones show up in the logs --- */
@@ -197,6 +199,47 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   if (path === '/api/appeal' && method === 'POST') {
     const r = await askReview(env.DB, me, (await body<{ message: string }>(req)).message, now);
     return typeof r === 'string' ? fail(409, r) : json(r);
+  }
+
+  /* --- notifications on this phone (worker/push.ts, shared/notify.ts) --- */
+  if (path === '/api/push' && method === 'GET') return json({ key: pushReady(env) ? env.VAPID_PUBLIC_KEY : null });
+  if (path === '/api/push' && (method === 'POST' || method === 'PATCH' || method === 'DELETE')) {
+    if (!pushReady(env)) return fail(503, "Notifications aren't set up here yet.");
+    const b = await body<{ endpoint: string; keys: { p256dh: string; auth: string }; streak: boolean; friends: boolean }>(req);
+    if (!pushEndpointOk(b.endpoint, env)) return fail(400, "This phone's notification address isn't one we know.");
+    if (method === 'DELETE') {
+      await env.DB.prepare('DELETE FROM push_subs WHERE endpoint = ? AND player_id = ?').bind(b.endpoint, me.id).run();
+      return json({ on: false });
+    }
+    const streak = b.streak === true ? 1 : 0;
+    const friends = b.friends === true ? 1 : 0;
+    if (method === 'PATCH') {
+      const r = await env.DB.prepare('UPDATE push_subs SET streak = ?, friends = ? WHERE endpoint = ? AND player_id = ?').bind(streak, friends, b.endpoint, me.id).run();
+      if (!r.meta.changes) return fail(404, 'Turn notifications on again.');
+      return json({ on: true });
+    }
+    const p256dh = fromB64url(b.keys?.p256dh ?? '');
+    const auth = fromB64url(b.keys?.auth ?? '');
+    if (!p256dh || p256dh.length !== 65 || !auth || auth.length !== 16) return fail(400, "This phone's notification keys don't look right.");
+    // One row per phone. A phone that switched players moves to the new one.
+    const fresh = !(await env.DB.prepare('SELECT 1 FROM push_subs WHERE endpoint = ? AND player_id = ?').bind(b.endpoint, me.id).first());
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO push_subs (endpoint, player_id, p256dh, auth, streak, friends, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+         ON CONFLICT (endpoint) DO UPDATE SET player_id = ?2, p256dh = ?3, auth = ?4, streak = ?5, friends = ?6`,
+      ).bind(b.endpoint, me.id, b.keys!.p256dh, b.keys!.auth, streak, friends, now),
+      // At most 5 phones per player: the oldest goes.
+      env.DB.prepare(
+        'DELETE FROM push_subs WHERE player_id = ?1 AND endpoint NOT IN (SELECT endpoint FROM push_subs WHERE player_id = ?1 ORDER BY created_at DESC LIMIT 5)',
+      ).bind(me.id),
+    ]);
+    // A first message straight away, so the player sees that it works.
+    if (fresh) {
+      await sendPush(env, { endpoint: b.endpoint, p256dh: b.keys!.p256dh, auth: b.keys!.auth }, {
+        title: 'Dara X&O', body: "Notifications are on. You can change them in You, then Settings.", url: '/you', tag: 'welcome',
+      }, 3600);
+    }
+    return json({ on: true });
   }
 
   /* --- Sapa relief: a free top-up when you're nearly out --- */
@@ -351,6 +394,11 @@ async function cachedTop(env: Env, url: URL, state: string | null) {
 }
 
 export default {
+  /** 7 pm Lagos time (wrangler.jsonc): the streak reminders (worker/notifier.ts). */
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(env.NOTIFIER.get(env.NOTIFIER.idFromName('streak')).start());
+  },
+
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(req);

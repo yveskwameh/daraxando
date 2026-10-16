@@ -1,5 +1,6 @@
 import type { Match } from './match';
 import type { Matchmaker } from './matchmaker';
+import type { Notifier } from './notifier';
 
 /** Everything wrangler.jsonc hands the Worker. Keep the two in step. */
 export interface Env {
@@ -9,6 +10,8 @@ export interface Env {
   MATCH: DurableObjectNamespace<Match>;
   /** One Durable Object that pairs players for quick matches. */
   MATCHMAKER: DurableObjectNamespace<Matchmaker>;
+  /** One Durable Object that sends the 7 pm streak reminders a few at a time (worker/notifier.ts). */
+  NOTIFIER: DurableObjectNamespace<Notifier>;
   /**
    * New players per device. Most Nigerian phones share an IP address with thousands of
    * others (carrier-grade NAT), so a per-IP limit alone would lock out whole networks.
@@ -41,6 +44,13 @@ export interface Env {
    * random characters. Local: .dev.vars. Live: a secret on each Worker. Not set means no admin API.
    */
   ADMIN_TOKEN?: string;
+  /**
+   * Notifications (worker/push.ts): the VAPID key pair that signs every message. Made once with
+   * the command in the README. Both live as secrets on each Worker; locally in .dev.vars.
+   * Without them, notifications are off on that copy.
+   */
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
   /** Web addresses allowed to call the admin API from a browser, comma separated. Optional. */
   ADMIN_ORIGIN?: string;
   /** Tests only, and only when ENVIRONMENT is local: a stand-in for Google's sign-in page and token address. */

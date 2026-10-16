@@ -92,7 +92,7 @@ Secrets are passwords for the game's server, like the key that signs each player
 
 | Where | What | How to change it |
 | --- | --- | --- |
-| `.dev.vars` (project folder) | Secrets for the game on your Mac (`npm run dev`): `SESSION_SECRET`, plus `GOOGLE_CLIENT_SECRET` if you want Google sign-in on your Mac. | Open it in VS Code, one `NAME=value` per line. |
+| `.dev.vars` (project folder) | Secrets for the game on your Mac (`npm run dev`): `SESSION_SECRET`, plus `GOOGLE_CLIENT_SECRET` if you want Google sign-in on your Mac. Notifications are tested on the test copy, on your phone, so leave the `VAPID_` lines empty. | Open it in VS Code, one `NAME=value` per line. |
 | `.dev.vars.example` (on GitHub) | The same names with fake values, so you know what `.dev.vars` needs. No real values, ever. | Add a line whenever a new secret is added. |
 | Cloudflare (live game) | The real secrets for the live game, stored encrypted by Cloudflare, not in any file. Each copy has its own. | Cloudflare dashboard → **Workers & Pages** → **daraxando-staging** or **daraxando** → **Settings** → **Variables and Secrets** → **Add**, type **Secret**. Values can't be read back, only replaced. |
 
@@ -106,6 +106,7 @@ The secrets each copy on Cloudflare needs:
 | `GOOGLE_CLIENT_SECRET` | Sign in with Google | Google Cloud, project **Dara X&O** → **Google Auth Platform → Clients → Dara X&O web**. The same client serves both copies. |
 | `RESEND_API_KEY` | Sends the sign-in code emails | resend.com → **API Keys**. One key per copy: `daraxando-staging`, then `daraxando-production` at launch, each with **Sending access** to `noreply.daraxando.yveskwameh.com`. |
 | `ADMIN_TOKEN` | Optional. Turns on the admin API for your future dashboard (`docs/ADMIN-API.md`). Without it, the admin API is off. | `openssl rand -base64 32` in the terminal. A different one per copy. Keep it in your password manager. |
+| `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` | Notifications (the 7 pm streak reminder and "friend joined your room"). They prove to Google and Apple that the messages come from the game. | `node scripts/vapid-keys.mjs` in the terminal prints both lines. A different pair per copy, made once. **Never change a pair after players turn notifications on**: their phones would stop getting messages until they turn them on again. |
 
 On your Mac, sign-in codes are printed in the terminal running `npm run dev` instead of emailed (look for `[sign-in code]`), unless `.dev.vars` has a `RESEND_API_KEY`.
 
@@ -119,6 +120,7 @@ On your Mac, sign-in codes are printed in the terminal running `npm run dev` ins
 | `npm run typecheck` | Checks the TypeScript across the app and the server |
 | `npm run build` | Makes the production build in `dist/` and shows the download size |
 | `node scripts/icons.cjs` | Redraws the app icons from the Sticker logo |
+| `node scripts/vapid-keys.mjs` | Prints a new pair of notification keys, for a copy that doesn't have them yet (section 8, step 10). Saves nothing. |
 | `npm run release` | Cloudflare runs this after each build from GitHub: database changes, then the upload. Not for your Mac (section 8). |
 
 **Before calling any change done:** `npm run typecheck && npm test && npm run build`, then look at it at 390 and 360 px wide and in landscape.
@@ -168,7 +170,7 @@ worker/              The server: API routes, Match and Matchmaker, database quer
 migrations/          Database tables
 tests/               Unit tests
 public/              App icons and Cloudflare headers
-scripts/             icons.cjs draws the app icons
+scripts/             icons.cjs draws the app icons, vapid-keys.mjs makes notification keys
 .github/workflows/   The GitHub check that runs on every push
 ```
 
@@ -226,12 +228,13 @@ Cloudflare takes the code from GitHub, never from your Mac. On every push it bui
 7. **Only after step 6, build again.** Open **Workers & Pages → daraxando-staging → Deployments**, open the failed build and click **Retry build**. If there's no such button, run `git commit --allow-empty -m "Build staging again"` and `git push` in the terminal. Wait for the build to turn green (about 2 minutes).
 8. **Add the secret.** In the terminal, run `openssl rand -base64 32` and copy the line it prints. In Cloudflare, open **daraxando-staging → Settings → Variables and Secrets** and click **Add**. Type: **Secret**. Variable name: `SESSION_SECRET`. Value: paste. Click **Deploy**. Keep this value to yourself; it's different from the one in `.dev.vars`.
 9. **Add the sign-in secrets.** Same place, **Add** again for each, type **Secret**, then **Deploy**: `GOOGLE_CLIENT_SECRET` (from Google Cloud) and `RESEND_API_KEY` (the `daraxando-staging` key from Resend). The table under "Secrets" says where each comes from. Without them the app says Google or email sign-in "isn't set up on this copy yet".
-10. **Only build `main`.** Still in **Settings**, find **Build → Branch control**. Check the production branch is `main`, and turn off builds for other branches (it saves build minutes). Save.
-11. **Play it.** Open **https://daraxando-staging.yves-workers.workers.dev** on your phone and play Baba Ayo, then a friend room between your phone and laptop. Adding `/api/health` to the address should show `"env":"staging"`.
+10. **Add the notification keys.** In the terminal, run `node scripts/vapid-keys.mjs`. It prints two lines, `VAPID_PUBLIC_KEY=...` and `VAPID_PRIVATE_KEY=...`. For each line: **Add**, type **Secret**, the part before `=` as the Variable name, the part after it as the Value. Then **Deploy**. Run `clear` in the terminal afterwards. Make this pair once and keep it: a new pair stops notifications on every phone that turned them on.
+11. **Only build `main`.** Still in **Settings**, find **Build → Branch control**. Check the production branch is `main`, and turn off builds for other branches (it saves build minutes). Save.
+12. **Play it.** Open **https://daraxando-staging.yves-workers.workers.dev** on your phone and play Baba Ayo, then a friend room between your phone and laptop. Adding `/api/health` to the address should show `"env":"staging"` and `"push":true`.
 
 **Every update after that:** commit and push from VS Code (section 3). Cloudflare rebuilds the test copy by itself; **Workers & Pages → daraxando-staging → Deployments** shows each build. A failed build changes nothing on the live copy.
 
-**The real game, at launch:** the same steps with `daraxando` everywhere `daraxando-staging` appears, `PRODUCTION_DATABASE_ID` in step 2, `CLOUDFLARE_ENV` set to `production`, a different `SESSION_SECRET`, the same `GOOGLE_CLIENT_SECRET`, a new Resend key named `daraxando-production`, and **Branch control** set to a `production` branch (on GitHub: **Branches → New branch**, named `production`, from `main`). Step 6, if it's ever needed, is only needed once, because both Workers share the build token. The first build creates `daraxando.yveskwameh.com` and its HTTPS certificate by itself, since the domain's nameservers already point to Cloudflare. If it says the domain has a conflicting record, delete the old `daraxando` record (**yveskwameh.com → DNS**) and retry. From then on, to publish: on GitHub, **Pull requests → New pull request**, base `production`, compare `main`, **Create pull request**, then **Merge**.
+**The real game, at launch:** the same steps with `daraxando` everywhere `daraxando-staging` appears, `PRODUCTION_DATABASE_ID` in step 2, `CLOUDFLARE_ENV` set to `production`, a different `SESSION_SECRET`, the same `GOOGLE_CLIENT_SECRET`, a new Resend key named `daraxando-production`, a new pair of notification keys (step 10), and **Branch control** set to a `production` branch (on GitHub: **Branches → New branch**, named `production`, from `main`). Step 6, if it's ever needed, is only needed once, because both Workers share the build token. The first build creates `daraxando.yveskwameh.com` and its HTTPS certificate by itself, since the domain's nameservers already point to Cloudflare. If it says the domain has a conflicting record, delete the old `daraxando` record (**yveskwameh.com → DNS**) and retry. From then on, to publish: on GitHub, **Pull requests → New pull request**, base `production`, compare `main`, **Create pull request**, then **Merge**.
 
 If the free plan's 100,000 requests a day ever run out, players see "Dara X&O is resting" until 1:00 am Lagos time, when the count starts again.
 
@@ -249,5 +252,7 @@ If the free plan's 100,000 requests a day ever run out, players see "Dara X&O is
 | "Google sign-in isn't set up on this copy yet" | That copy has no `GOOGLE_CLIENT_SECRET` (section 8, step 9). On your Mac, add it to `.dev.vars` and restart `npm run dev`. |
 | A name you expect to work is refused | The name filter is in `worker/names.ts`. Short words like "ass" only count as whole words, so they don't catch Bassey. Add the name to `tests/safety.test.ts` and fix the list until `npm test` passes. |
 | Not sure the sign-in secrets work on a copy | Open that copy's address with `/api/health` on the end, for example **https://daraxando-staging.yves-workers.workers.dev/api/health**. `"signIn":{"google":true,"email":true}` means both secrets are there; `false` names the one that's missing. It never shows the values. |
+| Notifications don't arrive | Open the copy's `/api/health`: `"push":false` means it has no notification keys (section 8, step 10). On iPhone they only work in the installed app (Add to Home Screen), not in a Safari tab. On Android, check the phone's settings: **Apps → Chrome → Notifications** (or the installed Dara X&O) must be allowed. The admin API can send a test message to one player (`docs/ADMIN-API.md`). |
+| "Notifications are blocked" in Settings | The phone's permission box was answered **Block**. The game can't ask again: in Chrome, tap the icon left of the address, then **Permissions → Notifications → Allow**. For the installed app, long-press its icon, **App info → Notifications**. |
 | The admin API answers 404 | That copy has no `ADMIN_TOKEN`, or it's shorter than 32 characters (`docs/ADMIN-API.md`). |
 | No sign-in email arrives | On your Mac, the code is in the terminal (`[sign-in code]`). On the test copy, check Spam and Promotions, then Resend's **Emails** page, which shows every email sent and whether it was delivered. |

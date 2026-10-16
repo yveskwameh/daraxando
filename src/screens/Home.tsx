@@ -21,6 +21,8 @@ import { reducedMotion } from '../lib/device';
 import { buzz } from '../lib/haptics';
 import { closeInstallPop, maybeShowInstallPop } from '../lib/install';
 import { prefs, usePrefs } from '../lib/prefs';
+import { markAsked, mayAsk } from '../lib/push';
+import { PushAsk } from '../components/PushAsk';
 import { applyUpdate, useUpdateReady } from '../lib/pwa';
 import { useLive } from '../lib/useLive';
 import type { Go } from '../lib/router';
@@ -53,6 +55,9 @@ export function Home({ go }: { go: Go }) {
   const [ask, setAsk] = useState<FriendView | null>(null);
   const asking = useRef(false);
   const [nudge, setNudge] = useState<Nudge | null>(null);
+  // Asking to turn on the streak reminder (src/lib/push.ts): after a match, once the streak is 2 days or more.
+  const [pushAsk, setPushAsk] = useState(false);
+  const pushAsking = useRef(false);
   const open = (s: SheetName) => {
     setOpened((o) => new Set(o).add(s));
     setSheet(s);
@@ -92,9 +97,22 @@ export function Home({ go }: { go: Go }) {
   // Baba Ayo, Duolingo-owl style: a nudge when your streak is at risk, has just ended, or
   // you've been away. At most every few hours, and never with another pop-up showing.
   useEffect(() => {
+    const t = setTimeout(() => {
+      if (asking.current || profile.ban || profile.dayStreak < 2) return;
+      if (!streakNow(profile.habits, profile.dayStreak, dayKey(Date.now())).playedToday || !mayAsk('streak')) return;
+      markAsked('streak');
+      pushAsking.current = true;
+      setPushAsk(true);
+    }, 1200);
+    return () => clearTimeout(t);
+    // Once per visit to Home.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     if (!p.nudges) return;
     const t = setTimeout(() => {
-      if (asking.current || profile.ban) return;
+      if (asking.current || pushAsking.current || profile.ban) return;
       const n = babaNudge(profile.habits, profile.dayStreak, dayKey(Date.now()), profile.lastPlayedDay);
       if (n && takeNudgeSlot()) setNudge(n);
     }, 1200);
@@ -105,7 +123,7 @@ export function Home({ go }: { go: Go }) {
 
   useEffect(() => {
     void refresh();
-    const t = setTimeout(() => { if (!asking.current && !nudge) maybeShowInstallPop(); }, 2500);
+    const t = setTimeout(() => { if (!asking.current && !pushAsking.current && !nudge) maybeShowInstallPop(); }, 2500);
     // The install pop-up belongs to Home. Leaving Home puts it away.
     return () => {
       clearTimeout(t);
@@ -173,6 +191,16 @@ export function Home({ go }: { go: Go }) {
           <button type="button" className="btn baba" onClick={() => setSheet('baba')}>Play Baba Ayo</button>
         </div>
       </div>
+
+      {pushAsk && !ask && (
+        <PushAsk
+          kind="streak"
+          title={`Keep your ${profile.dayStreak}-day streak`}
+          line="One reminder at 7 pm, only on days you haven't played."
+          token={token}
+          onDone={() => setPushAsk(false)}
+        />
+      )}
 
       {nudge && !ask && (
         <div className="install-pop baba-pop" role="alertdialog" aria-label="Baba Ayo">

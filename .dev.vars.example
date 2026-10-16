@@ -10,3 +10,9 @@ RESEND_API_KEY=
 # Optional: turns on the admin API (docs/ADMIN-API.md). At least 32 random characters.
 # Without it the admin API answers 404, which is fine on your Mac.
 ADMIN_TOKEN=
+
+# Notifications (docs/BACKEND.md, "Notifications"). Leave empty on your Mac: notifications need the
+# installed app with its service worker, so test them on the test copy. Live, each copy gets its own
+# pair from `node scripts/vapid-keys.mjs`, added as two Secrets, and keeps it for good.
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
