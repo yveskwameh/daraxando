@@ -14,6 +14,8 @@ Written 16 October 2026. Everything needed to put Dara X&O in front of players a
 
 All in the Cloudflare dashboard (dash.cloudflare.com), except steps 2 and 3 in the VS Code terminal (**Terminal → New Terminal**) and step 3 on GitHub.
 
+Steps 1 to 4 were done on 16 October 2026: the first build of the real copy made all its database tables, `daraxando.yveskwameh.com` and both daily schedules.
+
 1. **Make the database.** In the sidebar, open **Storage & databases → D1 SQL database**. Click **Create Database**. Name: `daraxando`. Location: **Western Europe**. Click **Create**, then copy the **Database ID** from its page.
 2. **Put the id in the settings.** In VS Code, **Cmd+P**, type `wrangler.jsonc`, **Enter**. **Cmd+Option+F** opens Find and Replace. Find `PRODUCTION_DATABASE_ID`, replace with the Database ID, **Replace All**, then **Cmd+S**. Then push:
    ```sh
@@ -29,10 +31,10 @@ All in the Cloudflare dashboard (dash.cloudflare.com), except steps 2 and 3 in t
    - **Advanced settings → Build variables:** `CLOUDFLARE_ENV` with the value `production`
    - Click **Deploy**.
    The first build creates `daraxando.yveskwameh.com` and its HTTPS certificate by itself. If it says the domain has a conflicting record, open **yveskwameh.com → DNS**, delete the old `daraxando` record, and retry the build.
-5. **Build only the `production` branch.** Open **daraxando → Settings → Build → Branch control**. Set the production branch to `production` and turn off builds for other branches. Save.
+5. **Build only the `production` branch.** Open **daraxando → Settings → Builds**. On the **Production** tab, set **Production branch** to `production` and leave **Disable builds** off. Then click the **Previews Base** tab next to it and turn off **Builds for Preview branches**. Leave Preview URLs disabled: a preview of the real copy would use the real players' database. Do this straight after the first build: until then the real copy builds from `main`, so every push to `main` would also change the real game.
 6. **Add the game's secrets.** **daraxando → Settings → Variables and Secrets → Add**, type **Secret**, one at a time, then **Deploy**. Save each new value in your password manager first.
    - `SESSION_SECRET`: a new one from `openssl rand -base64 32` (not the test copy's).
-   - `GOOGLE_CLIENT_SECRET`: the same one as the test copy (Google Cloud, **Google Auth Platform → Clients → Dara X&O web**).
+   - `GOOGLE_CLIENT_SECRET`: the same one as the test copy, from your password manager. Cloudflare never shows a secret again, and Google may hide it too. If you don't have it, open Google Cloud, **Google Auth Platform → Clients → Dara X&O web**, click **Add secret**, and use the new one here (the test copy keeps the old one). On the same page, check that **Authorized redirect URIs** lists `https://daraxando.yveskwameh.com/api/auth/google/callback`. If it doesn't, click **Add URI**, paste it, and **Save**.
    - `RESEND_API_KEY`: on resend.com, **API Keys → Create API Key**, name `daraxando-production`, **Sending access**, domain `noreply.daraxando.yveskwameh.com`.
    - `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY`: a new pair from `node scripts/vapid-keys.mjs` (the part before `=` is the name, the part after is the value), then `clear` in the terminal. Never change this pair once players turn notifications on.
    - `ADMIN_TOKEN` (optional): a new one from `openssl rand -base64 32`.
@@ -42,7 +44,7 @@ All in the Cloudflare dashboard (dash.cloudflare.com), except steps 2 and 3 in t
    - `CF_ANALYTICS_TOKEN`: the same token as the test copy. If you need a new one: **Manage account → Account API Tokens → Create Token → Get started** next to **Custom token**. Name it `Dara X&O report`. Under **Permissions**, pick **Account**, then **Account Analytics**, then **Read**. **Continue to summary → Create Token**, and copy it (it's shown once).
 8. **Check it.** Open https://daraxando.yveskwameh.com/api/health. It should show `"env":"production"`, `"signIn":{"google":true,"email":true}` and `"push":true`. The game is now reachable, but nobody knows the address yet.
 9. **Google sign-in for everyone.** Until now, only the test users you listed can sign in with Google.
-   1. **Prove you own the domain.** Open search.google.com/search-console, **Add property → Domain**, type `yveskwameh.com`, **Continue**. Google shows a TXT record. In Cloudflare, **yveskwameh.com → DNS → Records → Add record**, type **TXT**, name `@`, paste the value, **Save**. Back in Search Console, click **Verify** (it can take a few minutes).
+   1. **Prove you own the domain.** Already done: `yveskwameh.com` is in Search Console from your website. Google accepts it as long as the Google account that owns it there (Search Console, **Settings → Users and permissions**) is an Owner or Editor of the Google Cloud project **Dara X&O** (Google Cloud, **IAM & Admin → IAM**). If Google still says the domain isn't verified, open search.google.com/search-console, **Add property → Domain**, type `yveskwameh.com`, **Continue**. Google shows a TXT record. In Cloudflare, **yveskwameh.com → DNS → Records → Add record**, type **TXT**, name `@`, paste the value, **Save**. Back in Search Console, click **Verify** (it can take a few minutes).
    2. **Fill in the app's details.** In Google Cloud, project **Dara X&O → Google Auth Platform → Branding**:
       - App name `Dara X&O`, your support email, and the logo `docs/google-logo-120.png` (the app icon at the 120 × 120 px Google asks for)
       - Application home page `https://daraxando.yveskwameh.com`
@@ -53,7 +55,7 @@ All in the Cloudflare dashboard (dash.cloudflare.com), except steps 2 and 3 in t
    3. **Publish.** **Audience → Publish app → Confirm.** The game only asks Google for an id and an email address, which Google treats as basic, so no security review is needed.
    4. **Show the name and logo.** On **Branding**, click **Verify branding** if it's offered. Until Google checks it (a few days), the sign-in screen shows `yveskwameh.com` instead of Dara X&O. Sign-in works either way.
    5. If Google won't publish because of the test copy's address, remove the test copy's return address from **Clients → Dara X&O web → Authorized redirect URIs**. Google sign-in then stops on the test copy only; email codes still work there.
-10. **Turn on Web Analytics.** In Cloudflare, **Web Analytics → Add a site**, pick `daraxando.yveskwameh.com`, **Done**. It counts visits, countries, devices and page speed without cookies. The game's security headers already allow it. If it still shows no visits a day after launch, open **Manage site**, choose **Enable with JS Snippet installation**, and send Claude the snippet.
+10. **Turn on Web Analytics.** Done on 16 October 2026. In Cloudflare, **Web Analytics → Add a site**, type `daraxando.yveskwameh.com`, **Done**. Cloudflare said it needs a JS Snippet, because the address belongs to a Worker rather than a regular website, so its token is in `src/lib/analytics.ts`, which loads the script on the real game only, never the test copy or your Mac. The token isn't a secret: anyone can see it in the page. It counts visits, countries, devices and page speed without cookies, and the game's security headers and privacy notice already allow for it. Visits start showing once the launch-day merge reaches the real game.
 
 ## 2. Launch day
 
