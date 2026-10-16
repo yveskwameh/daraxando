@@ -72,7 +72,7 @@ export async function afterMatch(
     statements.push(
       db.prepare(
         `INSERT INTO league_entries (week, player_id, tier, grp, aura, updated_at)
-         SELECT ?, id, ?, ?, ?, ? FROM players WHERE id = ? AND habit_v = ?
+         SELECT ?, id, ?, ?, ?, ? FROM players WHERE id = ? AND habit_v = ? AND banned_at IS NULL
          ON CONFLICT (week, player_id) DO UPDATE SET aura = aura + excluded.aura, updated_at = excluded.updated_at`,
       ).bind(league.week, league.tier, league.group, opts.aura + extraAura, now, id, v),
       db.prepare(
@@ -198,8 +198,8 @@ async function joinLeague(db: D1Database, id: string, h: Habits, today: string) 
   return { week, tier, group };
 }
 
-/** This week's league table for a player, with Baba Ayo setting the pace. */
-export async function leagueFor(db: D1Database, id: string, now = Date.now()): Promise<LeagueData> {
+/** This week's league table for a player, with Baba Ayo setting the pace. A banned player has no table. */
+export async function leagueFor(db: D1Database, id: string, now = Date.now(), banned = false): Promise<LeagueData> {
   const today = dayKey(now);
   const week = weekKey(today);
   const row = await read(db, id);
@@ -208,10 +208,32 @@ export async function leagueFor(db: D1Database, id: string, now = Date.now()): P
   const tier = mine?.tier ?? (h.league ? h.league.tier : 0);
   let rows: LeagueRow[] | null = null;
   let players = 0;
+  if (banned) {
+    // Looking in from outside: the table they'd be in, without them in it, and their Aura for
+    // the week to show where they'd be. Their own group if they had one this week, otherwise the
+    // fullest group at their level.
+    const group = mine?.group ?? (await db.prepare(
+      'SELECT grp, COUNT(*) AS n FROM league_entries WHERE week = ? AND tier = ? GROUP BY grp ORDER BY n DESC LIMIT 1',
+    ).bind(week, tier).first<{ grp: string }>())?.grp;
+    const [others, own] = await db.batch<LeagueRow & { aura: number }>([
+      db.prepare(
+        `SELECT p.id, p.name, p.avatar, p.print, p.state, l.aura FROM league_entries l JOIN players p ON p.id = l.player_id
+         WHERE l.grp = ? AND p.id != ? AND p.banned_at IS NULL ORDER BY l.aura DESC, l.updated_at ASC LIMIT ?`,
+      ).bind(group ?? '', id, LEAGUE_SIZE),
+      db.prepare('SELECT aura FROM league_entries WHERE grp = ? AND player_id = ?').bind(mine?.group ?? '', id),
+    ]);
+    rows = [...others.results];
+    players = rows.filter((r) => r.aura > 0).length;
+    const baba: LeagueRow = { id: BOT.id, name: BOT.name, avatar: BOT.avatar, print: BOT.print, state: BOT.state, aura: babaAura(tier, week, now), bot: true };
+    const at = rows.findIndex((r) => r.aura < baba.aura);
+    rows.splice(at === -1 ? rows.length : at, 0, baba);
+    const { up, down, beatBaba } = leagueZones(players, tier);
+    return { week, endsAt: weekEndsAt(week), tier, rows, up, down, beatBaba, last: h.lastLeague, outside: { aura: own.results[0]?.aura ?? 0 } };
+  }
   if (mine) {
     const { results } = await db.prepare(
       `SELECT p.id, p.name, p.avatar, p.print, p.state, l.aura FROM league_entries l JOIN players p ON p.id = l.player_id
-       WHERE l.grp = ? ORDER BY l.aura DESC, l.updated_at ASC LIMIT ?`,
+       WHERE l.grp = ? AND p.banned_at IS NULL ORDER BY l.aura DESC, l.updated_at ASC LIMIT ?`,
     ).bind(mine.group, LEAGUE_SIZE).all<LeagueRow>();
     players = results.filter((r) => r.aura > 0).length;
     rows = [...results];

@@ -662,6 +662,23 @@ dialog.sheet.closing::backdrop { animation: fade-out 220ms ease-in forwards; }
 .lrow .r { font: 800 1rem/1 var(--head); font-variant-numeric: tabular-nums; }
 .lrow.you { background: var(--indigo); box-shadow: 0 0 0 3px var(--cream); }
 .lrow.you small { color: var(--muted-on-indigo); }
+/* A banned player's place, seen from outside (Ranks): a dashed full ring, faded, not part of the table. */
+.lrow.ghost { background: transparent; border: 2px dashed var(--indigo-glow); padding: 6px 8px; }
+.lrow.ghost > :not(.n) { opacity: .72; }
+/* Ranks for a banned player: a card that says they're watching from outside, and opens the ban sheet. */
+.window-note { flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: var(--space-item); width: 100%; padding: 12px 14px; border: 0; border-radius: 16px; background: var(--deep); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.window-note > svg { width: 22px; height: 22px; margin-top: 1px; color: var(--muted); }
+.window-note b { display: block; font: 800 0.9375rem/1.2 var(--head); }
+.window-note span span { display: block; margin-top: var(--sp-50); font-size: 0.8125rem; line-height: 1.45; color: var(--muted); }
+.lrow.ghost .n svg { width: 18px; height: 18px; color: var(--muted); }
+/* On short phones the card is one line; the dashed row says the rest, and the card still opens the ban sheet. */
+@media (max-height: 640px) {
+  .window-note { align-items: center; padding: 10px 14px; }
+  .window-note span span { display: none; }
+}
+/* Two small buttons that stack on narrow phones rather than break their labels onto two lines. */
+.more.stack-narrow > .btn { min-width: min(100%, 164px); max-width: none; }
+.appeal-status { font-weight: 700; color: var(--text); }
 .empty { display: grid; justify-items: center; gap: var(--space-pair); padding: 24px 12px; text-align: center; color: var(--muted); }
 .empty > svg.big, .empty > .av { margin-bottom: var(--space-pair); }
 .empty > .btn { margin-top: calc(var(--space-group) - var(--space-pair)); }
@@ -1224,6 +1241,10 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 .text-in.email { min-height: 52px; padding: 0 18px; font: 600 1rem/1.2 var(--body); }
 @media (max-height: 640px) { .text-in.email { min-height: 48px; } }
 .text-in.email::placeholder { color: var(--muted); }
+/* The ban review box. */
+.text-in.area { min-height: 128px; padding: 12px 14px; resize: none; font: 500 1rem/1.5 var(--body); }
+.text-in.area::placeholder { color: var(--muted); }
+@media (max-height: 640px) { .text-in.area { min-height: 96px; } }
 
 /* The six code boxes: the same board as the email, in one row. One clear input lies over them. */
 .code-cells {

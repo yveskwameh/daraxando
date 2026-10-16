@@ -12,7 +12,7 @@ import { nextUnlockLevel, unlocksAt } from '../../shared/collections';
 import { MODE_IDS, MODES, seriesLabel, type ModeId } from '../../shared/modes';
 import { titleFor, titleMeans } from '../../shared/progression';
 import type { MatchView, Rematch, Reward, SeatView } from '../../shared/protocol';
-import { fmt, FRIEND_TABLES, prize } from '../../shared/stakes';
+import { fmt, FRIEND_TABLES, prize, type StakeBack } from '../../shared/stakes';
 import { Icon } from '../components/art';
 import { Sheet } from '../components/Sheet';
 import { buzz } from '../lib/haptics';
@@ -44,7 +44,17 @@ const MODE_HINT: Record<ModeId, string> = {
 const LEVEL_HINT: Record<BotLevel, string> = { jeje: 'Easy', sharp: 'Medium', agba: 'Hard' };
 
 /** "Big · Stake 500" or "Classic · No stake". */
-const describe = (r: Rematch) => `${MODES[r.mode].name} · ${r.stake ? `Stake ${fmt(r.stake)}` : 'No stake'}`;
+/** Why both stakes went back after a win (shared/stakes.ts, farming rules), for the winner or the loser. */
+function backLine(back: StakeBack, won: boolean, opp: string) {
+  const why =
+    back === 'phone' ? `You and ${opp} both started playing on this phone`
+    : back === 'quit' ? (won ? `${opp} left before making 3 moves` : 'You left before making 3 moves')
+    : won ? `You've already won plenty from ${opp} today`
+    : `${opp} has already won plenty from you today`;
+  return won ? `${why}, so both stakes went back. The win still counts.` : `${why}, so your stake came back. It still counts as a loss.`;
+}
+
+const describe = (r: Rematch) =>`${MODES[r.mode].name} · ${r.stake ? `Stake ${fmt(r.stake)}` : 'No stake'}`;
 const same = (a: Rematch | null, b: Rematch | null) => !!a && !!b && a.mode === b.mode && a.stake === b.stake;
 
 /** Counts up from 0, once, when the number first arrives. */
@@ -134,7 +144,10 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
   else title = single ? 'Draw. Notin spoil.' : `Level, ${a} to ${b}. Notin spoil.`;
 
   const cw = reward ? reward.cowries : null;
-  const cwLabel = v.stake && s?.winner === null ? 'Stake back' : 'Seeds';
+  // A farming rule sent both stakes back (shared/stakes.ts): the win counts, the seeds don't move.
+  const back = reward?.back;
+  const stakeBack = !!v.stake && (s?.winner === null || !!back);
+  const cwLabel = stakeBack ? 'Stake back' : 'Seeds';
   const unlockLevel = reward ? nextUnlockLevel(reward.levelAfter) : null;
   const unlocked = levelled ? unlocksAt(reward!.levelAfter) : [];
 
@@ -166,7 +179,7 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
           <span>Aura</span>
         </div>
         <div>
-          <b><Icon id="i-seed" className="" />{cw === null ? '…' : cw > 0 ? `+${fmt(cw)}` : cw < 0 ? `-${fmt(-cw)}` : v.stake && s?.winner === null ? fmt(v.stake) : '0'}</b>
+          <b><Icon id="i-seed" className="" />{cw === null ? '…' : cw > 0 ? `+${fmt(cw)}` : cw < 0 ? `-${fmt(-cw)}` : stakeBack ? fmt(v.stake) : '0'}</b>
           <span>{cwLabel}</span>
         </div>
         <div>
@@ -194,7 +207,9 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
         </div>
       )}
 
-      {reward && (reward.daily > 0 || reward.goalBonus > 0) && (
+      {back ? (
+        <p className="fine" role="status">{backLine(back, won, opp.name)}</p>
+      ) : reward && (reward.daily > 0 || reward.goalBonus > 0) && (
         <p className="fine">
           {reward.daily > 0 && <>Your daily <b>+{fmt(reward.daily)} Dara Seeds</b> landed. </>}
           {reward.goalBonus > 0 && <>Daily goal done: 3 wins today, <b>+{reward.goalBonus} Aura</b>.</>}

@@ -80,7 +80,7 @@ export const api = {
   sapa: (token: string) => call<{ profile: Profile }>('/api/wallet/sapa', token, post({})),
 
   leaderboard: (token: string | null, state: string | null) =>
-    call<{ top: LeaderRow[]; me: { rank: number } | null }>(`/api/leaderboard${state ? `?state=${state}` : ''}`, token),
+    call<{ top: LeaderRow[]; me: { rank: number; outside?: true } | null }>(`/api/leaderboard${state ? `?state=${state}` : ''}`, token),
 
   createRoom: (token: string, mode: ModeId, stake: number) =>
     call<{ matchId: string }>('/api/rooms', token, post({ mode, stake })),

@@ -172,6 +172,7 @@ export async function deleteAccount(db: D1Database, id: string) {
     db.prepare('DELETE FROM league_entries WHERE player_id = ?').bind(id),
     db.prepare('DELETE FROM friend_streaks WHERE a = ?1 OR b = ?1').bind(id),
     db.prepare('DELETE FROM ledger WHERE player_id = ?').bind(id),
+    db.prepare('DELETE FROM appeals WHERE player_id = ?').bind(id),
     db.prepare('DELETE FROM players WHERE id = ?').bind(id),
   ]);
 }

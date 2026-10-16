@@ -88,6 +88,9 @@ How sheets use them, in `src/styles/app.css`:
 | Save sheet | You, Settings, first screen (Sign in) | Built 16 October 2026 for Yves's review. Title and one line on what you keep, Google's button, "or use your email", an email field and **Send me a code** (the one primary). Then **Check your email** with six code boxes: the board from the code email in one row (raised cells with Danfo Gabarito digits on a night tray), a blinking Danfo caret in the next box, a short shake and a pink message on a wrong code, **Use another email** and **New code in 30s** as small ghost buttons. |
 | Google button | Save sheet | Full width like every other button (Yves, 16 October 2026), built to Google's rules for a custom "Sign in with Google" button: Google's dark fill, grey ring and text colour, Google Sans Medium (cut down to letters, 5 KB, loads only with the button), "Continue with Google", and Google's G taken unchanged from their downloaded assets (`public/google/`). The one button in the game that isn't an Ankara sticker, because Google's rules ask for their look. |
 | Switch card | Save sheet, email link page, back from Google | The other player's card (avatar, "Saved player", name, title and seeds), then what happens to the player on this phone in plain words, **Play as {name}**, and **Keep {name}**. |
+| Ban sheet | Home and Ranks, for a banned player | Built 16 October 2026. "You can't play other people right now", the date, a **Why** card with the reason written to the player, one line on what still works (Baba Ayo, the streak; title, Aura and seeds are safe) and, in bold, where their ban review stands. Then **Play Baba Ayo** (primary), with **Ask for a review** and **Close** as small ghost buttons side by side (stacked, full width, under 390 px). The middle scrolls if the reason or the answer is long. **Ask for a review** opens a step with a 10 to 500 character box, **Send for review** and **Back**. Shows once each time the app opens, and again whenever Quick match, a mode card or Play a friend is tapped. |
+| Watching from outside | Ranks, for a banned player | Yves, 16 October 2026: they see the tables through the window but can't join them. A card under the tabs, "Watching from outside" with a lock, that opens the ban sheet (one line on phones under 640 px tall). Their place is a dashed row with a lock instead of a number and "You'd be 6th", faded, not counted in the table: in the league, among the rows by their Aura this week; on the state and Nigeria tabs, pinned under the list. |
+| Stake back | Result sheet | When a farming rule sends both stakes back, the seeds tile reads the stake with "Stake back" (as in a draw), and one line under the tiles says why, for example "Dayo left before making 3 moves, so both stakes went back. The win still counts." It takes the place of the daily seeds line. |
 | Email link page | `/c/…` | Wordmark, the player's avatar, "Sign in as Tunde" or "Save Amaka's player", the address, one primary button and **Not now**. Used or run-out links say so, with **Open Dara X&O**. |
 
 ## Rules
@@ -102,7 +105,7 @@ How sheets use them, in `src/styles/app.css`:
 
 - Loading: three hopping diamonds for screens, breathing rows for Ranks, "…" in result tiles until the reward lands.
 - Empty: "Nobody ranked in Rivers yet" with a Play button.
-- Errors: match ended, room full, opened in another tab, not enough Dara Seeds, can't reach the game. Each says what happened and gives one way out.
+- Errors: match ended, room full, opened in another tab, not enough Dara Seeds, can't reach the game, can't play other people (a banned player opening a friend link, with the lock icon), a refused name ("That name isn't allowed. Pick another one." under the name card). Each says what happened and gives one way out.
 - Reconnecting banner. An opponent who drops shows "Lost connection · 14s" and you win if they don't return in 20 seconds.
 
 ## Motion
@@ -158,6 +161,8 @@ Reduced motion: near-instant, except the turn clock, which is information. Demo 
 | 2026-10-15 | Fading is the default game and the first card on the Deck | Yves: it's the challenging one against a person |
 | 2026-10-15 | Live now shows every waiting game as swipeable cards; the profile chip drops its Aura numbers | Yves's review on his phone |
 | 2026-10-16 | Sign-in email: Baba Ayo's chat header, the code on the game board, editorial PLAY and CREATED BY, a giant cut-off wordmark | Yves picked parts of three of five options |
+| 2026-10-16 | Ban sheet, stake-back line on the result sheet, name errors | Milestone 4 (safety), Yves's decisions on bans and farming |
+| 2026-10-16 | Banned players watch Ranks and leagues from outside (dashed row for where they'd be), and ask for a ban review in the ban sheet | Yves: let them see it through the window so they reflect on what they did |
 | 2026-10-16 | Spacing scale and job tokens (pair 8, item 12, block 16, group 24), sheets 20px at the sides, headings at 1.15 line height, the Google button full width | Yves: the sign-in sheet and many titles and descriptions felt jam-packed |
 
 ## Open gaps

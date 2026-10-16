@@ -6,3 +6,7 @@ SESSION_SECRET=replace-with-a-long-random-string
 GOOGLE_CLIENT_SECRET=replace-with-the-google-client-secret
 # Optional on your Mac: without it, sign-in codes are printed in the terminal instead of emailed.
 RESEND_API_KEY=
+
+# Optional: turns on the admin API (docs/ADMIN-API.md). At least 32 random characters.
+# Without it the admin API answers 404, which is fine on your Mac.
+ADMIN_TOKEN=

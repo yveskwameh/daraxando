@@ -381,12 +381,13 @@ function Match({ id, go }: { id: string; go: Go }) {
       'room-full': ['This room is full', 'Two players are already in it. Ask your friend for a new code.'],
       replaced: ['Open in another tab', 'You opened this match somewhere else, so this tab stepped aside.'],
       'stake-short': ['Not enough Dara Seeds', m.error.message],
+      banned: ["You can't play other people right now", m.error.message],
     };
     const [head, text] = copy[m.error.code] ?? ['Something is off with this match', m.error.message];
     return (
       <main className="screen center">
         <div className="empty">
-          <Icon id={m.error.code === 'stake-short' ? 'i-seed' : 'i-wifi-off'} className="big" />
+          <Icon id={m.error.code === 'stake-short' ? 'i-seed' : m.error.code === 'banned' ? 'i-lock' : 'i-wifi-off'} className="big" />
           <h2>{head}</h2>
           <p>{text}</p>
           <button type="button" className="btn cream" onClick={() => go({ name: 'home' }, { replace: true })}>Back to home</button>

@@ -2,8 +2,11 @@
  * Ranks. League is this week's league: up to 30 players at your level, the top move up a
  * league every Monday and the bottom move down, like a football table. The state and All
  * Nigeria tabs rank quick match ratings.
+ *
+ * A banned player watches from outside (Yves, 16 October 2026): they see the same tables,
+ * with a dashed row for where they'd be, but they aren't in them and can't climb them.
  */
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, lazy, Suspense, useEffect, useState } from 'react';
 import { LEAGUES } from '../../shared/habits';
 import { levelInfo, titleFor } from '../../shared/progression';
 import { stateName } from '../../shared/places';
@@ -14,8 +17,11 @@ import { api } from '../lib/api';
 import type { Go } from '../lib/router';
 import { usePlayer } from '../lib/session';
 
+// Only banned players ever load this one.
+const BanSheet = lazy(() => import('../sheets/BanSheet'));
+
 type Tab = 'league' | 'state' | 'ng';
-type Data = { top: LeaderRow[]; me: { rank: number } | null };
+type Data = { top: LeaderRow[]; me: { rank: number; outside?: true } | null };
 
 export function Ranks({ go }: { go: Go }) {
   const { token, profile } = usePlayer();
@@ -23,6 +29,7 @@ export function Ranks({ go }: { go: Go }) {
   const [tab, setTab] = useState<Tab>('league');
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState('');
+  const [review, setReview] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -53,6 +60,16 @@ export function Ranks({ go }: { go: Go }) {
         {hasState && <button type="button" role="tab" aria-selected={tab === 'state'} onClick={() => setTab('state')}>{stateName(profile.state)}</button>}
         <button type="button" role="tab" aria-selected={tab === 'ng'} onClick={() => setTab('ng')}>All Nigeria</button>
       </div>
+
+      {profile.ban && (
+        <button type="button" className="window-note" onClick={() => setReview(true)}>
+          <Icon id="i-lock" className="" />
+          <span>
+            <b>Watching from outside</b>
+            <span>The dashed row is where you'd be. Tap to see why, or to ask for a review.</span>
+          </span>
+        </button>
+      )}
 
       {tab === 'league' ? (
         <League go={go} />
@@ -93,24 +110,30 @@ export function Ranks({ go }: { go: Go }) {
             {top.slice(3).map((r) => <Row key={r.id} r={r} you={r.id === profile.id} />)}
           </ol>
           {!inList && (
-            <ol className="list pinned" aria-label="Your rank">
+            <ol className="list pinned" aria-label={profile.ban ? "Where you'd be" : 'Your rank'}>
               <Row
                 r={{ rank: data.me?.rank ?? 0, id: profile.id, name: profile.name, avatar: profile.avatar, print: profile.print, state: profile.state, rating: profile.rating, level: levelInfo(profile.aura).level }}
-                you
-                note={data.me ? undefined : 'Not ranked yet'}
+                you={!profile.ban}
+                ghost={!!profile.ban}
+                note={profile.ban ? (data.me ? `You'd be ${ordinal(data.me.rank)}` : 'Not ranked yet') : data.me ? undefined : 'Not ranked yet'}
               />
             </ol>
           )}
         </>
       )}
+      {profile.ban && (
+        <Suspense fallback={null}>
+          <BanSheet open={review} ban={profile.ban} onClose={() => setReview(false)} onBaba={() => go({ name: 'home' })} />
+        </Suspense>
+      )}
     </main>
   );
 }
 
-function Row({ r, you, note }: { r: LeaderRow; you?: boolean; note?: string }) {
+function Row({ r, you, ghost, note }: { r: LeaderRow; you?: boolean; ghost?: boolean; note?: string }) {
   return (
-    <li className={`lrow${you ? ' you' : ''}`}>
-      <span className="n">{r.rank ? fmt(r.rank) : '·'}</span>
+    <li className={`lrow${you ? ' you' : ''}${ghost ? ' ghost' : ''}`}>
+      <span className="n">{ghost ? <Icon id="i-lock" className="" /> : r.rank ? fmt(r.rank) : '·'}</span>
       <Avatar avatar={r.avatar} print={r.print} size={36} ring="var(--line)" />
       <span style={{ minWidth: 0 }}>
         <b>{r.name}</b>
@@ -137,7 +160,7 @@ function League({ go }: { go: Go }) {
   const [error, setError] = useState('');
   useEffect(() => {
     api.league(token).then(setData, (err: Error) => setError(err.message));
-  }, [token]);
+  }, [token, profile.ban]);
 
   if (error) {
     return (
@@ -172,7 +195,7 @@ function League({ go }: { go: Go }) {
           <span>Ends in {until(data.endsAt)} · {rule}</span>
         </div>
       </div>
-      {last && <p className="fine">Last week you finished {ordinal(last.rank)} in {LEAGUES[last.tier]}.{moved}</p>}
+      {last && !data.outside && <p className="fine">Last week you finished {ordinal(last.rank)} in {LEAGUES[last.tier]}.{moved}</p>}
       {!data.rows ? (
         <div className="empty">
           <Icon id="i-shield" className="big" />
@@ -181,13 +204,28 @@ function League({ go }: { go: Go }) {
           <button type="button" className="btn primary" onClick={() => go({ name: 'home' })}>Play a match</button>
         </div>
       ) : (
-        <LeagueTable rows={data.rows} up={data.up} down={data.down} beatBaba={data.beatBaba} me={profile.id} />
+        <LeagueTable
+          rows={data.rows}
+          up={data.up}
+          down={data.down}
+          beatBaba={data.beatBaba}
+          me={profile.id}
+          ghost={data.outside ? { id: profile.id, name: profile.name, avatar: profile.avatar, print: profile.print, state: profile.state, aura: data.outside.aura } : undefined}
+        />
       )}
     </>
   );
 }
 
-function LeagueTable({ rows, up, down, beatBaba, me }: { rows: LeagueRow[]; up: number; down: number; beatBaba: boolean; me: string }) {
+function LeagueTable({ rows, up, down, beatBaba, me, ghost }: {
+  rows: LeagueRow[];
+  up: number;
+  down: number;
+  beatBaba: boolean;
+  me: string;
+  /** A banned player: where they'd be, shown as a dashed row that isn't part of the table. */
+  ghost?: LeagueRow;
+}) {
   const players = rows.filter((r) => !r.bot && r.aura > 0).length;
   const baba = rows.find((r) => r.bot)?.aura ?? 0;
   let pos = 0;
@@ -206,10 +244,26 @@ function LeagueTable({ rows, up, down, beatBaba, me }: { rows: LeagueRow[]; up: 
   // demotion places.
   const lastUp = marked.reduce((at, m, i) => (m.goingUp ? i : at), -1);
   const firstDown = marked.findIndex((m) => m.goingDown);
+  // Where a banned player would sit: above everyone with less Aura. With none this week, at the bottom.
+  const found = ghost && ghost.aura > 0 ? rows.findIndex((r) => r.aura < ghost.aura) : -1;
+  const ghostAt = !ghost ? -1 : found === -1 ? rows.length : found;
+  const ghostN = ghost && ghost.aura > 0 ? marked.slice(0, ghostAt).filter((m) => m.n !== null).length + 1 : null;
+  const ghostRow = ghost && (
+    <li className="lrow ghost">
+      <span className="n"><Icon id="i-lock" className="" /></span>
+      <Avatar avatar={ghost.avatar} print={ghost.print} size={36} ring="var(--line)" />
+      <span style={{ minWidth: 0 }}>
+        <b>{ghost.name}</b>
+        <small>{ghostN ? `You'd be ${ordinal(ghostN)}` : "You'd start here"}</small>
+      </span>
+      <span className="r">{fmt(ghost.aura)}<small> Aura</small></span>
+    </li>
+  );
   return (
     <ol className="list league" aria-label="This week's league">
       {marked.map(({ r, n, goingUp, goingDown }, i) => (
         <Fragment key={r.id}>
+          {i === ghostAt && ghostRow}
           {i === firstDown && (
             <li className="zone down" aria-hidden="true"><Icon id="i-down" className="" />Demotion zone</li>
           )}
@@ -227,6 +281,7 @@ function LeagueTable({ rows, up, down, beatBaba, me }: { rows: LeagueRow[]; up: 
           )}
         </Fragment>
       ))}
+      {ghostAt === rows.length && ghostRow}
     </ol>
   );
 }

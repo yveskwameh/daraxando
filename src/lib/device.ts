@@ -41,8 +41,10 @@ export function markDevice() {
 }
 
 /**
- * A random id for this phone, kept in local storage. Only used to rate-limit new players
- * per phone instead of per IP address, because most Nigerian mobile networks share IPs.
+ * A random id for this phone, kept in local storage. Used to rate-limit new players per phone
+ * instead of per IP address, because most Nigerian mobile networks share IPs, and (stored only
+ * as a keyed hash) so players made on the same phone can't win seeds from each other
+ * (worker/safety.ts). Nothing is read from the phone itself.
  */
 export function deviceId() {
   let id = store.get(KEYS.device);

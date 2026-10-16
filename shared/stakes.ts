@@ -28,6 +28,34 @@ export const NEW_ACCOUNT_MS = 7 * 86_400_000;
 export const NEW_ACCOUNT_MAX = 1_000;
 /** The same two players can meet at high tables at most this many times a day. */
 export const PAIR_DAILY_MAX = 3;
+/**
+ * Farming rules (Yves, 16 October 2026; docs/SAFETY-REVIEW.md). They only catch seeds moving one
+ * way between the same two players, so friends who trade wins can stake with each other all day.
+ * When one applies, both stakes go back instead of to the winner. The win itself still counts.
+ *  - Same phone: players made on the same phone never win seeds from each other.
+ *  - One-way cap: in any 24 hours, nobody can end up more than 5,000 seeds ahead of the same
+ *    opponent (three stakes' worth on tables above 1,000, so high tables aren't squeezed).
+ *  - Quick quits: a match the loser resigned, left or timed out of in its first game, before making
+ *    3 moves of their own, pays nothing. Only the first game, so a player who lost game 1 can't
+ *    quit game 2 early to keep their stake.
+ */
+export const PAIR_FLOW_MAX = 5_000;
+export const PAIR_FLOW_STAKES = 3;
+export const QUICK_QUIT_MOVES = 3;
+export type StakeBack = 'phone' | 'cap' | 'quit';
+
+/** True when this win would take the winner past the one-way cap. `flow` is what they're already up on this opponent in the last 24 hours. */
+export const overPairCap = (flow: number, stake: number) => flow + stake > Math.max(PAIR_FLOW_MAX, PAIR_FLOW_STAKES * stake);
+
+/**
+ * True when the loser walked away before playing: resigned, left or timed out in the first game,
+ * with fewer than 3 moves of their own. `gamesBefore` is how many games finished before the end.
+ */
+export const quickQuit = (reason: string, loserMoves: number, gamesBefore: number) =>
+  (reason === 'resign' || reason === 'abandon' || reason === 'timeout' || reason === 'idle') &&
+  loserMoves < QUICK_QUIT_MOVES &&
+  gamesBefore === 0;
+
 /** Three high-table losses in a row starts a short break from high tables. */
 export const COOL_LOSSES = 3;
 export const COOL_MS = 10 * 60_000;

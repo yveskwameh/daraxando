@@ -137,7 +137,7 @@ The same study credits Duolingo with good patterns too: clear buttons, notificat
 
 | Duolingo | Why not as-is | Safe version |
 | --- | --- | --- |
-| Streak Wager (bet currency on your streak) | Staking seeds on your own habit changes what the lawyer approved. | Yves chose the seed version, the **streak stake**: 200 in, 400 back after 7 days, fixed, one at a time. Built, waiting for the lawyer. |
+| Streak Wager (bet currency on your streak) | Staking seeds on your own habit changes what the lawyer approved. | Yves chose the seed version, the **streak stake**: 200 in, 400 back after 7 days, fixed, one at a time. Built, and approved by the lawyer on 15 October 2026. |
 | Duo's emotional reminders | The owl's sad, angry and "scared" faces are exactly what researchers flag. | Baba Ayo can be cheeky and warm ("Oya, your streak dey wait you"), never sad, hurt or disappointed in you. |
 | "We'll stop sending them for now" | Stopping is good; the guilt in the wording isn't. | Stop quietly after a few ignored reminders, and say so plainly in Settings. |
 

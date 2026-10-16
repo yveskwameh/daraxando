@@ -105,6 +105,7 @@ The secrets each copy on Cloudflare needs:
 | `SESSION_SECRET` | Signs every player's login | `openssl rand -base64 32` in the terminal. A different one per copy. |
 | `GOOGLE_CLIENT_SECRET` | Sign in with Google | Google Cloud, project **Dara X&O** → **Google Auth Platform → Clients → Dara X&O web**. The same client serves both copies. |
 | `RESEND_API_KEY` | Sends the sign-in code emails | resend.com → **API Keys**. One key per copy: `daraxando-staging`, then `daraxando-production` at launch, each with **Sending access** to `noreply.daraxando.yveskwameh.com`. |
+| `ADMIN_TOKEN` | Optional. Turns on the admin API for your future dashboard (`docs/ADMIN-API.md`). Without it, the admin API is off. | `openssl rand -base64 32` in the terminal. A different one per copy. Keep it in your password manager. |
 
 On your Mac, sign-in codes are printed in the terminal running `npm run dev` instead of emailed (look for `[sign-in code]`), unless `.dev.vars` has a `RESEND_API_KEY`.
 
@@ -136,7 +137,9 @@ On your Mac, sign-in codes are printed in the terminal running `npm run dev` ins
 
 **Friend rooms.** A 5-letter code (tap it to copy) and a share link. The person who made the room hosts one room at a time, and the app tells them the moment their friend joins, wherever they are in it. On the invite sheet, the friend's card shows up with **Start the game**.
 
-**Stakes.** Dara Seeds are points, never money: they can't be bought, sold, sent or cashed out. Stakes are taken when a match starts and paid to the winner when it ends; a draw or a called-off match gives them back. Every change is written to the `ledger` table.
+**Stakes.** Dara Seeds are points, never money: they can't be bought, sold, sent or cashed out. Stakes are taken when a match starts and paid to the winner when it ends; a draw or a called-off match gives them back. So does a win between two players made on the same phone, a win that would put someone more than 5,000 seeds up on the same opponent in a day, or a win where the loser quit in the first game before making 3 moves; the win still counts for everything else. Every change is written to the `ledger` table.
+
+**Safety.** Names are checked for rude and reserved words (`worker/names.ts`). A banned player can still play Baba Ayo but nobody else. They watch Ranks and their league from outside, with a dashed row showing where they'd be, and can ask for a ban review from the app; the answer shows in the app too. The admin API for Yves's future dashboard is in `docs/ADMIN-API.md`.
 
 **Rewards.** When a match ends, Aura, rating, wins, the daily goal, the daily seeds and the pot are saved to the **D1** database in one go, and each player gets their reward back.
 
@@ -182,6 +185,9 @@ scripts/             icons.cjs draws the app icons
 | `docs/PHONE-FEATURES.md` | Installing, portrait only, sound, haptics, phone limits |
 | `docs/STAKES.md` | Dara Seeds, the pot, and the rules that keep it a game and not gambling |
 | `docs/COWRIES-REVIEW.md` | The streak and age changes the lawyer approved (written before Dara Cowries became Dara Seeds) |
+| `docs/SAFETY-REVIEW.md` | The safety changes for the lawyer: farming rules, bans, seed corrections, the name filter |
+| `docs/NAMES-REVIEW.md` | The Pidgin, Yoruba, Igbo and Hausa words the name filter blocks, for the native speaker to check |
+| `docs/ADMIN-API.md` | The admin API: turning it on, every request, and keeping the key safe |
 | `docs/BACKEND.md` | The backend and launch plan: decisions, milestones, who does what, keys and the domain |
 | `docs/RETENTION.md` | Research modelled on Duolingo: getting players into a game fast, what brings them back, and what was built |
 | `docs/prototype.html` | The approved redesign as a clickable prototype (open it in a browser) |
@@ -190,10 +196,10 @@ scripts/             icons.cjs draws the app icons
 ## 7. Roadmap
 
 1. **Frontend: done.** Every screen, state and animation, tested locally with real matches. Signed off 15 October 2026.
-2. **Backend: now.** Sign-in to keep progress across phones (built 16 October 2026, testing on the test copy), name filtering, stronger checks at high stakes, privacy-friendly analytics, and push notifications (streak reminders, "your friend joined your room"). The plan is `docs/BACKEND.md`.
+2. **Backend: now.** Sign-in to keep progress across phones (built 16 October 2026, testing on the test copy), safety (built 16 October 2026: name filter, rules against farming seeds, bans, the admin API), privacy-friendly analytics, and push notifications (streak reminders, "your friend joined your room"). The plan is `docs/BACKEND.md`.
 3. **Launch.** Cloudflare account, live database, secrets, domain, and deploys from GitHub.
 
-Approved on 15 October 2026: the native-speaker check of every Yoruba, Igbo and Hausa word and the 20 titles, and the lawyer's opinion on Dara Seeds, including the streak items and the one-tap age confirmation (`docs/COWRIES-REVIEW.md`). Any change to how seeds work, or to the age confirmation on the first screen, goes back to the lawyer first.
+Approved on 15 October 2026: the native-speaker check of every Yoruba, Igbo and Hausa word and the 20 titles, and the lawyer's opinion on Dara Seeds, including the streak items and the one-tap age confirmation (`docs/COWRIES-REVIEW.md`). Any change to how seeds work, or to the age confirmation on the first screen, goes back to the lawyer first. Approved on 16 October 2026: the lawyer on the safety changes (`docs/SAFETY-REVIEW.md`) and the native speaker on the name filter's words (`docs/NAMES-REVIEW.md`).
 
 ## 8. Going live
 
@@ -241,4 +247,7 @@ If the free plan's 100,000 requests a day ever run out, players see "Dara X&O is
 | "no such column: habits" after pulling new code | Stop the dev server and run `npm run dev` again. It applies new database changes as it starts. |
 | Google says "redirect_uri_mismatch" | Google only knows three return addresses: the test copy, the real game and `http://localhost:5173`. On your Mac, use `localhost:5173`, not the Network address or an ngrok link. Email codes work on any address. |
 | "Google sign-in isn't set up on this copy yet" | That copy has no `GOOGLE_CLIENT_SECRET` (section 8, step 9). On your Mac, add it to `.dev.vars` and restart `npm run dev`. |
+| A name you expect to work is refused | The name filter is in `worker/names.ts`. Short words like "ass" only count as whole words, so they don't catch Bassey. Add the name to `tests/safety.test.ts` and fix the list until `npm test` passes. |
+| Not sure the sign-in secrets work on a copy | Open that copy's address with `/api/health` on the end, for example **https://daraxando-staging.yves-workers.workers.dev/api/health**. `"signIn":{"google":true,"email":true}` means both secrets are there; `false` names the one that's missing. It never shows the values. |
+| The admin API answers 404 | That copy has no `ADMIN_TOKEN`, or it's shorter than 32 characters (`docs/ADMIN-API.md`). |
 | No sign-in email arrives | On your Mac, the code is in the terminal (`[sign-in code]`). On the test copy, check Spam and Promotions, then Resend's **Emails** page, which shows every email sent and whether it was delivered. |

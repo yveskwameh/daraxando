@@ -12,7 +12,7 @@ import type { LeaderRow, Profile, PublicPlayer } from '../shared/protocol';
 import { COOL_LOSSES, COOL_MS, DAILY_COWRIES, HIGH_TABLE, SAPA_BELOW, SAPA_EVERY_MS, SAPA_TO, START_COWRIES } from '../shared/stakes';
 import { tidyHabits } from './habits';
 
-interface PlayerRow {
+export interface PlayerRow {
   id: string;
   name: string;
   avatar: string;
@@ -36,9 +36,13 @@ interface PlayerRow {
   created_at: number;
   habits: string;
   saved: number;
+  /** The phone the player was made on, as a keyed hash (worker/safety.ts). */
+  device: string | null;
+  banned_at: number | null;
+  ban_reason: string | null;
 }
 
-const toProfile = (r: PlayerRow): Profile => ({
+export const toProfile = (r: PlayerRow): Profile => ({
   id: r.id,
   name: r.name,
   avatar: r.avatar,
@@ -64,6 +68,7 @@ const toProfile = (r: PlayerRow): Profile => ({
   createdAt: r.created_at,
   habits: tidyHabits(parseHabits(r.habits), dayKey(Date.now())),
   saved: r.saved === 1,
+  ban: r.banned_at ? { at: r.banned_at, reason: r.ban_reason ?? '' } : null,
 });
 
 export const toPublic = (p: Profile): PublicPlayer => ({
@@ -82,16 +87,17 @@ export async function getPlayer(db: D1Database, id: string): Promise<Profile | n
   return row ? toProfile(row) : null;
 }
 
-export async function createPlayer(db: D1Database, p: { name: string; avatar: string; state: StateCode }): Promise<Profile> {
+/** `device` is the keyed hash of the phone's random id (worker/safety.ts), or null if the app didn't send one. */
+export async function createPlayer(db: D1Database, p: { name: string; avatar: string; state: StateCode; device: string | null }): Promise<Profile> {
   const id = crypto.randomUUID();
   const now = Date.now();
   const [, created] = await db.batch<PlayerRow>([
     db.prepare("INSERT INTO ledger (player_id, delta, reason, created_at) VALUES (?, ?, 'start', ?)").bind(id, START_COWRIES, now),
     db
       .prepare(
-        'INSERT INTO players (id, name, avatar, state, rating, cowries, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
+        'INSERT INTO players (id, name, avatar, state, rating, cowries, device, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
       )
-      .bind(id, p.name, p.avatar, p.state, START_RATING, START_COWRIES, now, now),
+      .bind(id, p.name, p.avatar, p.state, START_RATING, START_COWRIES, p.device, now, now),
   ]);
   const row = created.results?.[0];
   if (!row) throw new Error('Could not create player');
@@ -128,9 +134,9 @@ export async function claimSapa(db: D1Database, id: string, now = Date.now()) {
   return row ? toProfile(row) : null;
 }
 
-/** The top players, everywhere or in one state. Only people who have played a quick match. */
+/** The top players, everywhere or in one state. Only people who have played a quick match, and nobody banned. */
 export async function leaderboard(db: D1Database, state: string | null, limit = 50): Promise<LeaderRow[]> {
-  const where = state ? 'quick_games > 0 AND state = ?' : 'quick_games > 0';
+  const where = state ? 'quick_games > 0 AND state = ? AND banned_at IS NULL' : 'quick_games > 0 AND banned_at IS NULL';
   const stmt = db.prepare(`SELECT id, name, avatar, print, state, rating, aura FROM players WHERE ${where} ORDER BY rating DESC LIMIT ?`);
   const { results } = await (state ? stmt.bind(state, limit) : stmt.bind(limit))
     .all<Pick<PlayerRow, 'id' | 'name' | 'avatar' | 'print' | 'state' | 'rating' | 'aura'>>();
@@ -150,7 +156,7 @@ export async function leaderboard(db: D1Database, state: string | null, limit = 
 
 /** 1 for the best player. Ties share the better rank. */
 export async function rankOf(db: D1Database, rating: number, state: string | null) {
-  const where = state ? 'quick_games > 0 AND state = ? AND rating > ?' : 'quick_games > 0 AND rating > ?';
+  const where = state ? 'quick_games > 0 AND state = ? AND rating > ? AND banned_at IS NULL' : 'quick_games > 0 AND rating > ? AND banned_at IS NULL';
   const stmt = db.prepare(`SELECT COUNT(*) + 1 AS rank FROM players WHERE ${where}`);
   const row = await (state ? stmt.bind(state, rating) : stmt.bind(rating)).first<{ rank: number }>();
   return row?.rank ?? null;
@@ -195,6 +201,11 @@ export interface SeriesInput {
   rating: number | null;
   /** Cowries paid back at the end: the pot, a refunded stake, or 0. */
   payout: number;
+  /**
+   * True when a farming rule sent both stakes back (worker/safety.ts). The winner's payout is then
+   * a refund, and the loss doesn't count toward the high-table break, because nothing was lost.
+   */
+  back: boolean;
   /** Friend and quick matches count toward wins, losses and win streaks. Baba Ayo games only give Aura. */
   online: boolean;
   quick: boolean;
@@ -223,6 +234,8 @@ export interface MatchRecord {
   reason: string;
   score: string;
   moves: string;
+  /** False when the stakes went back instead of to the winner (shared/stakes.ts, farming rules). */
+  paid: boolean;
 }
 
 /**
@@ -241,7 +254,7 @@ export async function recordSeries(db: D1Database, inputs: SeriesInput[], match:
     const onlineWin = p.online && win ? 1 : 0;
     const onlineLoss = p.online && p.result === 'loss' ? 1 : 0;
     const onlineDraw = p.online && p.result === 'draw' ? 1 : 0;
-    const high = p.stake >= HIGH_TABLE ? 1 : 0;
+    const high = !p.back && p.stake >= HIGH_TABLE ? 1 : 0;
     const list = [
       // Read the row as it was, to report the daily cowries and goal bonus.
       db.prepare('SELECT id, daily_day, last_played_day, day_wins FROM players WHERE id = ?').bind(p.id),
@@ -278,7 +291,7 @@ export async function recordSeries(db: D1Database, inputs: SeriesInput[], match:
       list.push(
         db
           .prepare('INSERT INTO ledger (player_id, delta, reason, match_id, created_at) VALUES (?, ?, ?, ?, ?)')
-          .bind(p.id, p.payout, p.result === 'win' ? 'pot' : 'refund', matchId, now),
+          .bind(p.id, p.payout, p.result === 'win' && !p.back ? 'pot' : 'refund', matchId, now),
       );
     }
     return list;
@@ -289,9 +302,9 @@ export async function recordSeries(db: D1Database, inputs: SeriesInput[], match:
     statements.push(
       db
         .prepare(
-          'INSERT INTO matches (id, mode, kind, stake, x_id, o_id, winner, reason, score, moves, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          'INSERT INTO matches (id, mode, kind, stake, x_id, o_id, winner, reason, score, moves, paid, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         )
-        .bind(matchId, match.mode, match.kind, match.stake, match.xId, match.oId, match.winner, match.reason, match.score, match.moves, now),
+        .bind(matchId, match.mode, match.kind, match.stake, match.xId, match.oId, match.winner, match.reason, match.score, match.moves, match.paid ? 1 : 0, now),
     );
   }
 

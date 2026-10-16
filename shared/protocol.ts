@@ -9,6 +9,7 @@ import type { ModeId } from './modes';
 import type { Kind, Result } from './progression';
 import type { StateCode } from './places';
 import type { Cell, Hist, Mark } from './rules';
+import type { StakeBack } from './stakes';
 
 export const NAME_MIN = 2;
 export const NAME_MAX = 16;
@@ -78,6 +79,8 @@ export interface Profile {
   habits: Habits;
   /** Google or an email is linked, so the player can sign in on any phone (worker/accounts.ts). */
   saved: boolean;
+  /** Banned: no play against people, no Ranks or leagues. Baba Ayo still works (worker/admin.ts). */
+  ban: { at: number; reason: string } | null;
 }
 
 /** How a player signs in. */
@@ -160,6 +163,18 @@ export interface LeagueData {
   /** In leagues of fewer than 5 players, you also have to finish above Baba Ayo to move up. */
   beatBaba: boolean;
   last: { week: string; rank: number; tier: number; moved: LeagueMove } | null;
+  /**
+   * A banned player looking in from outside: `rows` is the table they'd be in, without them,
+   * and this is their Aura for the week, to show where they'd be. They can't climb it.
+   */
+  outside?: { aura: number };
+}
+
+/** A banned player's latest request for a ban review, and whether they can send another. */
+export interface AppealView {
+  appeal: { at: number; status: 'open' | 'lifted' | 'kept'; note: string | null; decidedAt: number | null } | null;
+  /** When they can ask again: now (0), or not before this time. Null while one is open. */
+  askFrom: number | null;
 }
 
 /** What other players can see about you. */
@@ -289,6 +304,8 @@ export interface Reward {
   winStreak: number;
   /** Streak, quests, badges and the streak stake. Missing if they couldn't be saved. */
   habits?: HabitOutcome;
+  /** The stakes went back instead of to the winner, and why (shared/stakes.ts, farming rules). */
+  back?: StakeBack;
 }
 
 export type ClientMsg =
@@ -313,7 +330,10 @@ export type ErrorCode =
   | 'replaced'
   | 'bad-move'
   | 'stake-short'
-  | 'table-locked';
+  | 'table-locked'
+  | 'banned'
+  /** A rematch can't start because the other player was banned. Shown as a note, not the end. */
+  | 'rematch-off';
 
 export type ServerMsg =
   | { t: 'state'; s: MatchView }
@@ -370,6 +390,8 @@ export const CLOSE = {
   notFound: 4004,
   /** The game you tried to join was taken or closed. */
   gone: 4005,
+  /** Banned players can't play other people. */
+  banned: 4006,
   unauthorized: 4401,
 } as const;
 

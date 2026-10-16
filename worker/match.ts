@@ -28,11 +28,12 @@ import {
   emptyBoard, emptyHist, fadingNext, findWin, isIndex, legalMoves, other, outcomeAfter, place,
   type Cell, type Hist, type Mark, type Variant,
 } from '../shared/rules';
-import { fmt, isFriendTable, prize } from '../shared/stakes';
+import { fmt, isFriendTable, prize, QUICK_QUIT_MOVES, type StakeBack } from '../shared/stakes';
 import { LINES, line } from './baba';
 import { recordSeries, refund, takeStakes, type SeriesInput } from './db';
 import type { Env } from './env';
 import { afterMatch } from './habits';
+import { BANNED_MESSAGE, bannedAmong, stakeBack } from './safety';
 
 interface Seat extends PublicPlayer {
   score: number;
@@ -42,6 +43,8 @@ interface Seat extends PublicPlayer {
   hidden: boolean;
   /** When they stopped being here, whether by leaving the app or losing the connection. */
   leftAt: number | null;
+  /** Moves they made themselves this series, for the quick-quit rule. Missing in rooms saved before it. */
+  played?: number;
 }
 
 interface State {
@@ -378,7 +381,9 @@ export class Match extends DurableObject<Env> {
     switch (m.t) {
       case 'move': {
         if (s.phase !== 'playing' || s.pausedLeft !== null || s.turn !== mine || !isIndex(m.i, MODES[s.mode].n) || s.board[m.i] !== null) return this.bad(ws);
-        s.seats[a.seat]!.timeouts = 0;
+        const seat = s.seats[a.seat]!;
+        seat.timeouts = 0;
+        seat.played = (seat.played ?? 0) + 1;
         return this.place(a.seat, m.i, now);
       }
 
@@ -496,7 +501,11 @@ export class Match extends DurableObject<Env> {
     s.record = '';
     s.series = null;
     s.rematch = [null, null];
-    for (const p of s.seats) if (p) p.score = 0;
+    for (const p of s.seats) {
+      if (!p) continue;
+      p.score = 0;
+      p.played = 0;
+    }
     s.starter = s.seriesStarter;
     this.nextGame(now, true);
     if (s.kind === 'bot') {
@@ -813,12 +822,24 @@ export class Match extends DurableObject<Env> {
       const theirs = s.rematch[1 - seat];
       if (!theirs || theirs.mode !== mode || theirs.stake !== stake) return this.sync();
 
-      // Both asked for the same thing.
+      // Both asked for the same thing. Clear the asks before waiting on the database, so a
+      // repeated message can't start the rematch, and take the stakes, a second time.
+      s.rematch = [null, null];
+      const ids = s.seats.map((p) => p!.id);
+      // Someone banned since this match started can't play another series against a person.
+      const banned = await bannedAmong(this.env.DB, ids);
+      if (banned.length) {
+        for (const p of s.seats) {
+          if (!p) continue;
+          this.sendTo(p.id, banned.includes(p.id)
+            ? { t: 'error', code: 'banned', message: BANNED_MESSAGE }
+            : { t: 'error', code: 'rematch-off', message: `${s.seats.find((q) => q && banned.includes(q.id))!.name} can't play a rematch right now.` });
+        }
+        return this.sync();
+      }
       if (stake > 0) {
-        const ids = s.seats.map((p) => p!.id);
         const short = await takeStakes(this.env.DB, s.id, ids, stake, now);
         if (short.length) {
-          s.rematch = [null, null];
           const names = s.seats.filter((p) => p && short.includes(p.id)).map((p) => p!.name);
           this.send({ t: 'error', code: 'stake-short', message: `${names.join(' and ')} can't cover ${fmt(stake)} Dara Seeds for a rematch.` });
           return this.sync();
@@ -838,6 +859,9 @@ export class Match extends DurableObject<Env> {
   private async report(now: number) {
     const s = this.state!;
     if (s.series?.reason === 'aborted') return;
+    // A rematch can start while this waits on the database, so everything about this series is
+    // read now, before the first wait.
+    const { kind, mode, level } = s;
     const humans = ([0, 1] as const).filter((i) => s.seats[i] && !s.seats[i]!.bot);
     const winner = s.series?.winner ?? null;
     const resultFor = (seat: 0 | 1): Result => (winner === null ? 'draw' : winner === seat ? 'win' : 'loss');
@@ -858,6 +882,7 @@ export class Match extends DurableObject<Env> {
         aura: auraFor(s.kind, result, s.level),
         rating: s.kind === 'quick' ? Math.max(MIN_RATING, me.rating + eloDelta(me.rating, opp.rating, result)) : null,
         payout: payoutFor(result),
+        back: false,
         online: s.kind !== 'bot',
         quick: s.kind === 'quick',
         stake: held,
@@ -875,7 +900,39 @@ export class Match extends DurableObject<Env> {
       reason: s.series?.reason ?? 'line',
       score: `${s.seats[0]!.score}-${s.seats[1]!.score}`,
       moves: s.record,
+      paid: true,
     };
+
+    // The farming rules (worker/safety.ts). If one applies, both stakes go back and the win still counts.
+    let back: StakeBack | null = null;
+    if (held && winner !== null && record) {
+      const loser = s.seats[1 - winner]!;
+      // Games finished before the one that ended the series. A line, a draw or a timeout counts
+      // the last game in the score; a resign, a walk-off or an idle ending doesn't.
+      const lastCounted = record.reason === 'line' || record.reason === 'draw' || record.reason === 'timeout';
+      const settle = {
+        winnerId: s.seats[winner]!.id,
+        loserId: loser.id,
+        stake: held,
+        reason: record.reason,
+        // Rooms saved before the rule have no count, so the rule doesn't apply to them.
+        loserMoves: loser.played ?? QUICK_QUIT_MOVES,
+        gamesBefore: s.seats[0]!.score + s.seats[1]!.score + s.draws - (lastCounted ? 1 : 0),
+      };
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          back = await stakeBack(this.env.DB, settle, now);
+          break;
+        } catch (err) {
+          // Twice failing means the database is down, and the result below won't save either.
+          console.error('Could not check the farming rules', s.id, attempt, err);
+        }
+      }
+      if (back) {
+        for (const input of inputs) Object.assign(input, { payout: held, back: true });
+        record.paid = false;
+      }
+    }
 
     let out: Awaited<ReturnType<typeof recordSeries>> | null = null;
     for (let attempt = 0; attempt < 2 && !out; attempt++) {
@@ -900,7 +957,7 @@ export class Match extends DurableObject<Env> {
       const habits = await afterMatch(
         this.env.DB,
         seat.id,
-        { kind: s.kind, mode: s.mode, result: input.result, level: s.level, oppState: opp.bot ? undefined : opp.state },
+        { kind, mode, result: input.result, level, oppState: opp.bot ? undefined : opp.state },
         { aura: input.aura + row.goalBonus, dayWinsBefore: row.dayWins - (input.result === 'win' ? 1 : 0) },
         now,
       ).catch((err) => {
@@ -923,6 +980,7 @@ export class Match extends DurableObject<Env> {
           ratingBefore: prev.rating,
           ratingAfter: row.rating,
           cowries: input.payout - held,
+          back: back ?? undefined,
           daily: row.daily,
           cowriesTotal: habits?.cowries ?? row.cowries,
           dayStreak: habits?.streak ?? row.dayStreak,

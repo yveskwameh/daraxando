@@ -89,7 +89,7 @@ export function useMatch(matchId: string, token: string) {
         case 'error':
           if (m.code === 'bad-move') break;
           // Once you are in a match, a stake problem is about a rematch: a note, not the end.
-          if (m.code === 'stake-short' && lastPhase.current) setNotice({ id: nextId++, message: m.message });
+          if ((m.code === 'stake-short' || m.code === 'rematch-off') && lastPhase.current) setNotice({ id: nextId++, message: m.message });
           else setError({ code: m.code, message: m.message });
           break;
       }

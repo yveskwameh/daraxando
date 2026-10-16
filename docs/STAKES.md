@@ -65,6 +65,8 @@ Ledger reasons for these: `freeze`, `repair`, `streak-stake`, `streak-win`.
 - New accounts are held to tables of 1,000 and below for 7 days.
 - New players are rate-limited per device (5 a minute) with a loose per-IP backstop, because Nigerian mobile networks share IPs. Phone or Google sign-in before high tables comes with the backend phase.
 - After 3 straight losses at 10,000 and up, a 10-minute cool-down and a nudge to drop a table. No double-or-nothing button. The streak stake is a fixed 200 on your own daily play, never offered after a loss and never raised.
+- **Farming rules (16 October 2026, `docs/SAFETY-REVIEW.md`, approved by the lawyer the same day).** When a staked match is won, both stakes go back instead if the two players were made on the same phone, if the winner would end up more than 5,000 seeds ahead of the same opponent in 24 hours (three stakes at tables above 1,000), or if the loser quit in the first game before making 3 moves. The cap counts seeds moving one way only, so friends who trade wins can stake all day. The win still counts for Aura, rating and the streak.
+- Bans stop all play against people. Yves can correct a balance through the admin API, always with a reason, never below 0, logged as `admin` in the ledger.
 - Tic tac toe on 3×3 is solved, so the server can check every move against perfect play and flag players who keep missing obvious blocks at high stakes (a sign of losing on purpose).
 - The Terms ban selling Dara Seeds or accounts.
 
@@ -76,12 +78,14 @@ Ledger reasons for these: `freeze`, `repair`, `streak-stake`, `streak-win`.
 | `migrations/0002_dara.sql` | `cowries`, `aura`, `daily_day`, `sapa_at`, `big_losses`, `cool_until` on players, and the `ledger` table |
 | `worker/db.ts` | `takeStakes` (all or nothing, refunds if anyone is short), `refund`, `recordSeries` (pot, daily seeds, goal bonus, streaks, cool-down, in one batch), `claimSapa` |
 | `worker/matchmaker.ts` | One queue per mode and stake, state then zone then Nigeria, the daily pair limit for high tables |
-| `worker/match.ts` | Holds both stakes for the match, pays the pot or refunds a draw once, forfeits on leaving, refunds a match nobody finished |
+| `worker/match.ts` | Holds both stakes for the match, pays the pot or refunds a draw once, forfeits on leaving, refunds a match nobody finished, counts each player's own moves for the quick-quit rule |
+| `worker/safety.ts` | The phone hash, and `stakeBack`: which farming rule, if any, sends both stakes back |
+| `worker/admin.ts` | Seed corrections (`admin` in the ledger), bans, renames, all logged in `admin_actions` |
 | `worker/index.ts` | Checks the table lock before joining a queue, the friend room cap of 1,000, Sapa relief, the streak routes |
 | `shared/habits.ts`, `worker/habits.ts` | Streak Freeze, restore and streak stake prices and rules; each purchase and payout is one batch with its ledger row |
 | Screens | Seeds chip and wallet on Home, stake picker before Quick match, stake chips when inviting a friend, the pot on the VS screen and in the match header, seeds in the result |
 
-Every change to a balance writes a `ledger` row (start, daily, sapa, stake, pot, refund, freeze, repair, streak-stake, streak-win), so a balance can always be explained. The local test matches all balanced to the ledger.
+Every change to a balance writes a `ledger` row (start, daily, sapa, stake, pot, refund, freeze, repair, streak-stake, streak-win, admin), so a balance can always be explained. The local test matches all balanced to the ledger.
 
 ## Sources
 

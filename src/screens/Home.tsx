@@ -36,8 +36,13 @@ import { WalletSheet } from '../sheets/WalletSheet';
 const StreakSheet = lazy(() => import('../sheets/StreakSheet'));
 const QuestsSheet = lazy(() => import('../sheets/QuestsSheet'));
 const LiveSheet = lazy(() => import('../sheets/LiveSheet'));
+// Only banned players ever load this one.
+const BanSheet = lazy(() => import('../sheets/BanSheet'));
 
-type SheetName = 'stake' | 'wallet' | 'friend' | 'baba' | 'streak' | 'friends' | 'quests' | 'live' | null;
+type SheetName = 'stake' | 'wallet' | 'friend' | 'baba' | 'streak' | 'friends' | 'quests' | 'live' | 'ban' | null;
+
+/** A banned player sees why once each time the app opens, then whenever they tap a way to play someone. */
+let banShown = false;
 
 
 export function Home({ go }: { go: Go }) {
@@ -53,6 +58,9 @@ export function Home({ go }: { go: Go }) {
     setSheet(s);
   };
   const close = () => setSheet(null);
+  const ban = profile.ban;
+  // Playing other people: a banned player gets the reason instead.
+  const online = (s: 'stake' | 'friend' | 'live') => (ban ? open('ban') : s === 'live' ? open('live') : setSheet(s));
   const lv = levelInfo(profile.aura);
   // The live games come down one socket the server pushes to (src/lib/useLive.ts).
   const live = useLive(token).games?.length ?? 0;
@@ -63,21 +71,30 @@ export function Home({ go }: { go: Go }) {
   }, [go]);
   const updateReady = useUpdateReady();
 
+  useEffect(() => {
+    if (!ban || banShown) return;
+    banShown = true;
+    open('ban');
+    // Once per app open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ban]);
+
   // Someone asked you for a friend streak: say so, like a friend request.
   useEffect(() => {
+    if (ban) return;
     api.friends(token).then((d) => {
       const first = d.friends.find((f) => f.status === 'incoming') ?? null;
       asking.current = !!first;
       setAsk(first);
     }, () => {});
-  }, [token]);
+  }, [token, ban]);
 
   // Baba Ayo, Duolingo-owl style: a nudge when your streak is at risk, has just ended, or
   // you've been away. At most every few hours, and never with another pop-up showing.
   useEffect(() => {
     if (!p.nudges) return;
     const t = setTimeout(() => {
-      if (asking.current) return;
+      if (asking.current || profile.ban) return;
       const n = babaNudge(profile.habits, profile.dayStreak, dayKey(Date.now()), profile.lastPlayedDay);
       if (n && takeNudgeSlot()) setNudge(n);
     }, 1200);
@@ -130,7 +147,7 @@ export function Home({ go }: { go: Go }) {
         onMode={(mode) => prefs.set({ mode })}
         onPlay={(mode) => {
           prefs.set({ mode });
-          setSheet('stake');
+          online('stake');
         }}
       />
       <HabitBar profile={profile} onStreak={() => open('streak')} onQuests={() => open('quests')} />
@@ -140,7 +157,7 @@ export function Home({ go }: { go: Go }) {
           type="button"
           className="btn primary block lg"
           aria-label={live ? `Quick match. ${live} ${live === 1 ? 'game is' : 'games are'} waiting for a player.` : `Quick match. Nobody is waiting yet. You can start your own ${MODES[p.mode].name} game${p.stake ? ` at ${fmt(p.stake)}` : ', free'}.`}
-          onClick={() => open('live')}
+          onClick={() => online('live')}
         >
           Quick match{' '}
           <span className="stake-pill">
@@ -152,7 +169,7 @@ export function Home({ go }: { go: Go }) {
           </span>
         </button>
         <div className="row2">
-          <button type="button" className="btn alt" onClick={() => setSheet('friend')}>Play a friend</button>
+          <button type="button" className="btn alt" onClick={() => online('friend')}>Play a friend</button>
           <button type="button" className="btn baba" onClick={() => setSheet('baba')}>Play Baba Ayo</button>
         </div>
       </div>
@@ -239,6 +256,7 @@ export function Home({ go }: { go: Go }) {
         {opened.has('live') && (
           <LiveSheet open={sheet === 'live'} onClose={close} go={go} onStartOwn={startOwn} onChange={() => setSheet('stake')} onBaba={() => setSheet('baba')} />
         )}
+        {ban && opened.has('ban') && <BanSheet open={sheet === 'ban'} ban={ban} onClose={close} onBaba={() => setSheet('baba')} />}
       </Suspense>
     </main>
   );

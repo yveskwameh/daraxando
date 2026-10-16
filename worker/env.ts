@@ -36,6 +36,13 @@ export interface Env {
   RESEND_API_KEY?: string;
   /** Who the code emails come from. The domain is verified in Resend. Not secret, so it's in wrangler.jsonc. */
   EMAIL_FROM?: string;
+  /**
+   * Turns on the admin API (worker/admin.ts, docs/ADMIN-API.md) and is its key: at least 32
+   * random characters. Local: .dev.vars. Live: a secret on each Worker. Not set means no admin API.
+   */
+  ADMIN_TOKEN?: string;
+  /** Web addresses allowed to call the admin API from a browser, comma separated. Optional. */
+  ADMIN_ORIGIN?: string;
   /** Tests only, and only when ENVIRONMENT is local: a stand-in for Google's sign-in page and token address. */
   GOOGLE_AUTH_URL?: string;
   GOOGLE_TOKEN_URL?: string;

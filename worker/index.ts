@@ -18,6 +18,9 @@ import type { Env } from './env';
 import { body, fail, json, secretOf } from './http';
 import { askFriend, buyFreeze, dropFriend, friendsOf, leagueFor, placeBet, restore } from './habits';
 import { randomId } from './matchmaker';
+import { adminRoute } from './admin';
+import { NAME_PROBLEM_MESSAGE, nameProblem } from './names';
+import { appealOf, askReview, BANNED_MESSAGE, deviceOf, isBanned } from './safety';
 
 export { Match } from './match';
 export { Matchmaker } from './matchmaker';
@@ -58,6 +61,8 @@ function checkPatch(me: Profile | null, b: Partial<Record<keyof ProfilePatch, un
   if (b.name !== undefined) {
     const name = cleanName(b.name);
     if (!name) return 'Names are 2 to 16 letters or numbers.';
+    const problem = nameProblem(name);
+    if (problem) return NAME_PROBLEM_MESSAGE[problem];
     patch.name = name;
   }
   if (b.avatar !== undefined) {
@@ -99,7 +104,9 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     const checked = checkPatch(null, { name: b.name, avatar: b.avatar, state: b.state });
     if (typeof checked === 'string') return fail(400, checked);
     if (!checked.name || !checked.avatar || !checked.state) return fail(400, 'Pick a name, an avatar and your state.');
-    const profile = await createPlayer(env.DB, { name: checked.name, avatar: checked.avatar, state: checked.state as Profile['state'] });
+    const profile = await createPlayer(env.DB, {
+      name: checked.name, avatar: checked.avatar, state: checked.state as Profile['state'], device: await deviceOf(req, env),
+    });
     return json({ token: await signToken(profile.id, secretOf(env)), profile });
   }
 
@@ -109,7 +116,10 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     const state = scope && isStateCode(scope) && scope !== 'OUT' && scope !== 'NONE' ? scope : null;
     const top = await cachedTop(env, url, state);
     const me = await playerFrom(req, url, env);
-    const mine = me && me.quickGames > 0 && (!state || me.state === state) ? { rank: await rankOf(env.DB, me.rating, state) } : null;
+    // A banned player isn't on the list, but sees where they'd be ("outside").
+    const mine = me && me.quickGames > 0 && (!state || me.state === state)
+      ? { rank: await rankOf(env.DB, me.rating, state), ...(isBanned(me) ? { outside: true as const } : {}) }
+      : null;
     return json({ top, me: mine });
   }
 
@@ -121,7 +131,10 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   }
 
   /* --- is it up? For checks after a deploy. No player needed. --- */
-  if (path === '/api/health' && method === 'GET') return json({ ok: true, env: env.ENVIRONMENT ?? 'local' });
+  // `signIn` says whether each sign-in secret is set on this copy (never the values), so a missing one is easy to spot.
+  if (path === '/api/health' && method === 'GET') {
+    return json({ ok: true, env: env.ENVIRONMENT ?? 'local', signIn: { google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.RESEND_API_KEY } });
+  }
 
   /* --- an error on a player's phone, so bugs on real phones show up in the logs --- */
   if (path === '/api/log' && method === 'POST') {
@@ -145,6 +158,9 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     if (!room) return fail(404, 'No room with that code. Check it with your friend.');
     return json({ code, ...room });
   }
+
+  /* --- the admin API (worker/admin.ts, docs/ADMIN-API.md). Its own key, never a player token. --- */
+  if (path.startsWith('/api/admin/') || path === '/api/admin') return adminRoute(req, env, url);
 
   /* --- save your progress and sign in (worker/accounts.ts). The phone may not have a player yet. --- */
   if (path.startsWith('/api/auth/')) return authRoute(req, env, url, tokenFrom(req, url) ? await playerFrom(req, url, env) : null);
@@ -173,6 +189,16 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     return json({ profile: await updatePlayer(env.DB, me.id, checked) });
   }
 
+  /* --- a banned player asking for a ban review, and seeing the answer --- */
+  if (path === '/api/appeal' && method === 'GET') {
+    if (!me.ban) return fail(409, "Your account isn't banned.");
+    return json(await appealOf(env.DB, me.id, me.ban.at));
+  }
+  if (path === '/api/appeal' && method === 'POST') {
+    const r = await askReview(env.DB, me, (await body<{ message: string }>(req)).message, now);
+    return typeof r === 'string' ? fail(409, r) : json(r);
+  }
+
   /* --- Sapa relief: a free top-up when you're nearly out --- */
   if (path === '/api/wallet/sapa' && method === 'POST') {
     if (!sapaReady(me.cowries, me.sapaAt, now)) return fail(409, 'Sapa relief is for balances under 500, once every 4 hours.');
@@ -182,6 +208,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
 
   /* --- play a friend: make a room with a short code --- */
   if (path === '/api/rooms' && method === 'POST') {
+    if (isBanned(me)) return fail(403, BANNED_MESSAGE);
     const b = await body<{ mode: ModeId; stake: number }>(req);
     const mode = isModeId(b.mode) ? b.mode : DEFAULT_MODE;
     const stake = isFriendTable(b.stake) ? b.stake : 0;
@@ -229,12 +256,13 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   }
 
   /* --- weekly league --- */
-  if (path === '/api/league' && method === 'GET') return json(await leagueFor(env.DB, me.id, now));
+  if (path === '/api/league' && method === 'GET') return json(await leagueFor(env.DB, me.id, now, isBanned(me)));
 
   /* --- friend streaks --- */
   if (path === '/api/friends' && method === 'GET') return json(await friendsOf(env.DB, me.id, now));
   const friend = path.match(/^\/api\/friends\/([0-9a-f-]{36})$/);
   if (friend && method === 'POST') {
+    if (isBanned(me)) return fail(403, BANNED_MESSAGE);
     const r = await askFriend(env.DB, me.id, friend[1], now);
     return r.ok ? json(await friendsOf(env.DB, me.id, now)) : fail(409, r.error);
   }
@@ -258,6 +286,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
 
   /* --- quick match queue --- */
   if (path === '/api/lobby' && isSocket) {
+    if (isBanned(me)) return socketError(CLOSE.banned, 'banned', BANNED_MESSAGE);
     const mode = url.searchParams.get('mode');
     const stake = Number(url.searchParams.get('stake') ?? 0);
     if (!isModeId(mode) || !isTable(stake)) return socketError(CLOSE.notFound, 'not-found', 'Pick a mode and a stake.');
@@ -275,12 +304,15 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
 
   /* --- watching the live games from Home: one socket, the server pushes changes --- */
   if (path === '/api/live/watch' && isSocket) {
+    // 4000 and up tells the app not to try again (src/lib/useLive.ts).
+    if (isBanned(me)) return socketError(CLOSE.banned, 'banned', BANNED_MESSAGE);
     const check = { level: me.level, cowries: me.cowries, createdAt: me.createdAt, coolUntil: me.coolUntil };
     return forward(req, env.MATCHMAKER.get(env.MATCHMAKER.idFromName('global')), toPublic(me), { 'x-watch': JSON.stringify({ check }) });
   }
 
   /* --- live games for Quick match, as one request: the ones you can join, nearest and longest waiting first --- */
   if (path === '/api/live' && method === 'GET') {
+    if (isBanned(me)) return json({ games: [], n: 0, looking: 0 });
     const { games: all, looking } = await env.MATCHMAKER.get(env.MATCHMAKER.idFromName('global')).live(me.id);
     const zone = zoneOf(me.state);
     const near = (g: LiveGame) => (g.state === me.state && me.state !== 'OUT' && me.state !== 'NONE' ? 0 : zone && zoneOf(g.state) === zone ? 1 : 2);
@@ -296,6 +328,8 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   if (m && isSocket) {
     const id = m[1];
     if (!isMatchId(id)) return socketError(CLOSE.notFound, 'not-found');
+    // A friend room. A quick match can't start for a banned player, and Baba Ayo is still open.
+    if (isBanned(me) && isRoomCode(id.toUpperCase())) return socketError(CLOSE.banned, 'banned', BANNED_MESSAGE);
     return forward(req, env.MATCH.get(env.MATCH.idFromName(id)), toPublic(me));
   }
 
