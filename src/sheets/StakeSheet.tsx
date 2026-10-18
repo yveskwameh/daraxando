@@ -1,4 +1,8 @@
-/** Pick a table before Quick match. Locked tables say why, in plain words. */
+/**
+ * Pick a table before your own game. Locked tables say why, in plain words. It names the game
+ * too, with a way to change it (17 October 2026: Home's game picture no longer lists every game,
+ * so "Change game or stake" in Quick match has to reach both).
+ */
 import { useState } from 'react';
 import type { Profile } from '../../shared/protocol';
 import { fee, fmt, prize, short, TABLES, tableLock } from '../../shared/stakes';
@@ -13,17 +17,19 @@ interface Props {
   profile: Profile;
   stake: number;
   onGo: (stake: number) => void;
+  /** The game this stake is for, and the way to pick another. */
+  game: { name: string; series: string; onChange: () => void };
 }
 
-export function StakeSheet({ open, onClose, profile, stake, onGo }: Props) {
+export function StakeSheet({ open, onClose, profile, stake, onGo, game }: Props) {
   return (
     <Sheet open={open} onClose={onClose} label="Pick your stake">
-      <StakeBody profile={profile} initial={stake} onGo={onGo} />
+      <StakeBody profile={profile} initial={stake} onGo={onGo} game={game} />
     </Sheet>
   );
 }
 
-function StakeBody({ profile, initial, onGo }: { profile: Profile; initial: number; onGo: (stake: number) => void }) {
+function StakeBody({ profile, initial, onGo, game }: { profile: Profile; initial: number; onGo: (stake: number) => void; game: Props['game'] }) {
   const now = Date.now();
   const lockOf = (n: number) => tableLock(n, profile, now);
   const [pick, setPick] = useState(() => (lockOf(initial) ? 0 : initial));
@@ -33,6 +39,10 @@ function StakeBody({ profile, initial, onGo }: { profile: Profile; initial: numb
       <div className="titled">
         <h2>Pick your stake</h2>
         <p className="fine">Both players put in the same amount. The winner takes the pot. A draw gives both stakes back.</p>
+      </div>
+      <div className="stake-game">
+        <span><b>{game.name}</b> · {game.series}</span>
+        <button type="button" className="mini-btn ghost" aria-label={`Game: ${game.name}. Change the game.`} onClick={game.onChange}>Change game</button>
       </div>
       <div className="scroll">
         <div className="tables" role="group" aria-label="Tables">

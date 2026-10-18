@@ -6,6 +6,7 @@
 import { AnimatePresence, LazyMotion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { BOT_LEVEL_INFO } from '../../shared/bot';
+import { cleanMessage, hasContact, MSG_CONTACT, MSG_MAX } from '../../shared/chat';
 import { pieceById } from '../../shared/collections';
 import { DEFAULT_MODE, MODES, seriesLabel, variantOf, winsNeeded } from '../../shared/modes';
 import { dayKey } from '../../shared/progression';
@@ -32,9 +33,13 @@ import { usePlayer } from '../lib/session';
 import { sfx } from '../lib/sound';
 import { toast } from '../lib/toast';
 import { useCountdown } from '../lib/useCountdown';
+import { useLocalMatch } from '../lib/localMatch';
+import { isLocalMatch } from '../lib/offline';
 import { useMatch } from '../lib/useMatch';
 import { ResultSheet } from '../sheets/ResultSheet';
 import { CodeButton, shareInvite } from '../sheets/FriendSheet';
+
+type Conn = ReturnType<typeof useMatch> & { offline: { counts: boolean; aura: number } | null };
 
 const motionFeatures = () => import('../lib/motionFeatures').then((x) => x.default);
 
@@ -53,7 +58,10 @@ export function Game({ id, go }: { id: string; go: Go }) {
 
 function Match({ id, go }: { id: string; go: Go }) {
   const { token, profile, refresh, reset } = usePlayer();
-  const m = useMatch(id, token);
+  // A match played on the phone without internet (src/lib/localMatch.ts) or one on the server.
+  // The screen is keyed by the match id, so one screen always uses the same kind, and the
+  // order of hooks never changes.
+  const m: Conn = isLocalMatch(id) ? useLocalMatch(id) : { ...useMatch(id, token), offline: null };
   const v = m.view;
   const send = m.send;
 
@@ -79,6 +87,9 @@ function Match({ id, go }: { id: string; go: Go }) {
   const [rewardLate, setRewardLate] = useState(false);
   const [bubble, setBubble] = useState<{ side: 'me' | 'op'; text: string; id: number } | null>(null);
   const [lineCool, setLineCool] = useState(false);
+  // What you're typing in Say something, and whether you've muted the other player for this match.
+  const [draft, setDraft] = useState('');
+  const [muted, setMuted] = useState(false);
   const [focusCell, setFocusCell] = useState(0);
   const boardRef = useRef<HTMLDivElement>(null);
   const tapped = useRef<number | null>(null);
@@ -219,14 +230,16 @@ function Match({ id, go }: { id: string; go: Go }) {
     if (m.error?.code === 'unauthorized') reset();
   }, [m.error, reset]);
 
-  // Lines said in the match pop up next to whoever said them.
+  // Lines said in the match pop up next to whoever said them, longer ones for longer. A muted
+  // player's lines don't show; Baba Ayo can't be muted.
   useEffect(() => {
     if (!m.said || you === null) return;
+    if (muted && m.said.seat !== you && m.said.seat !== 'bot') return;
     const side = m.said.seat === you ? 'me' : 'op';
     setBubble({ side, text: m.said.text, id: m.said.id });
-    const t = setTimeout(() => setBubble((b) => (b?.id === m.said!.id ? null : b)), 2600);
+    const t = setTimeout(() => setBubble((b) => (b?.id === m.said!.id ? null : b)), Math.min(4500, 2000 + m.said.text.length * 60));
     return () => clearTimeout(t);
-  }, [m.said, you]);
+  }, [m.said, you, muted]);
 
   /* ---------- clocks: the browser asks, the server checks ---------- */
 
@@ -303,6 +316,24 @@ function Match({ id, go }: { id: string; go: Go }) {
     buzz('tap');
     setLineCool(true);
     setTimeout(() => setLineCool(false), 900);
+  };
+
+  // Your own message (shared/chat.ts): checked here for contact details so you see why at once,
+  // then again on the server, which also checks for rude words.
+  const typed = draft.trim();
+  const typedProblem = typed && hasContact(typed) ? MSG_CONTACT : null;
+  const sayTyped = () => {
+    if (you === null || lineCool || !typed) return;
+    if (typedProblem) {
+      buzz('invalid');
+      return;
+    }
+    setSheet(null);
+    m.say(typed);
+    setDraft('');
+    buzz('tap');
+    setLineCool(true);
+    setTimeout(() => setLineCool(false), 1500);
   };
 
   // The phone's Back button (or swipe) mid-match asks first, like X does, instead of walking
@@ -628,6 +659,41 @@ function Match({ id, go }: { id: string; go: Go }) {
             <button key={e} type="button" disabled={lineCool} onClick={() => sayLine(e)}>{e}</button>
           ))}
         </div>
+        {v.typing && (
+          <form
+            className="say-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              sayTyped();
+            }}
+          >
+            <div className="say-row">
+              <label className="sr" htmlFor="say-in">Your message</label>
+              <input
+                id="say-in"
+                className="text-in"
+                value={draft}
+                maxLength={MSG_MAX}
+                placeholder="Type a message"
+                autoComplete="off"
+                enterKeyHint="send"
+                aria-describedby="say-note"
+                aria-invalid={!!typedProblem}
+                onChange={(e) => setDraft(cleanMessage(e.target.value))}
+              />
+              <button type="submit" className="mini-btn" disabled={!typed || !!typedProblem || lineCool}>Send</button>
+            </div>
+            <p id="say-note" className={`fine${typedProblem ? ' say-no' : ''}`} role="status" aria-live="polite">
+              {typedProblem ?? `Up to ${MSG_MAX} letters. No phone numbers, links or rude words.`}
+            </p>
+          </form>
+        )}
+        {opp && !opp.bot && (
+          <div className="toggle-row">
+            <div><b>Mute {opp.name}</b><span>Hide their messages for this match.</span></div>
+            <button type="button" className="sw-toggle" role="switch" aria-checked={muted} aria-label={`Mute ${opp.name}`} onClick={() => setMuted((x) => !x)} />
+          </div>
+        )}
       </Sheet>
 
       {over && showResult && m.reward?.habits && !celebrated && stepsFor(m.reward.habits).length > 0 && (
@@ -640,7 +706,7 @@ function Match({ id, go }: { id: string; go: Go }) {
 
       {opp && (
         <ResultSheet
-          open={over && showResult && (!!m.reward || rewardLate) && (celebrated || stepsFor(m.reward?.habits).length === 0)}
+          open={over && showResult && (!!m.reward || rewardLate || !!m.offline) && (celebrated || stepsFor(m.reward?.habits).length === 0)}
           view={v}
           me={me}
           opp={opp}
@@ -649,6 +715,7 @@ function Match({ id, go }: { id: string; go: Go }) {
           onRematch={(ask) => send({ t: 'rematch', ...ask })}
           onNew={newOpponent}
           onHome={() => go({ name: 'home' })}
+          offline={m.offline}
         />
       )}
     </main>

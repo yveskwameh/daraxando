@@ -32,15 +32,11 @@ interface Props {
   onRematch: (ask?: RematchAsk) => void;
   onNew: () => void;
   onHome: () => void;
+  /** A match played without internet (src/lib/localMatch.ts): whether it counts once sent, and its Aura. */
+  offline?: { counts: boolean; aura: number } | null;
 }
 
 /** What each game is, in a few words, so nobody has to guess. */
-const MODE_HINT: Record<ModeId, string> = {
-  classic: '3×3, three in a row',
-  fading: '3×3, oldest piece vanishes',
-  big: '5×5, four in a row',
-  pro: '7×7, five in a row',
-};
 const LEVEL_HINT: Record<BotLevel, string> = { jeje: 'Easy', sharp: 'Medium', agba: 'Hard' };
 
 /** "Big · Stake 500" or "Classic · No stake". */
@@ -91,7 +87,7 @@ export function ResultSheet(props: Props) {
   );
 }
 
-function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHome, onChange }: Props & { onChange: () => void }) {
+function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHome, onChange, offline }: Props & { onChange: () => void }) {
   const you = v.you!;
   const s = v.series;
   const aborted = s?.reason === 'aborted';
@@ -103,7 +99,7 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
   const a = me.score;
   const b = opp.score;
   const bot = v.kind === 'bot';
-  const aura = useCountUp(reward ? reward.aura + reward.goalBonus + (reward.habits?.extraAura ?? 0) : null);
+  const aura = useCountUp(reward ? reward.aura + reward.goalBonus + (reward.habits?.extraAura ?? 0) : offline?.counts ? offline.aura : null);
   const levelled = reward && reward.levelAfter > reward.levelBefore;
 
   useEffect(() => {
@@ -136,12 +132,12 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
   }
 
   let title: string;
-  if (s?.reason === 'abandon') title = won ? 'Your opponent don japa. You win.' : 'You left, so they take it.';
+  if (s?.reason === 'abandon') title = won ? `${opp.name} left. You win.` : 'You left, so they take it.';
   else if (s?.reason === 'idle') title = won ? `${opp.name} didn't start the next game. You take it.` : "You didn't start the next game in time, so they take it.";
   else if (s?.reason === 'resign') title = won ? `${opp.name} left. You take it.` : 'You left, so they take it.';
-  else if (won) title = single ? 'Gbam! You win.' : `E choke! You take it ${a} to ${b}.`;
-  else if (lost) title = single ? `Chai. ${bot ? 'Baba Ayo' : 'They'} got this one.` : `Chai. ${bot ? 'Baba Ayo takes' : 'They take'} it ${b} to ${a}.`;
-  else title = single ? 'Draw. Notin spoil.' : `Level, ${a} to ${b}. Notin spoil.`;
+  else if (won) title = single ? 'You win.' : `You win the match, ${a} to ${b}.`;
+  else if (lost) title = single ? `${opp.name} wins this one.` : `${opp.name} wins the match, ${b} to ${a}.`;
+  else title = single ? 'Draw.' : `Level, ${a} to ${b}. Nobody wins.`;
 
   const cw = reward ? reward.cowries : null;
   // A farming rule sent both stakes back (shared/stakes.ts): the win counts, the seeds don't move.
@@ -169,17 +165,17 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
   return (
     <>
       <div className="result-head">
-        <span className="kicker">{won ? 'Odogwu' : lost ? 'Shikena' : 'Gbas gbos'}</span>
+        <span className="kicker">{MODES[v.mode].name} · {seriesLabel(v.bo)}</span>
         <p className="big">{title}</p>
       </div>
 
       <div className="gains">
         <div>
-          <b><Icon id="i-aura" className="" />{reward ? `+${aura}` : '…'}</b>
+          <b><Icon id="i-aura" className="" />{reward || offline?.counts ? `+${aura}` : offline ? '0' : '…'}</b>
           <span>Aura</span>
         </div>
         <div>
-          <b><Icon id="i-seed" className="" />{cw === null ? '…' : cw > 0 ? `+${fmt(cw)}` : cw < 0 ? `-${fmt(-cw)}` : stakeBack ? fmt(v.stake) : '0'}</b>
+          <b><Icon id="i-seed" className="" />{offline ? '0' : cw === null ? '…' : cw > 0 ? `+${fmt(cw)}` : cw < 0 ? `-${fmt(-cw)}` : stakeBack ? fmt(v.stake) : '0'}</b>
           <span>{cwLabel}</span>
         </div>
         <div>
@@ -207,7 +203,13 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
         </div>
       )}
 
-      {back ? (
+      {offline ? (
+        <p className="fine" role="status">
+          {offline.counts
+            ? <>Saved on this phone. <b>It counts when you're back online.</b></>
+            : "This match was just for fun, so it won't count. Go online and your next offline matches count again."}
+        </p>
+      ) : back ? (
         <p className="fine" role="status">{backLine(back, won, opp.name)}</p>
       ) : reward && (reward.daily > 0 || reward.goalBonus > 0) && (
         <p className="fine">
@@ -236,7 +238,7 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
               ? 'You beat Baba Ayo. Now take on players across Nigeria.'
               : v.first
                 ? 'Baba Ayo says: again? One game, you start.'
-                : bot ? 'Baba Ayo says: again?' : lost ? 'Run it back?' : `${opp.name} says: no rage bait me. Rematch?`}
+                : bot ? 'Baba Ayo says: again?' : 'Rematch?'}
           </p>
         )
       )}
@@ -265,7 +267,7 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
         <button type="button" className="btn ghost sm" onClick={onChange}>
           {bot ? 'Change\u00a0game or level' : 'Change\u00a0game or stake'}
         </button>
-        {v.kind !== 'friend' && (
+        {v.kind !== 'friend' && !offline && (
           <button type="button" className="btn ghost sm" onClick={onNew}>{bot ? 'Find a player' : 'New opponent'}</button>
         )}
       </div>}
@@ -308,7 +310,7 @@ function ChangeRematch({ view: v, opp, onAsk, onBack }: Props & { onAsk: (ask: R
         {MODE_IDS.map((id) => (
           <button key={id} type="button" className="pick" aria-pressed={id === mode} onClick={() => { buzz('tap'); setMode(id); }}>
             <b>{MODES[id].name}</b>
-            <span>{MODE_HINT[id]}</span>
+            <span>{MODES[id].hint}</span>
             <span>{seriesLabel(MODES[id].bo)}</span>
           </button>
         ))}

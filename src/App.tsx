@@ -25,6 +25,8 @@ const Profile = lazy(() => load.profile().then((x) => ({ default: x.Profile })))
 const CodeLink = lazy(() => import('./screens/Account').then((x) => ({ default: x.CodeLink })));
 const AccountReturn = lazy(() => import('./screens/Account').then((x) => ({ default: x.AccountReturn })));
 const LegalPage = lazy(() => import('./legal/Legal').then((x) => ({ default: x.LegalPage })));
+// Only when the terms change and an existing player hasn't accepted the new version yet.
+const TermsUpdate = lazy(() => import('./screens/TermsUpdate').then((x) => ({ default: x.TermsUpdate })));
 
 function Loading() {
   return (
@@ -101,6 +103,9 @@ function Shell() {
     // The route is kept, so someone who opened a friend's room link lands in that room right after.
     return <><Onboarding route={route} go={go} />{back}</>;
   }
+
+  // New terms (shared/legal.ts): accepted before they keep playing, as the terms promise.
+  if (session.profile.termsDue) return <><Suspense fallback={<Loading />}><TermsUpdate /></Suspense>{back}</>;
 
   let screen;
   switch (route.name) {

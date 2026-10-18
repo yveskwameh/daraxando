@@ -11,8 +11,10 @@ import type { StateCode } from './places';
 import type { Cell, Hist, Mark } from './rules';
 import type { StakeBack } from './stakes';
 
-export const NAME_MIN = 2;
+/** Names are 3 to 16 letters, numbers and single spaces (Yves, 17 October 2026; it was 2). */
+export const NAME_MIN = 3;
 export const NAME_MAX = 16;
+export const NAME_RULE = `Names are ${NAME_MIN} to ${NAME_MAX} letters or numbers.`;
 
 /** A quick match where the other player never connects is called off after this long. */
 export const ABANDON_MS = 20_000;
@@ -48,7 +50,10 @@ export const BOT = {
   state: 'NONE',
 } as const;
 
-/** Lines a player can send during a match. The server only passes on these. */
+/**
+ * Quick lines a player can send during a match, besides what they type (shared/chat.ts). The match screen keeps
+ * its Pidgin, these included (Yves, 18 October 2026, undoing that part of the 17 October copy pass).
+ */
 export const EMOTES = ['Gbam!', 'Haba!', 'Oya nau', 'Shine your eye', 'You too much', 'No rage bait me'] as const;
 
 export interface Profile {
@@ -81,6 +86,17 @@ export interface Profile {
   saved: boolean;
   /** Banned: no play against people, no Ranks or leagues. Baba Ayo still works (worker/admin.ts). */
   ban: { at: number; reason: string } | null;
+  /**
+   * Ask the player to pick their name (Yves, 17 October 2026): 'new' after their first match,
+   * when the name is still the one the game picked; 'taken' when another player had it first
+   * and the game added a number. Null once they've chosen.
+   */
+  nameAsk: 'new' | 'taken' | null;
+  /**
+   * The terms changed in a way that matters since this player accepted them (shared/legal.ts).
+   * The app asks them to accept the new version before they keep playing, as the terms promise.
+   */
+  termsDue: boolean;
 }
 
 /** How a player signs in. */
@@ -232,6 +248,8 @@ export interface MatchView {
   bo: number;
   /** A new player's first match against Baba Ayo: one game until they win. */
   first: boolean;
+  /** Players can type their own messages, not just the quick ones (shared/chat.ts). */
+  typing: boolean;
   /** Each player's stake. The pot is twice this. */
   stake: number;
   phase: Phase;
@@ -339,6 +357,8 @@ export type ServerMsg =
   | { t: 'state'; s: MatchView }
   | { t: 'emote'; seat: 0 | 1; e: string }
   | { t: 'say'; text: string }
+  /** Your typed message broke a rule and wasn't passed on (shared/chat.ts). */
+  | { t: 'unsent'; message: string }
   | { t: 'reward'; r: Reward }
   | { t: 'error'; code: ErrorCode; message: string };
 

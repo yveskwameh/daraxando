@@ -1,4 +1,4 @@
-/** Your Dara Seeds: how you get them, what they're for, and Sapa relief when you're low. */
+/** Your Dara Seeds: how you get them, what they're for, and a free top-up when you're low. */
 import { useState } from 'react';
 import { dayKey, titleFor } from '../../shared/progression';
 import { BIG_LEVEL, DAILY_COWRIES, fmt, SAPA_BELOW, SAPA_EVERY_MS, SAPA_TO, sapaReady } from '../../shared/stakes';
@@ -24,7 +24,7 @@ export function WalletSheet({ open, onClose }: { open: boolean; onClose: () => v
       const res = await api.sapa(token);
       setProfile(res.profile);
       buzz('win');
-      toast.ok(`Sapa relief: you have ${fmt(SAPA_TO)} Dara Seeds again.`);
+      toast.ok(`Topped up. You have ${fmt(SAPA_TO)} Dara Seeds again.`);
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -48,7 +48,7 @@ export function WalletSheet({ open, onClose }: { open: boolean; onClose: () => v
           </div>
           <div className="row-card">
             <div>
-              <b>Sapa relief</b>
+              <b>Free top-up</b>
               <span>
                 {ready
                   ? `You're low. Get topped up to ${fmt(SAPA_TO)} for free.`

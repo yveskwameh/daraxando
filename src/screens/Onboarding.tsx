@@ -19,7 +19,7 @@ import { Sheet } from '../components/Sheet';
 import { StatePicker } from '../components/StatePicker';
 import { api, type RoomPeek } from '../lib/api';
 import { buzz } from '../lib/haptics';
-import { suggestNames } from '../lib/names';
+import { NAME_POOL, suggestNames } from '../lib/names';
 import type { Go, Route } from '../lib/router';
 import { useSession } from '../lib/session';
 import { LegalLink } from '../components/LegalLink';
@@ -65,7 +65,9 @@ export function Onboarding({ route, go }: { route: Route; go: Go }) {
     setError('');
     buzz('tap');
     try {
-      await start({ name: clean, avatar, state: state ?? 'NONE' }, async (token) => {
+      // A name from the ideas is the game's pick: the server adds a number if it's taken, and Home
+      // asks for the player's own name after this first match.
+      await start({ name: clean, avatar, state: state ?? 'NONE', auto: NAME_POOL.includes(clean) }, async (token) => {
         if (room) return;
         // One game, not a series: win it and you're through to Home (worker/match.ts, `first`).
         const { matchId } = await api.playBot(token, FIRST_MODE, FIRST_LEVEL, true);
@@ -87,7 +89,7 @@ export function Onboarding({ route, go }: { route: Route; go: Go }) {
         <p>
           {room
             ? `${host?.name ?? 'Your friend'} invited you to a game. They're waiting for you.`
-            : 'Three in a row, the Naija way. Warm up against Baba Ayo, then take on players across Nigeria.'}
+            : 'Three in a row. Warm up against Baba Ayo, then play people across Nigeria.'}
         </p>
       </div>
 

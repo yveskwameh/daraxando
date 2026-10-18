@@ -8,10 +8,15 @@ import { closeInstallPop, promptInstall, useInstallPop } from '../lib/install';
 import { toast } from '../lib/toast';
 import { InstallSheet } from '../sheets/InstallSheet';
 import { Icon } from './art';
+import { TopPop } from './TopPop';
 
 export function InstallPop() {
   const open = useInstallPop();
   const [steps, setSteps] = useState(false);
+  const notNow = () => {
+    closeInstallPop();
+    toast('Okay. Install is always in You, then Settings.');
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -22,7 +27,7 @@ export function InstallPop() {
   return (
     <>
       {open && (
-        <div className="install-pop" role="dialog" aria-label="Install Dara X&O">
+        <TopPop role="dialog" label="Install Dara X&O" onHide={notNow}>
           <img className="app-ic" src="/icons/icon-192.png" alt="" width={40} height={40} />
           <div>
             <b>Play Dara X&amp;O full screen</b>
@@ -42,14 +47,11 @@ export function InstallPop() {
             type="button"
             className="x-btn"
             aria-label="Not now"
-            onClick={() => {
-              closeInstallPop();
-              toast('Okay. Install is always in You, then Settings.');
-            }}
+            onClick={notNow}
           >
             <Icon id="i-close" className="" />
           </button>
-        </div>
+        </TopPop>
       )}
       <InstallSheet open={steps} onClose={() => setSteps(false)} />
     </>

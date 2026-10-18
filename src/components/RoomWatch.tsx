@@ -6,7 +6,7 @@
  * It holds a small socket to the room only while the app is on screen, so the friend's
  * screen can honestly say you've been told.
  */
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { MODES } from '../../shared/modes';
 import type { RoomStatus } from '../../shared/protocol';
 import { fmt } from '../../shared/stakes';
@@ -18,6 +18,7 @@ import { usePlayer } from '../lib/session';
 import { sfx } from '../lib/sound';
 import { toast } from '../lib/toast';
 import { Avatar, Icon } from './art';
+import { TopPop } from './TopPop';
 
 const onVisibility = (f: () => void) => {
   document.addEventListener('visibilitychange', f);
@@ -85,9 +86,13 @@ export function RoomWatch({ route, go }: { route: Route; go: Go }) {
     buzz('win');
   }, [guest, code, inRoom]);
 
+  // Swiped away: hidden until another friend joins. The room stays open, and Play a friend
+  // still shows it.
+  const [hidden, setHidden] = useState<string | null>(null);
+
   // Not while you're in the room already, or in the middle of another match, or while the
   // invite sheet is showing your friend and its own Start the game button.
-  if (!room || !guest || route.name === 'play' || sheetShowing) return null;
+  if (!room || !guest || route.name === 'play' || sheetShowing || hidden === `${room.code}:${guest.name}`) return null;
 
   const close = async () => {
     hosted.clear(room.code);
@@ -100,7 +105,7 @@ export function RoomWatch({ route, go }: { route: Route; go: Go }) {
   };
 
   return (
-    <div className="install-pop room-pop" role="alertdialog" aria-label={`${guest.name} joined your room`}>
+    <TopPop className="room-pop" role="alertdialog" label={`${guest.name} joined your room`} onHide={() => setHidden(`${room.code}:${guest.name}`)}>
       <Avatar avatar={guest.avatar} print={guest.print} size={40} />
       <div>
         <b>{guest.name} joined your room</b>
@@ -110,6 +115,6 @@ export function RoomWatch({ route, go }: { route: Route; go: Go }) {
       <button type="button" className="x-btn" aria-label="Close the room" onClick={() => void close()}>
         <Icon id="i-close" className="" />
       </button>
-    </div>
+    </TopPop>
   );
 }

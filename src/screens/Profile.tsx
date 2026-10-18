@@ -8,17 +8,17 @@ import { AVATARS, PIECES, PRINTS, pieceById, type Item } from '../../shared/coll
 import { BADGES, STAR_AURA, badgeStars, badgeValue, type Habits } from '../../shared/habits';
 import { stateName, zoneName, type StateCode } from '../../shared/places';
 import { auraForLevel, levelInfo, tierOf, titleFor } from '../../shared/progression';
-import { cleanName, nameChars, type Account } from '../../shared/protocol';
+import type { Account } from '../../shared/protocol';
 import { fmt } from '../../shared/stakes';
 import { printBg } from '../art/prints';
 import { Avatar, Icon, Piece } from '../components/art';
+import { NameForm } from '../components/NameForm';
 import { Sheet } from '../components/Sheet';
 import { StatePicker } from '../components/StatePicker';
 import { auth, shortEmail, type Intent } from '../lib/auth';
 import { isStandalone } from '../lib/device';
 import { buzz } from '../lib/haptics';
 import { promptInstall } from '../lib/install';
-import { suggestNames } from '../lib/names';
 import { prefs, usePrefs, type Prefs } from '../lib/prefs';
 import { iphoneTab, pushPrefs, pushState, setPush, type PushKind, type PushPrefs } from '../lib/push';
 import type { Go } from '../lib/router';
@@ -113,14 +113,13 @@ export function Profile({ go }: { go: Go }) {
       )}
 
       {editing ? (
-        <NameEdit
-          current={profile.name}
+        <NameForm
+          id="name-in"
+          submit="Save"
           onCancel={() => setEditing(false)}
-          onSave={async (name) => {
-            if (await update({ name })) {
-              setEditing(false);
-              toast.ok('Name saved. Others see it from your next match.');
-            }
+          onSaved={() => {
+            setEditing(false);
+            toast.ok('Name saved. Others see it from your next match.');
           }}
         />
       ) : (
@@ -344,40 +343,6 @@ function Collection<T extends Item>({ intro, items, level, selected, render, not
         })}
       </div>
     </>
-  );
-}
-
-function NameEdit({ current, onSave, onCancel }: { current: string; onSave: (name: string) => void; onCancel: () => void }) {
-  const [value, setValue] = useState(current);
-  const [ideas, setIdeas] = useState(() => suggestNames(5, current));
-  const clean = cleanName(value);
-  return (
-    <form
-      className="edit"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (!clean) {
-          buzz('invalid');
-          toast.error('Use 2 to 16 letters or numbers.');
-          return;
-        }
-        onSave(clean);
-      }}
-    >
-      <label className="sr" htmlFor="name-in">Your name</label>
-      <input id="name-in" className="text-in" value={value} maxLength={16} autoComplete="off" spellCheck={false} data-autofocus onChange={(e) => setValue(nameChars(e.target.value))} />
-      <div className="chips-row">
-        {ideas.map((n) => <button key={n} type="button" onClick={() => setValue(n)}>{n}</button>)}
-        <button type="button" aria-label="More name ideas" onClick={() => setIdeas(suggestNames(5, value))}>
-          <Icon id="i-shuffle" className="" style={{ width: 16, height: 16, verticalAlign: -3 }} />
-        </button>
-      </div>
-      <div className="edit-row">
-        <small>2 to 16 letters. Change it any time.</small>
-        <button type="button" className="mini-btn ghost" onClick={onCancel}>Cancel</button>
-        <button type="submit" className="mini-btn" disabled={!clean}>Save</button>
-      </div>
-    </form>
   );
 }
 

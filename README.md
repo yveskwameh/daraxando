@@ -9,6 +9,8 @@ A project by Yves Kwameh. Web addresses and handles spell the name out: `daraxan
 
 **Status, 16 October 2026:** the game and its server are built. The test copy is live. The lawyer and the native speaker have approved everything they were asked to check, including the privacy notice and terms. Next is the launch (`docs/LAUNCH.md`).
 
+**18 October 2026:** offline play against Baba Ayo and typed messages in a match are built and on (`docs/BACKEND.md`). The lawyer approved their privacy notice and terms lines the same day, so the terms version went up and every existing player accepts the new terms once, on a "We updated our terms" screen.
+
 ---
 
 ## 1. How we work
@@ -158,6 +160,7 @@ scripts/             Icons, notification keys, the release step
 
 - **15 October 2026:** the native speaker approved every Yoruba, Igbo and Hausa word and the 20 titles. The lawyer approved Dara Seeds, the streak items and the one-tap age confirmation (`docs/COWRIES-REVIEW.md`).
 - **16 October 2026:** the lawyer approved the safety rules (`docs/SAFETY-REVIEW.md`) and the privacy notice and terms (`docs/LEGAL-REVIEW.md`). The native speaker approved the name filter's words (`docs/NAMES-REVIEW.md`).
+- **18 October 2026:** the lawyer approved the privacy notice lines for offline play and typed messages, and a new terms line on messages (`docs/CHAT-REVIEW.md`, `docs/NEXT-ROUND.md` step 6).
 
 Any change to how seeds work, to the age line or to the legal texts goes back to the lawyer first. Any new Yoruba, Igbo or Hausa word goes to the native speaker.
 
@@ -173,6 +176,7 @@ Any change to how seeds work, to the age line or to the legal texts goes back to
 | A build fails on Cloudflare | Open the build in **Deployments** and send Claude the red lines. The copy players see doesn't change. |
 | Google says "redirect_uri_mismatch" | Google only knows the test copy, the real game and `http://localhost:5173`. On your Mac, use `localhost:5173`. |
 | "Google sign-in isn't set up on this copy yet" | That copy has no `GOOGLE_CLIENT_SECRET` (section 4). |
+| "Google sign-in isn't working right now. Use your email." | Google refused that copy's `GOOGLE_CLIENT_SECRET`: it's wrong or has a space at either end. Cloudflare's **Workers & Pages → that Worker → Logs** shows `[google] 401 invalid_client`. Paste the secret again (section 4); both copies use the same one. |
 | No sign-in email arrives | On your Mac, the code is in the terminal. Otherwise check Spam, then Resend's **Emails** page. |
 | Notifications don't arrive | `/api/health` shows `"push":false` if the copy has no notification keys. iPhone needs the installed app. On Android, allow notifications for Chrome or the installed app in the phone's settings. |
 | "Notifications are blocked" in Settings | The phone's box was answered Block. In Chrome, tap the icon left of the address, **Permissions → Notifications → Allow**. |

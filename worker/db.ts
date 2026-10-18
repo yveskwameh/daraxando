@@ -5,12 +5,14 @@
  * (two player updates and their index entries, ledger rows, one match row). Ranks reads
  * through partial indexes, so the top 50 is a 50-row read, not a table scan.
  */
+import { TERMS_VERSION } from '../shared/legal';
 import { parseHabits } from '../shared/habits';
 import { levelInfo, dayKey, DAILY_GOAL, GOAL_BONUS, START_RATING, type Kind, type Result } from '../shared/progression';
 import type { StateCode } from '../shared/places';
 import type { LeaderRow, Profile, PublicPlayer } from '../shared/protocol';
 import { COOL_LOSSES, COOL_MS, DAILY_COWRIES, HIGH_TABLE, SAPA_BELOW, SAPA_EVERY_MS, SAPA_TO, START_COWRIES } from '../shared/stakes';
 import { tidyHabits } from './habits';
+import { nameKey } from './names';
 import { bump, matchStat } from './stats';
 
 export interface PlayerRow {
@@ -41,6 +43,9 @@ export interface PlayerRow {
   device: string | null;
   banned_at: number | null;
   ban_reason: string | null;
+  /** 0 the game picked the name, 1 the player chose it, 2 the game added a number (migrations/0010_names.sql). */
+  name_set?: number;
+  first_result?: string | null;
   /** The terms they accepted (shared/legal.ts) and when. Null for players made before 16 October 2026. */
   terms_version?: string | null;
   terms_at?: number | null;
@@ -73,6 +78,8 @@ export const toProfile = (r: PlayerRow): Profile => ({
   habits: tidyHabits(parseHabits(r.habits), dayKey(Date.now())),
   saved: r.saved === 1,
   ban: r.banned_at ? { at: r.banned_at, reason: r.ban_reason ?? '' } : null,
+  nameAsk: r.name_set === 2 ? 'taken' : r.name_set === 0 && r.first_result ? 'new' : null,
+  termsDue: (r.terms_version ?? null) !== TERMS_VERSION,
 });
 
 export const toPublic = (p: Profile): PublicPlayer => ({
@@ -92,16 +99,17 @@ export async function getPlayer(db: D1Database, id: string): Promise<Profile | n
 }
 
 /** `device` is the keyed hash of the phone's random id (worker/safety.ts), or null if the app didn't send one. */
-export async function createPlayer(db: D1Database, p: { name: string; avatar: string; state: StateCode; device: string | null; terms: string }): Promise<Profile> {
+/** Makes a guest player. The name must be free: a name someone just took makes the insert fail (`isNameClash`). */
+export async function createPlayer(db: D1Database, p: { name: string; nameSet: 0 | 1 | 2; avatar: string; state: StateCode; device: string | null; terms: string }): Promise<Profile> {
   const id = crypto.randomUUID();
   const now = Date.now();
   const [, created] = await db.batch<PlayerRow>([
     db.prepare("INSERT INTO ledger (player_id, delta, reason, created_at) VALUES (?, ?, 'start', ?)").bind(id, START_COWRIES, now),
     db
       .prepare(
-        'INSERT INTO players (id, name, avatar, state, rating, cowries, device, terms_version, terms_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
+        'INSERT INTO players (id, name, name_key, name_set, avatar, state, rating, cowries, device, terms_version, terms_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
       )
-      .bind(id, p.name, p.avatar, p.state, START_RATING, START_COWRIES, p.device, p.terms, now, now, now),
+      .bind(id, p.name, nameKey(p.name), p.nameSet, p.avatar, p.state, START_RATING, START_COWRIES, p.device, p.terms, now, now, now),
   ]);
   const row = created.results?.[0];
   if (!row) throw new Error('Could not create player');
@@ -110,13 +118,15 @@ export async function createPlayer(db: D1Database, p: { name: string; avatar: st
 
 export interface ProfilePatch { name?: string; avatar?: string; piece?: string; print?: string; state?: string }
 
+/** Changes a player's look or name. A name they set is theirs from then on (name_set 1); a taken one fails (`isNameClash`). */
 export async function updatePlayer(db: D1Database, id: string, patch: ProfilePatch) {
   const row = await db
     .prepare(
-      `UPDATE players SET name = COALESCE(?, name), avatar = COALESCE(?, avatar), piece = COALESCE(?, piece),
-         print = COALESCE(?, print), state = COALESCE(?, state), updated_at = ? WHERE id = ? RETURNING *`,
+      `UPDATE players SET name = COALESCE(?1, name), name_key = COALESCE(?2, name_key), name_set = CASE WHEN ?1 IS NULL THEN name_set ELSE 1 END,
+         avatar = COALESCE(?3, avatar), piece = COALESCE(?4, piece),
+         print = COALESCE(?5, print), state = COALESCE(?6, state), updated_at = ?7 WHERE id = ?8 RETURNING *`,
     )
-    .bind(patch.name ?? null, patch.avatar ?? null, patch.piece ?? null, patch.print ?? null, patch.state ?? null, Date.now(), id)
+    .bind(patch.name ?? null, patch.name ? nameKey(patch.name) : null, patch.avatar ?? null, patch.piece ?? null, patch.print ?? null, patch.state ?? null, Date.now(), id)
     .first<PlayerRow>();
   return row ? toProfile(row) : null;
 }

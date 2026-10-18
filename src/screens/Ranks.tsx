@@ -13,9 +13,11 @@ import { stateName } from '../../shared/places';
 import type { LeaderRow, LeagueData, LeagueRow } from '../../shared/protocol';
 import { fmt } from '../../shared/stakes';
 import { Avatar, Icon } from '../components/art';
-import { api } from '../lib/api';
+import { api, type ApiError } from '../lib/api';
+import { offlineOn } from '../lib/offline';
 import type { Go } from '../lib/router';
 import { usePlayer } from '../lib/session';
+import { KEYS, store } from '../lib/storage';
 
 // Only banned players ever load this one.
 const BanSheet = lazy(() => import('../sheets/BanSheet'));
@@ -23,25 +25,63 @@ const BanSheet = lazy(() => import('../sheets/BanSheet'));
 type Tab = 'league' | 'state' | 'ng';
 type Data = { top: LeaderRow[]; me: { rank: number; outside?: true } | null };
 
+/**
+ * Ranks as last seen, for opening it without internet (offline play only, src/lib/offline.ts).
+ * One copy per tab, for the player signed in. Gets the fresh table, keeps a copy, and falls back
+ * to the copy, with when it's from, if the game can't be reached.
+ */
+type Kept = { who: string; tabs: Record<string, { at: number; d: unknown }> };
+function fetchKept<T>(who: string, key: string, get: () => Promise<T>): Promise<{ d: T; at: number | null }> {
+  const kept = store.json<Kept>(KEYS.ranks, { who, tabs: {} });
+  const tabs = kept.who === who ? kept.tabs : {};
+  return get().then(
+    (d) => {
+      if (offlineOn()) store.set(KEYS.ranks, JSON.stringify({ who, tabs: { ...tabs, [key]: { at: Date.now(), d } } }));
+      return { d, at: null };
+    },
+    (err: ApiError) => {
+      const old = tabs[key];
+      if (err.status === 0 && old && offlineOn()) return { d: old.d as T, at: old.at };
+      throw err;
+    },
+  );
+}
+
+/** "No internet. Ranks as of 3:40 pm." */
+function Stale({ at }: { at: number | null }) {
+  if (at === null) return null;
+  const d = new Date(at);
+  const when = d.toDateString() === new Date().toDateString()
+    ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase()
+    : d.toLocaleDateString([], { weekday: 'long' });
+  return <p className="fine stale" role="status">No internet. These are Ranks as of {when}.</p>;
+}
+
 export function Ranks({ go }: { go: Go }) {
   const { token, profile } = usePlayer();
   const hasState = profile.state !== 'OUT' && profile.state !== 'NONE';
   const [tab, setTab] = useState<Tab>('league');
   const [data, setData] = useState<Data | null>(null);
+  const [staleAt, setStaleAt] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [review, setReview] = useState(false);
 
   useEffect(() => {
     let live = true;
     setData(null);
+    setStaleAt(null);
     setError('');
     if (tab === 'league') return;
-    api.leaderboard(token, tab === 'state' ? profile.state : null).then(
-      (d) => live && setData(d),
+    fetchKept(profile.id, tab, () => api.leaderboard(token, tab === 'state' ? profile.state : null)).then(
+      (r) => {
+        if (!live) return;
+        setData(r.d);
+        setStaleAt(r.at);
+      },
       (err: Error) => live && setError(err.message),
     );
     return () => { live = false; };
-  }, [token, tab, profile.state]);
+  }, [token, tab, profile.state, profile.id]);
 
   const top = data?.top ?? [];
   const inList = top.some((r) => r.id === profile.id);
@@ -92,6 +132,7 @@ export function Ranks({ go }: { go: Go }) {
         </div>
       ) : (
         <>
+          <Stale at={staleAt} />
           <div className="podium">
             {[top[1], top[0], top[2]].map((r, i) => {
               const place = [2, 1, 3][i];
@@ -157,10 +198,17 @@ const ordinal = (n: number) => `${n}${['th', 'st', 'nd', 'rd'][n % 100 > 10 && n
 function League({ go }: { go: Go }) {
   const { token, profile } = usePlayer();
   const [data, setData] = useState<LeagueData | null>(null);
+  const [staleAt, setStaleAt] = useState<number | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
-    api.league(token).then(setData, (err: Error) => setError(err.message));
-  }, [token, profile.ban]);
+    fetchKept(profile.id, 'league', () => api.league(token)).then(
+      (r) => {
+        setData(r.d);
+        setStaleAt(r.at);
+      },
+      (err: Error) => setError(err.message),
+    );
+  }, [token, profile.ban, profile.id]);
 
   if (error) {
     return (
@@ -188,10 +236,13 @@ function League({ go }: { go: Go }) {
 
   return (
     <>
+      <Stale at={staleAt} />
       <div className="league-head">
         <Icon id="i-shield" className="lg-ic" />
         <div>
           <b>{name} League</b>
+          {/* The landmark names stay, with the tier in plain words (Yves, 17 October 2026). */}
+          <small className="tier">League {data.tier + 1} of {LEAGUES.length}</small>
           <span>Ends in {until(data.endsAt)} · {rule}</span>
         </div>
       </div>

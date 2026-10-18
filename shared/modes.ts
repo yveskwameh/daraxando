@@ -2,7 +2,7 @@
  * The four ways to play. Each is an m,n,k game: an n by n board where k in a row wins.
  * Fading keeps only your last three pieces, so the board never fills up.
  * Fading comes first and is the default game (Yves, 15 October 2026: it's the one that makes
- * you think, every move counts). The order here is the order on the Deck and in every picker.
+ * you think, every move counts). The order here is the order in every picker.
  * The research behind these choices is in docs/GAME-MODES.md.
  */
 
@@ -20,16 +20,23 @@ export interface Mode {
   /** Time for one move. */
   turnMs: number;
   rule: string;
+  /** The rule in a few words, for the game pickers. */
+  hint: string;
   /** The print on the card's top band. */
   band: string;
-  hot?: string;
+  /**
+   * The last day (Lagos, YYYY-MM-DD) a game shows "New" in the pickers, about a month after it
+   * comes out. Games that launched with Dara X&O have none: they were never new to anyone
+   * (Yves, 17 October 2026).
+   */
+  newUntil?: string;
 }
 
 export const MODES = {
-  fading: { id: 'fading', name: 'Fading', n: 3, k: 3, fade: 3, bo: 3, turnMs: 10_000, rule: '3×3. Three pieces each. Your oldest one disappears.', band: 'swift', hot: 'New' },
-  classic: { id: 'classic', name: 'Classic', n: 3, k: 3, fade: 0, bo: 5, turnMs: 10_000, rule: '3×3. Three in a row wins.', band: 'ripple' },
-  big: { id: 'big', name: 'Big', n: 5, k: 4, fade: 0, bo: 3, turnMs: 15_000, rule: '5×5. Four in a row wins.', band: 'shards' },
-  pro: { id: 'pro', name: 'Pro', n: 7, k: 5, fade: 0, bo: 1, turnMs: 20_000, rule: '7×7. Five in a row wins.', band: 'spiral' },
+  fading: { id: 'fading', name: 'Fading', n: 3, k: 3, fade: 3, bo: 3, turnMs: 10_000, rule: '3×3. Three pieces each. Your oldest one disappears.', hint: '3×3, oldest piece vanishes', band: 'swift' },
+  classic: { id: 'classic', name: 'Classic', n: 3, k: 3, fade: 0, bo: 5, turnMs: 10_000, rule: '3×3. Three in a row wins.', hint: '3×3, three in a row', band: 'ripple' },
+  big: { id: 'big', name: 'Big', n: 5, k: 4, fade: 0, bo: 3, turnMs: 15_000, rule: '5×5. Four in a row wins.', hint: '5×5, four in a row', band: 'shards' },
+  pro: { id: 'pro', name: 'Pro', n: 7, k: 5, fade: 0, bo: 1, turnMs: 20_000, rule: '7×7. Five in a row wins.', hint: '7×7, five in a row', band: 'spiral' },
 } as const satisfies Record<string, Omit<Mode, 'id'> & { id: string }>;
 
 export type ModeId = keyof typeof MODES;
@@ -39,6 +46,8 @@ export const isModeId = (x: unknown): x is ModeId => typeof x === 'string' && Ob
 /** The game new players start on, and the fallback for anything unknown. */
 export const DEFAULT_MODE: ModeId = 'fading';
 export const modeOf = (id: string): Mode => (isModeId(id) ? MODES[id] : MODES[DEFAULT_MODE]);
+/** Whether a game still shows "New" on this Lagos day (`dayKey` in shared/progression.ts). */
+export const isNewMode = (m: Mode, today: string) => !!m.newUntil && today <= m.newUntil;
 
 /** The board rules of a mode: size, line length and fading. */
 export const variantOf = (id: string) => {

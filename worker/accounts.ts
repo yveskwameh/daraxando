@@ -181,6 +181,7 @@ export async function deleteAccount(db: D1Database, id: string) {
     db.prepare('DELETE FROM appeals WHERE player_id = ?').bind(id),
     db.prepare('DELETE FROM push_subs WHERE player_id = ?').bind(id),
     db.prepare('DELETE FROM player_days WHERE player_id = ?').bind(id),
+    db.prepare('DELETE FROM offline_passes WHERE player_id = ?').bind(id),
     db.prepare('DELETE FROM players WHERE id = ?').bind(id),
   ]);
 }
@@ -425,6 +426,9 @@ async function useCode(env: Env, row: CodeRow, me: Profile | null, now: number):
   return outcome(env, 'email', target, me?.id ?? null, saved);
 }
 
+/** Google's token errors that mean this copy's client id, secret or return address is wrong, not the player's attempt. */
+export const setupError = (e: unknown) => e === 'invalid_client' || e === 'unauthorized_client' || e === 'redirect_uri_mismatch';
+
 /** Swaps Google's one-time code for the account, then finds or saves the player. */
 async function fromGoogle(env: Env, url: URL, asked: { v: string; p: string | null; i: Intent }, now: number): Promise<Stored> {
   const code = url.searchParams.get('code');
@@ -446,6 +450,10 @@ async function fromGoogle(env: Env, url: URL, asked: { v: string; p: string | nu
     data = (await res.json()) as typeof data;
     if (!res.ok) {
       console.error('[google]', res.status, data.error);
+      // Google refused this copy's client id or secret (Yves, 18 October 2026: the real game had a
+      // wrong GOOGLE_CLIENT_SECRET and players only saw "try again"). Trying again can't help, so
+      // say it's on our side and point to email. The log line above names the exact error.
+      if (setupError(data.error)) return { k: 'error', m: "Google sign-in isn't working right now. Use your email." };
       return { k: 'error', m: "Google sign-in didn't finish. Try again." };
     }
   } catch (err) {
@@ -484,7 +492,7 @@ export async function sendEmail(env: Env, to: string | string[], mail: Email, ke
       method: 'POST',
       headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json', 'idempotency-key': key },
       body: JSON.stringify({
-        from: env.EMAIL_FROM ?? '"Dara X&O" <code@noreply.daraxando.yveskwameh.com>',
+        from: env.EMAIL_FROM ?? '"Dara X&O" <admin@noreply.daraxando.yveskwameh.com>',
         to: Array.isArray(to) ? to : [to],
         subject: mail.subject,
         html: mail.html,

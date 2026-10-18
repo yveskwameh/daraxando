@@ -84,7 +84,7 @@ Steps 1 to 4 were done on 16 October 2026: the first build of the real copy made
 - **Read the 8 am email** each day: who played, how many new players finished their first game, Quick match waits, and the free plan bars. Tell Claude if any bar passes half.
 - **Answer ban reviews** through the admin API (`docs/ADMIN-API.md`). The email says how many are waiting.
 - **Before 200 players in six months:** register with the Nigeria Data Protection Commission and appoint a Data Protection Officer, if the lawyer confirms it applies.
-- **Before the first change to the terms:** Claude builds the sheet that asks existing players to accept the new version (the terms promise it), and bumps `TERMS_VERSION` in `shared/legal.ts`.
+- **When the terms change in a way that matters:** Claude bumps `TERMS_VERSION` in `shared/legal.ts` and writes what changed in `TERMS_CHANGES`; existing players then accept on the "We updated our terms" screen (built 18 October 2026, the terms promise it).
 - **When you say so:** remove the ngrok allowance from `vite.config.ts` (kept until then for testers, per `CLAUDE.md`).
 - **Later:** the admin dashboard, built on the admin API.
 

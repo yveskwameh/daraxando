@@ -14,6 +14,8 @@ import type { BotLevel } from './bot';
 /* ------------------------------------------------------------------ days */
 
 const DAY_MS = 86_400_000;
+/** "1 day", "2 days": a count of days in a sentence (Yves, 17 October 2026: never "1 days"). */
+export const nDays = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`;
 /** Whole days from a to b. "2026-10-14" to "2026-10-15" is 1. */
 export const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / DAY_MS);
 export const addDays = (day: string, n: number) => new Date(Date.parse(day) + n * DAY_MS).toISOString().slice(0, 10);
@@ -28,6 +30,13 @@ export const FREEZE_PRICE = 200;
 /** A streak that ended can be restored for this much, up to REPAIR_DAYS days after the last day played. */
 export const REPAIR_PRICE = 500;
 export const REPAIR_DAYS = 3;
+/**
+ * The shortest streak that can be restored. A 1-day streak can't: playing today starts day 1
+ * again anyway. Every screen that mentions a restore goes by this (Yves, 18 October 2026: the
+ * after-match screen offered one for a 1-day streak that the streak sheet then couldn't restore).
+ */
+export const REPAIR_MIN = 2;
+export const canRepair = (n: number) => n >= REPAIR_MIN;
 /**
  * The streak stake (Duolingo's Streak Wager): put in BET_STAKE Dara Seeds, keep your
  * streak for BET_DAYS days, get BET_WIN back. The UI says "stake", never "bet" (docs/STAKES.md).
@@ -135,7 +144,7 @@ export interface StreakNow {
 /** The streak today, without playing. */
 export function streakNow(h: Habits, streak: number, today: string): StreakNow {
   const canRestore = (n: number, last: string) =>
-    n >= 2 && daysBetween(last, today) <= REPAIR_DAYS ? { n, until: addDays(last, REPAIR_DAYS) } : null;
+    canRepair(n) && daysBetween(last, today) <= REPAIR_DAYS ? { n, until: addDays(last, REPAIR_DAYS) } : null;
   // A streak that ended earlier, while you've already started a new one.
   const earlier = h.lost ? canRestore(h.lost.n, h.lost.day) : null;
   if (!h.streakDay || streak <= 0) return { streak: 0, playedToday: false, freezing: 0, freezes: h.freezes, restorable: earlier };

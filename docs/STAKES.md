@@ -46,7 +46,7 @@ Ledger reasons for these: `freeze`, `repair`, `streak-stake`, `streak-win`.
 
 - 5,000 Dara Seeds to start.
 - +500 with the first match of each day.
-- "Sapa relief": below 500, a free top-up to 1,000 every 4 hours.
+- Free top-up (called "Sapa relief" until 17 October 2026; still `sapa` in the code): below 500, a free top-up to 1,000 every 4 hours.
 - No paid refills, ever.
 
 ## The rules that keep it legal

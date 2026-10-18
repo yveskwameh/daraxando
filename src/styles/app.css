@@ -168,7 +168,7 @@ svg.ic { width: 22px; height: 22px; flex: none; }
 .btn.sm.baba { box-shadow: 0 0 0 2px var(--cream); }
 .btn.is-down { transform: scale(.94); }
 .btn.is-down::before { transform: translate(22px, 14px) rotate(8deg); }
-.btn:disabled { opacity: .5; cursor: default; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: .5; cursor: default; }
 .sparks { position: fixed; inset: 0; pointer-events: none; z-index: 300; }
 .spark { position: absolute; width: 9px; height: 9px; border-radius: 2px; }
 .mini-btn { min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--cream); color: var(--night); font: 800 0.875rem/1 var(--head); white-space: nowrap; }
@@ -191,55 +191,63 @@ svg.ic { width: 22px; height: 22px; flex: none; }
 .wordmark.sm { font-size: 1.75rem; }
 .wordmark.sm .tag { font-size: 1.125rem; padding: 2px 10px 4px; }
 
-/* ---------- home ---------- */
-/* Your avatar, your title and how far the next one is: nothing else, so it never runs into the
-   seeds chip on a small phone (Yves, 15 October 2026). The numbers are on You and in the titles list. */
-.me-chip {
-  display: flex; align-items: center; gap: 9px;
-  flex: 0 1 auto; min-width: 0; width: 168px; overflow: hidden;
-  padding: 4px 14px 4px 4px;
-  border: 0; border-radius: 999px;
-  background: var(--raise);
-  text-align: left;
+/* ---------- home: layout A (Yves, 17 October 2026, docs/NEXT-ROUND.md) ---------- */
+/* You, today's counters and Ranks. Your title and the Aura numbers are on You; here the ring
+   around your animal fills toward the next title. */
+.home-top { gap: 8px; }
+.me-ring {
+  position: relative; display: grid; place-items: center;
+  width: 48px; height: 48px; flex: none; padding: 0; border: 0; border-radius: 50%;
+  background: conic-gradient(var(--danfo) var(--pct, 4%), var(--line) 0);
 }
-.me-chip .lv { display: grid; gap: 6px; flex: 1; min-width: 0; }
-.me-chip b { display: block; font: 800 0.9375rem/1.1 var(--head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.aura-bar { display: block; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
-.aura-bar i { display: block; height: 100%; border-radius: 3px; background: var(--danfo); }
-.top .spacer { flex: 1; }
-.brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.tagline { font-size: 0.8125rem; color: var(--muted); text-align: right; line-height: 1.25; }
-.deck-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
-.deck {
-  flex: 1; min-height: 0;
-  display: flex; gap: 12px;
-  overflow-x: auto; overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  overscroll-behavior-x: contain;
-  margin: 0 calc(-1 * var(--gut-r)) 0 calc(-1 * var(--gut-l));
-  padding: 4px 36px;
-  position: relative;
+.me-ring::before { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--night); }
+.me-ring .av { position: relative; }
+.counters {
+  flex: 1; min-width: 0;
+  display: flex; justify-content: space-around; align-items: center;
+  min-height: 44px; padding: 0 4px;
+  border-radius: 999px; background: var(--raise);
 }
-.deck::-webkit-scrollbar { display: none; }
-.mode-card {
-  position: relative;
-  flex: 0 0 100%;
-  scroll-snap-align: center;
-  display: flex; flex-direction: column; gap: 6px;
-  padding: 22px 16px 14px;
-  border-radius: 26px;
-  background: var(--deep);
+.counters .ct {
+  position: relative; display: inline-flex; align-items: center; gap: 5px;
+  min-height: 44px; padding: 0 8px; border: 0; border-radius: 999px; background: none;
+  font: 800 0.9375rem/1 var(--head); font-variant-numeric: tabular-nums; color: var(--text);
+}
+.counters .ct svg { width: 20px; height: 20px; flex: none; color: var(--flame-off); }
+.counters .ct.lit svg { color: var(--flame); }
+.counters .ct.q svg { color: var(--indigo-glow); }
+.counters .ct.warn::after { content: ""; position: absolute; top: 8px; left: 20px; width: 9px; height: 9px; border-radius: 50%; background: var(--fuchsia-glow); box-shadow: 0 0 0 2px var(--raise); }
+.counters .ct:active { transform: scale(.94); }
+
+/* The game you play next: one picture, its rule and a demo on a loop. The card is as tall as
+   its board needs, and spare height goes around it, so the buttons stay at the bottom and
+   nothing sits in an empty box. */
+.game-pic {
+  position: relative; flex: 0 1 auto; min-height: 0; margin-block: auto;
+  display: flex; flex-direction: column; gap: var(--space-pair);
+  padding: 22px 16px 16px;
+  border-radius: 26px; background: var(--deep);
   box-shadow: inset 0 0 0 1px var(--line);
   overflow: hidden;
 }
-.mode-card::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 10px; background: var(--band); }
-.mode-card { cursor: pointer; transition: transform 160ms var(--ease-pop); }
-.mode-card:active { transform: scale(.98); }
-.mode-card .pill.play { margin-left: auto; background: var(--cream); color: var(--night); }
-.mode-card h2 { font-size: 1.75rem; font-weight: 900; }
-.mode-card .rule { font-size: 0.9375rem; color: var(--muted); }
-.mode-card .meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.game-pic::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 10px; background: var(--band); }
+.gp-head { display: flex; align-items: center; gap: 6px; }
+.gp-head .spacer { flex: 1; }
+.gp-pick {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 48px; padding: 0 8px 0 16px; border: 0; border-radius: 999px;
+  background: var(--cream); color: var(--night);
+  font: 900 1.5rem/1 var(--head);
+  transition: transform 160ms var(--ease-pop);
+}
+.gp-pick:active { transform: scale(.96); }
+.stake-game { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 2px; }
+.stake-game > span { min-width: 0; font-size: 0.9375rem; color: var(--muted); }
+.stake-game b { font-family: var(--head); font-weight: 800; color: var(--text); }
+.gp-pick .chev { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--night); color: var(--cream); }
+.gp-pick .chev svg { width: 18px; height: 18px; }
+.game-pic .rule { font-size: 0.9375rem; color: var(--muted); }
+.game-pic .mb-wrap { flex: 0 1 auto; height: calc(min(100vw, 460px) - var(--gut-l) - var(--gut-r) - 32px); }
 .mb-wrap { flex: 1; min-height: 70px; container-type: size; display: grid; place-items: center; }
 .dots { display: flex; justify-content: center; }
 .dots button { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; background: none; }
@@ -249,11 +257,26 @@ svg.ic { width: 22px; height: 22px; flex: none; }
 .goal b { font-family: var(--head); font-weight: 800; }
 .goal .streak { display: inline-flex; align-items: center; gap: 4px; font-family: var(--head); font-weight: 800; }
 .goal .streak svg { width: 16px; height: 16px; }
-.pips { display: flex; gap: 5px; }
-.pips i { width: 14px; height: 14px; border-radius: 4px; background: var(--raise); transform: rotate(45deg); }
-.pips i.on { background: var(--danfo); }
 .actions { display: grid; gap: 14px; padding: 4px 2px 0; }
-.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* One loud button, then the two other ways to play, smaller and side by side. */
+.home .actions { gap: var(--space-item); }
+.home .more > .btn { max-width: none; }
+
+/* Pick a game (src/sheets/ModeSheet.tsx): the four games as tiles with their print. */
+.mode-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-item); }
+.mode-tile {
+  position: relative; overflow: hidden;
+  display: grid; gap: 4px; align-content: start; justify-items: start;
+  min-height: 104px; padding: 22px 14px 14px; border: 0; border-radius: 20px;
+  background: var(--raise); color: var(--text); text-align: left;
+}
+.mode-tile::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 8px; background: var(--band); }
+.mode-tile b { font: 900 1.375rem/1.05 var(--head); }
+.mode-tile span { font-size: 0.8125rem; line-height: 1.3; color: var(--muted); }
+.mode-tile small { display: flex; align-items: center; gap: 6px; margin-top: 4px; font: 700 0.75rem/1 var(--body); color: var(--muted); }
+.mode-tile small .pill { padding: 3px 8px; font-style: normal; }
+.mode-tile[aria-pressed="true"] { background: var(--cream); color: var(--night); }
+.mode-tile[aria-pressed="true"] span, .mode-tile[aria-pressed="true"] small { color: var(--deep); }
 .stake-pill { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px 4px 6px; border-radius: 999px; background: rgba(11, 10, 42, .35); font: 800 0.8125rem/1 var(--head); font-variant-numeric: tabular-nums; }
 .stake-pill svg { width: 16px; height: 16px; }
 
@@ -435,6 +458,12 @@ svg.ic { width: 22px; height: 22px; flex: none; }
 .tray { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .tray button { min-height: 44px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--cream); color: var(--night); font: 800 0.9375rem/1 var(--head); }
 .tray button:disabled { opacity: .5; }
+/* Typing your own message (shared/chat.ts): the field and Send on one line, the rule under it. */
+.say-form { display: grid; gap: var(--space-pair); }
+.say-row { display: flex; align-items: center; gap: var(--space-pair); }
+.say-row .text-in { flex: 1; min-width: 0; }
+.say-row .mini-btn { min-height: 44px; }
+.say-form .say-no { color: var(--fuchsia-glow); }
 
 /* friend room, waiting for the friend */
 .invite { flex: 1; min-height: 0; display: grid; align-content: center; gap: 14px; text-align: center; }
@@ -679,6 +708,11 @@ dialog.sheet.closing::backdrop { animation: fade-out 220ms ease-in forwards; }
 /* Two small buttons that stack on narrow phones rather than break their labels onto two lines. */
 .more.stack-narrow > .btn { min-width: min(100%, 164px); max-width: none; }
 .appeal-status { font-weight: 700; color: var(--text); }
+/* New terms to accept (src/screens/TermsUpdate.tsx): what changed, both texts, one button. */
+.terms-update { justify-content: center; gap: var(--space-group); }
+.tu-head { display: flex; align-items: center; gap: var(--space-block); }
+.tu-changes { display: grid; gap: var(--space-item); margin: 0; padding: 0 0 0 20px; line-height: 1.5; }
+.tu-changes li::marker { color: var(--fuchsia-glow); }
 .empty { display: grid; justify-items: center; gap: var(--space-pair); padding: 24px 12px; text-align: center; color: var(--muted); }
 .empty > svg.big, .empty > .av { margin-bottom: var(--space-pair); }
 .empty > .btn { margin-top: calc(var(--space-group) - var(--space-pair)); }
@@ -709,6 +743,14 @@ dialog.sheet.closing::backdrop { animation: fade-out 220ms ease-in forwards; }
   font: 800 1.125rem/1 var(--head);
 }
 .text-in:focus { outline: none; box-shadow: inset 0 0 0 2px var(--danfo); }
+/* Picking a name (src/components/NameForm.tsx): the field, a line that says if it's free, then ideas. */
+.name-form.in-sheet { display: grid; gap: var(--space-item); }
+.name-form.in-sheet .actions { margin-top: calc(var(--space-group) - var(--space-item)); padding: 0; }
+.name-form .chips-row button { min-height: 44px; padding: 0 14px; }
+.name-status { display: flex; align-items: center; gap: 6px; min-height: 1.25rem; margin-top: -4px; font-size: 0.8125rem; line-height: 1.3; color: var(--muted); }
+.name-status svg { width: 16px; height: 16px; flex: none; }
+.name-status.ok { color: var(--teal); font-weight: 700; }
+.name-status.no { color: var(--fuchsia-glow); }
 .edit-row { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
 .edit-row small { color: var(--muted); font-size: 0.75rem; }
 .edit-row small { flex: 1; min-width: 0; }
@@ -804,13 +846,17 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
   box-shadow: 0 0 0 2px var(--cream);
   animation: drop-in 420ms var(--ease-pop);
 }
+/* Swipe up to hide (src/components/TopPop.tsx): the pop-up takes the finger, and a small
+   handle at the bottom says it can be moved, like the handle on a sheet. */
+.install-pop { touch-action: none; -webkit-user-select: none; user-select: none; padding-bottom: 16px; }
+.install-pop::after { content: ""; position: absolute; left: 50%; bottom: 6px; width: 32px; height: 4px; margin-left: -16px; border-radius: 2px; background: var(--line); }
 .install-pop > div > b { display: block; font: 800 0.9375rem/1.15 var(--head); }
 .install-pop > div > span { display: block; font-size: 0.8125rem; color: var(--muted); line-height: 1.25; }
 .app-ic { width: 40px; height: 40px; border-radius: 11px; }
 @keyframes drop-in { from { transform: translateY(-150%); } }
 /* asking to turn on notifications (src/components/PushAsk.tsx): same pop-up, a teal bell */
 /* Two rows, so the words get the width: the bell, the words and X, then Turn on under the words. */
-.push-pop { grid-template-columns: 40px minmax(0, 1fr) auto; align-items: start; row-gap: var(--space-item); padding: 12px 6px 12px 12px; text-align: left; }
+.push-pop { grid-template-columns: 40px minmax(0, 1fr) auto; align-items: start; row-gap: var(--space-item); padding: 12px 6px 18px 12px; text-align: left; }
 .push-pop > div { grid-column: 2; grid-row: 1; align-self: center; }
 .push-pop > div > span { margin-top: 2px; }
 .push-pop .mini-btn { grid-column: 2; grid-row: 2; justify-self: start; min-height: 44px; padding: 0 20px; }
@@ -882,13 +928,18 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
   .onb .edit { gap: 8px; padding: 10px; }
   .onb .edit .chips-row button:nth-child(n+3):not(:last-child) { display: none; }
   .onb .edit .ideas { display: none; }
+  /* Changing your name on You: the ideas stay on one line and scroll sideways, shuffle first,
+     so the editor never pushes You past the screen (found 18 October 2026 at 320 × 568). */
+  .name-form:not(.in-sheet) .chips-row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .name-form:not(.in-sheet) .chips-row::-webkit-scrollbar { display: none; }
+  .name-form:not(.in-sheet) .chips-row button { flex: none; white-space: nowrap; }
+  .name-form:not(.in-sheet) .chips-row button:last-child { order: -1; }
   .me-card .mini-btn { padding: 0 12px; }
   .onb-avs .av { --s: 48px !important; }
   .wordmark { font-size: 1.875rem; }
   .wordmark .tag { font-size: 1.25rem; }
-  .tagline { display: none; }
-  .mode-card { padding-top: 18px; }
-  .mode-card h2 { font-size: 1.5rem; }
+  .game-pic { padding-top: 18px; gap: 6px; }
+  .gp-pick { min-height: 44px; font-size: 1.3125rem; }
   .btn { min-height: 48px; }
   .btn.lg { min-height: 54px; }
   .screen { gap: 10px; }
@@ -915,11 +966,10 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
   .podium .av { --s: 36px !important; }
 }
 @media (max-width: 350px) {
-  .row2 .btn { font-size: 0.9375rem; padding: 0 12px; }
+  .counters .ct { padding: 0 6px; gap: 4px; }
   .tabs button { padding: 0 4px; font-size: 0.875rem; }
   .top { gap: 4px; }
   .chip { padding: 0 10px 0 7px; }
-  .me-chip { padding-right: 10px; gap: 7px; }
 }
 
 /* Low-end phones: keep play smooth, drop ambient extras. */
@@ -936,23 +986,6 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 
 /* ---------- the habit layer: streak, quests, leagues, badges (docs/RETENTION.md) ---------- */
 
-/* Home: streak and daily quests, two buttons side by side */
-.habits { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.hb {
-  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px;
-  min-height: 52px; padding: 6px 10px; border: 0; border-radius: 16px;
-  background: var(--deep); color: var(--text); text-align: left;
-}
-.hb:active { transform: scale(.97); }
-.hb .hb-ic { width: 26px; height: 26px; color: var(--flame-off); }
-.hb .hb-ic.q { color: var(--indigo-glow); }
-.hb .t { display: grid; gap: 1px; min-width: 0; }
-.hb b { font: 800 0.875rem/1.15 var(--head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hb small { font-size: 0.6875rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hb.warn small { color: var(--fuchsia-glow); }
-.hb .pips i { width: 10px; height: 10px; border-radius: 3px; }
-.ice-n { display: inline-flex; align-items: center; gap: 2px; padding: 3px 6px; border-radius: 999px; background: var(--night); color: var(--ice); font: 800 0.75rem/1 var(--head); }
-.ice-n svg { width: 12px; height: 12px; }
 
 /* This week, Monday to Sunday */
 .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin: 0; padding: 0; list-style: none; }
@@ -1096,8 +1129,11 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
   .live-wait-short { display: inline; }
   .live-who { grid-template-columns: auto minmax(0, 1fr); }
 }
-/* Short phones: a tighter card, so Join stays in view. */
+/* Short phones: a tighter card, so Join and the two buttons under it stay in view. The dots
+   and the next card peeking in already say you can swipe. */
 @media (max-height: 640px) {
+  .live-swipe { display: none; }
+  .live-dots button { height: 16px; }
   .live-card { gap: 8px; padding: 12px; }
   .live-game { padding: 9px 10px; }
   .live-game span { font-size: 0.75rem; }
@@ -1140,6 +1176,7 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 .league-head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 12px; border-radius: 16px; background: var(--deep); }
 .league-head .lg-ic { width: 40px; height: 40px; }
 .league-head b { display: block; font: 900 1.25rem/1.1 var(--head); }
+.league-head .tier { display: block; margin-top: 2px; font: 800 0.75rem/1.2 var(--head); color: var(--indigo-glow); }
 .league-head span { display: block; margin-top: var(--sp-50); font-size: 0.8125rem; color: var(--muted); line-height: 1.4; }
 .lrow.up .n { color: var(--teal); }
 .lrow.down .n { color: var(--fuchsia-glow); }
@@ -1162,19 +1199,10 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 .badges .stars svg { width: 18px; height: 18px; }
 
 @media (max-height: 640px) {
-  .hb { min-height: 46px; padding: 4px 8px; }
-  .hb small { display: none; }
   .streak-hero .fl { width: 48px; height: 48px; }
   .streak-hero b { font-size: 2.5rem; }
   .cel-ic { width: 72px; height: 72px; }
   .cel-big { font-size: 3.5rem; }
-}
-@media (max-width: 379px) {
-  .hb .pips { display: none; }
-}
-@media (max-width: 350px) {
-  .hb { padding: 6px 8px; gap: 6px; }
-  .hb .hb-ic { width: 22px; height: 22px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cel-body, .celebrate { animation: none; }

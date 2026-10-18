@@ -13,6 +13,7 @@
  * Encrypting one message takes about a millisecond of processing, and the free plan allows 10
  * per request, so the 7 pm reminders go out a few at a time (worker/notifier.ts).
  */
+import { nDays } from '../shared/habits';
 import { BABA_PUSH, FRIEND_PUSH } from '../shared/notify';
 import { fromB64url, toB64url } from './auth';
 import type { Env } from './env';
@@ -151,7 +152,7 @@ const pick = <T>(list: readonly T[]) => list[Math.floor(Math.random() * list.len
 const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (_, k) => String(v[k] ?? ''));
 
 /** Baba Ayo's 7 pm reminder for a streak of `n` days. */
-export const streakNote = (n: number): Note => ({ title: 'Baba Ayo', body: fill(pick(BABA_PUSH), { n }), url: '/', tag: 'streak' });
+export const streakNote = (n: number): Note => ({ title: 'Baba Ayo', body: fill(pick(BABA_PUSH), { n, days: nDays(n) }), url: '/', tag: 'streak' });
 
 /**
  * Tells the host of a friend room that their friend just joined, on every phone where they
