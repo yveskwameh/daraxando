@@ -126,9 +126,9 @@ export function Profile({ go }: { go: Go }) {
         <div className="aura-row">
           <div className="t">
             <b><Icon id="i-aura" className="" />{profile.aura.toLocaleString('en-US')} Aura</b>
-            <span>{lv.toNext.toLocaleString('en-US')} more to become {lv.nextTitle}</span>
+            <span>{lv.toNext.toLocaleString('en-US')} more for the title {lv.nextTitle}</span>
           </div>
-          <span className="aura-bar" role="progressbar" aria-valuemin={auraForLevel(lv.level)} aria-valuemax={next} aria-valuenow={profile.aura} aria-label="Aura toward your next title">
+          <span className="bar aura-bar" role="progressbar" aria-valuemin={auraForLevel(lv.level)} aria-valuemax={next} aria-valuenow={profile.aura} aria-label="Aura toward your next title">
             <i style={{ width: `${Math.max(3, (lv.into / lv.span) * 100)}%` }} />
           </span>
         </div>

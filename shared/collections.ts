@@ -92,7 +92,7 @@ export function unlocksAt(level: number) {
   return [
     ...AVATARS.filter((a) => a.lvl === level).map((a) => `${a.name} avatar`),
     ...PRINTS.filter((p) => p.lvl === level).map((p) => `${p.name} print`),
-    ...PIECES.filter((p) => p.lvl === level).map((p) => p.name),
+    ...PIECES.filter((p) => p.lvl === level).map((p) => `${p.name} piece`),
   ];
 }
 

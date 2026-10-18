@@ -16,7 +16,7 @@ import { Avatar, Icon } from '../components/art';
 import { api, type ApiError } from '../lib/api';
 import { offlineOn } from '../lib/offline';
 import type { Go } from '../lib/router';
-import { usePlayer } from '../lib/session';
+import { useBackOnline, usePlayer } from '../lib/session';
 import { KEYS, store } from '../lib/storage';
 
 // Only banned players ever load this one.
@@ -66,22 +66,27 @@ export function Ranks({ go }: { go: Go }) {
   const [error, setError] = useState('');
   const [review, setReview] = useState(false);
 
+  // Back online with a copy on screen: fetch the fresh table without blanking it first.
+  const back = useBackOnline();
   useEffect(() => {
-    let live = true;
     setData(null);
     setStaleAt(null);
     setError('');
+  }, [tab]);
+  useEffect(() => {
+    let live = true;
     if (tab === 'league') return;
     fetchKept(profile.id, tab, () => api.leaderboard(token, tab === 'state' ? profile.state : null)).then(
       (r) => {
         if (!live) return;
         setData(r.d);
         setStaleAt(r.at);
+        setError('');
       },
       (err: Error) => live && setError(err.message),
     );
     return () => { live = false; };
-  }, [token, tab, profile.state, profile.id]);
+  }, [token, tab, profile.state, profile.id, back]);
 
   const top = data?.top ?? [];
   const inList = top.some((r) => r.id === profile.id);
@@ -200,15 +205,17 @@ function League({ go }: { go: Go }) {
   const [data, setData] = useState<LeagueData | null>(null);
   const [staleAt, setStaleAt] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const back = useBackOnline();
   useEffect(() => {
     fetchKept(profile.id, 'league', () => api.league(token)).then(
       (r) => {
         setData(r.d);
         setStaleAt(r.at);
+        setError('');
       },
       (err: Error) => setError(err.message),
     );
-  }, [token, profile.ban, profile.id]);
+  }, [token, profile.ban, profile.id, back]);
 
   if (error) {
     return (
