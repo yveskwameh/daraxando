@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanEmail, LINK_RE, readIdToken } from '../worker/accounts';
+import { cleanEmail, LINK_RE, readIdToken, setupError } from '../worker/accounts';
 import { hmac, randomToken, sameText, signToken, sixDigits, verifyToken } from '../worker/auth';
 import { codeEmail } from '../worker/email';
 
@@ -37,6 +37,13 @@ describe("Google's id_token", () => {
   });
   it('keeps an unverified address marked as such', () => {
     expect(readIdToken(idToken({ ...good, email_verified: false }), CLIENT, now)?.verified).toBe(false);
+  });
+});
+
+describe("Google's token errors", () => {
+  it('tells a setup problem on our side from a sign-in that just did not finish', () => {
+    for (const e of ['invalid_client', 'unauthorized_client', 'redirect_uri_mismatch']) expect(setupError(e), e).toBe(true);
+    for (const e of ['invalid_grant', 'invalid_request', undefined]) expect(setupError(e), String(e)).toBe(false);
   });
 });
 

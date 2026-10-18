@@ -134,10 +134,10 @@ function Match({ id, go }: { id: string; go: Go }) {
       if (who === opp.mark) {
         sfx.op();
         // They just took the square you needed.
-        if (before.phase === 'playing' && findWin(before.board, before.hist, me.mark, variant) === i) showFlash('They blocked you.');
+        if (before.phase === 'playing' && findWin(before.board, before.hist, me.mark, variant) === i) showFlash('Haba! They blocked you.');
       } else if (who === me.mark && tapped.current !== i && before.turn === me.mark) {
         sfx.me();
-        showFlash("Time's up.");
+        showFlash('Otilo! Time up.');
       }
       tapped.current = null;
     }
@@ -421,26 +421,26 @@ function Match({ id, go }: { id: string; go: Go }) {
 
   let status = '';
   if (flash) status = flash;
-  else if (v.phase === 'waiting') status = waitingFriend || waitingRoom ? '' : 'Getting the game ready';
+  else if (v.phase === 'waiting') status = waitingFriend || waitingRoom ? '' : 'Jeje, e dey come';
   else if ((between || over) && v.result) {
     const w = v.result.winner;
-    if (v.result.reason === 'timeout') status = w === me.mark ? `${opp?.name} ran out of time.` : 'You ran out of time.';
+    if (v.result.reason === 'timeout') status = w === me.mark ? `${opp?.name} ran out of time.` : 'Otilo! You ran out of time.';
     else if (v.result.reason === 'abandon' || v.result.reason === 'resign') status = w === me.mark ? `${opp?.name} left the match.` : 'You left the match.';
     else if (v.result.reason === 'aborted') status = 'Match called off.';
-    else status = w === me.mark ? 'You win this one.' : w ? `${opp?.name} wins this one.` : 'Draw. Nobody wins this one.';
+    else status = w === me.mark ? 'Yawwa! You win this one.' : w ? 'We move. Next one.' : 'Draw. Nobody wins this one.';
   } else if (playing) {
     if (paused) status = `Paused. Waiting for ${opp?.name}`;
     else if (myTurn) {
       const piece = pieceById(myPiece).short;
       // Fading: say the rule before your first piece, and which piece goes once you have three.
       const fresh = mode.fade > 0 && !v.board.some((c) => c === me.mark);
-      status = low ? 'Quick, your time is almost up.'
-        : threat ? 'Watch out. They can win next move.'
+      status = low ? 'Sharp sharp!'
+        : threat ? 'Shine your eye. They have a line.'
         : fresh ? `Fading: ${mode.fade} pieces each. Your oldest one goes.`
         : mode.fade > 0 && v.fading !== null ? `Place one. Your faded ${piece} goes.`
-        : `Your move. Place your ${piece}.`;
+        : `Oya, place your ${piece}`;
     }
-    else status = opp?.bot ? 'Baba Ayo is thinking' : 'Their move';
+    else status = opp?.bot ? 'Baba Ayo is thinking' : 'Jeje, e dey come';
   }
 
   const label = `${seriesLabel(v.bo)}${v.stake ? ` · Pot ${short(v.stake * 2)}` : ''}`;
@@ -543,7 +543,7 @@ function Match({ id, go }: { id: string; go: Go }) {
               style={{ color: stamp.winner === me.mark ? 'var(--danfo)' : stamp.winner ? 'var(--fuchsia-glow)' : 'var(--cream)' }}
               aria-hidden="true"
             >
-              {stamp.winner === me.mark ? winStamp(v.id, v.game) : stamp.winner ? 'THEY WIN' : 'DRAW'}
+              {stamp.winner === me.mark ? 'GBAM!' : stamp.winner ? 'CHAI!' : 'NOTIN SPOIL'}
             </div>
           )}
         </div>
@@ -657,18 +657,11 @@ function Match({ id, go }: { id: string; go: Go }) {
 
 /** One line about the game that just ended, for the Next game sheet. */
 function gameLine(r: NonNullable<MatchView['result']>, me: SeatView, opp: SeatView) {
-  if (r.reason === 'timeout') return r.winner === me.mark ? `${opp.name} ran out of time. You take this one.` : 'You ran out of time.';
-  if (r.winner === me.mark) return 'You win this one.';
-  if (r.winner) return `${opp.name} wins this one.`;
+  if (r.reason === 'timeout') return r.winner === me.mark ? `${opp.name} ran out of time. You take this one.` : 'Otilo! You ran out of time.';
+  if (r.winner === me.mark) return 'Yawwa! You win this one.';
+  if (r.winner) return `${opp.name} takes this one. We move.`;
   return 'Draw. Nobody wins this one.';
 }
-
-/**
- * The stamp when you win a game: the one fun line in match text (Yves, 17 October 2026,
- * docs/COPY-PASS.md). One of three, the same one for as long as that game's stamp shows.
- */
-const WIN_STAMPS = ['GBAM!', 'ODOGWU!', 'E CHOKE!'] as const;
-const winStamp = (matchId: string, game: number) => WIN_STAMPS[(matchId.charCodeAt(matchId.length - 1) + game) % WIN_STAMPS.length];
 
 interface PlateProps {
   seat: SeatView;

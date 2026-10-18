@@ -4,7 +4,7 @@ Step 4 in `docs/NEXT-ROUND.md`, written 17 October 2026 for Yves to approve. Dec
 Baba Ayo keeps a light Pidgin voice in his own lines only; match text goes plain, with one fun line on wins.
 Titles, animals, pieces, prints, Baba Ayo, places and music stay. Nothing new in Yoruba, Igbo or Hausa is added, so the native speaker isn't needed.
 
-**Status: approved by Yves and built, 17 October 2026.** Not pushed yet.
+**Status: approved by Yves and built, 17 October 2026.** On 18 October 2026 Yves undid the match-screen part: everything under "During a match" (and Baba Ayo's chat in games against him, and the quick messages) is back to the "Now" column, word for word. The rest stands.
 
 ## During a match
 

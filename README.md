@@ -173,6 +173,7 @@ Any change to how seeds work, to the age line or to the legal texts goes back to
 | A build fails on Cloudflare | Open the build in **Deployments** and send Claude the red lines. The copy players see doesn't change. |
 | Google says "redirect_uri_mismatch" | Google only knows the test copy, the real game and `http://localhost:5173`. On your Mac, use `localhost:5173`. |
 | "Google sign-in isn't set up on this copy yet" | That copy has no `GOOGLE_CLIENT_SECRET` (section 4). |
+| "Google sign-in isn't working right now. Use your email." | Google refused that copy's `GOOGLE_CLIENT_SECRET`: it's wrong or has a space at either end. Cloudflare's **Workers & Pages → that Worker → Logs** shows `[google] 401 invalid_client`. Paste the secret again (section 4); both copies use the same one. |
 | No sign-in email arrives | On your Mac, the code is in the terminal. Otherwise check Spam, then Resend's **Emails** page. |
 | Notifications don't arrive | `/api/health` shows `"push":false` if the copy has no notification keys. iPhone needs the installed app. On Android, allow notifications for Chrome or the installed app in the phone's settings. |
 | "Notifications are blocked" in Settings | The phone's box was answered Block. In Chrome, tap the icon left of the address, **Permissions → Notifications → Allow**. |

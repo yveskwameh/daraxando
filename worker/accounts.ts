@@ -425,6 +425,9 @@ async function useCode(env: Env, row: CodeRow, me: Profile | null, now: number):
   return outcome(env, 'email', target, me?.id ?? null, saved);
 }
 
+/** Google's token errors that mean this copy's client id, secret or return address is wrong, not the player's attempt. */
+export const setupError = (e: unknown) => e === 'invalid_client' || e === 'unauthorized_client' || e === 'redirect_uri_mismatch';
+
 /** Swaps Google's one-time code for the account, then finds or saves the player. */
 async function fromGoogle(env: Env, url: URL, asked: { v: string; p: string | null; i: Intent }, now: number): Promise<Stored> {
   const code = url.searchParams.get('code');
@@ -446,6 +449,10 @@ async function fromGoogle(env: Env, url: URL, asked: { v: string; p: string | nu
     data = (await res.json()) as typeof data;
     if (!res.ok) {
       console.error('[google]', res.status, data.error);
+      // Google refused this copy's client id or secret (Yves, 18 October 2026: the real game had a
+      // wrong GOOGLE_CLIENT_SECRET and players only saw "try again"). Trying again can't help, so
+      // say it's on our side and point to email. The log line above names the exact error.
+      if (setupError(data.error)) return { k: 'error', m: "Google sign-in isn't working right now. Use your email." };
       return { k: 'error', m: "Google sign-in didn't finish. Try again." };
     }
   } catch (err) {

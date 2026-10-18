@@ -50,9 +50,11 @@ export const BOT = {
   state: 'NONE',
 } as const;
 
-/** Lines a player can send during a match. The server only passes on these. */
-/** Quick messages players send each other in a match: half plain, half the best-known three (Yves, 17 October 2026). */
-export const EMOTES = ['Good game', 'Nice one', 'Your move', 'Gbam!', 'Haba!', 'No rage bait me'] as const;
+/**
+ * Lines a player can send during a match. The server only passes on these. The match screen keeps
+ * its Pidgin, these included (Yves, 18 October 2026, undoing that part of the 17 October copy pass).
+ */
+export const EMOTES = ['Gbam!', 'Haba!', 'Oya nau', 'Shine your eye', 'You too much', 'No rage bait me'] as const;
 
 export interface Profile {
   id: string;
