@@ -208,6 +208,14 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   /* --- your profile --- */
   if (path === '/api/me' && method === 'GET') return json({ profile: me });
 
+  /* --- accepting new terms (shared/legal.ts): the version on screen, and when, as the record --- */
+  if (path === '/api/terms' && method === 'POST') {
+    const b = await body<{ version: string }>(req);
+    if (b.version !== TERMS_VERSION) return fail(409, 'The terms have changed again. Close the app, open it again, then accept.');
+    await env.DB.prepare('UPDATE players SET terms_version = ?, terms_at = ?, updated_at = ? WHERE id = ?').bind(TERMS_VERSION, now, now, me.id).run();
+    return json({ profile: (await getPlayer(env.DB, me.id)) ?? me });
+  }
+
   /* --- playing Baba Ayo without internet: passes, and the games played with them (worker/offline.ts) --- */
   if (path.startsWith('/api/offline/') && method === 'POST') return offlineRoute(req, env, path, me, now);
 

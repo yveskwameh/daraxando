@@ -8,15 +8,15 @@
  * worker/names.ts), so the list never ships to phones. The other player can mute you for the
  * match. Messages are passed on and never stored or logged.
  *
- * On the real game only once the lawyer approves the privacy notice line for it
- * (docs/CHAT-REVIEW.md). Until then the test copy and the Mac have it, the real game doesn't.
+ * The lawyer approved the privacy notice and terms lines for it on 18 October 2026
+ * (docs/CHAT-REVIEW.md), so it's on everywhere.
  */
 
 /** The longest message, in characters. */
 export const MSG_MAX = 40;
 
-/** Turn typing on for the real game, together with the new privacy notice line, once the lawyer says yes. */
-export const TYPED_ON_REAL_GAME = false;
+/** Typing on the real game: on since the lawyer approved the privacy notice and terms lines (18 October 2026). */
+export const TYPED_ON_REAL_GAME = true;
 
 export const MSG_CONTACT = "Messages can't have phone numbers, links or social handles.";
 export const MSG_RUDE = "That message isn't allowed.";

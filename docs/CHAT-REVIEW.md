@@ -1,10 +1,12 @@
 # Typed messages in a match: the lines for the lawyer
 
-Written 18 October 2026, for Yves to send to the lawyer. Nothing here is in the privacy notice or the terms yet. Sent as part of one doc with the offline-play lines (`docs/NEXT-ROUND.md`, step 6).
+Written 18 October 2026, for Yves to send to the lawyer, as part of one doc with the offline-play lines (`docs/NEXT-ROUND.md`, step 6).
+
+**Approved by the lawyer on 18 October 2026:** the privacy notice line as written, and the terms line (section 2) too. Both are in `src/legal/privacy.md` and `src/legal/terms.md`. Because the terms changed, `TERMS_VERSION` went up to `2026-10-18` and every existing player accepts the new terms once, on the "We updated our terms" screen. Typed messages are on everywhere.
 
 ## What changed
 
-Players could already send six fixed quick messages to the other player in a match ("Gbam!", "Haba!" and so on). On 18 October 2026 Yves asked for players to be able to type their own messages too. It is built and works on the test copy. It is switched off on the real game until the lawyer approves the wording below (`TYPED_ON_REAL_GAME` in `shared/chat.ts`).
+Players could already send six fixed quick messages to the other player in a match ("Gbam!", "Haba!" and so on). On 18 October 2026 Yves asked for players to be able to type their own messages too. It is built and, since the approval, on everywhere (`TYPED_ON_REAL_GAME` in `shared/chat.ts` stays as a quick off switch).
 
 How it works:
 
@@ -37,8 +39,8 @@ The terms already say "insult, threaten or harass other players". The game block
 2. Is the terms line needed? If it is, is it a change that matters enough to ask every existing player to accept the terms again? (The terms promise that. The sheet that asks would be built before the change goes live.)
 3. Anything else needed because players aged 13 to 17 can now type to strangers, given the rules above?
 
-## After the lawyer says yes
+## After the lawyer said yes (done 18 October 2026)
 
-1. Put the approved line into `src/legal/privacy.md` (and the terms line into `src/legal/terms.md` if approved, bumping `TERMS_VERSION` in `shared/legal.ts` if the lawyer says it matters).
-2. Set `TYPED_ON_REAL_GAME = true` in `shared/chat.ts`.
-3. Push and merge into `production` as usual.
+1. The approved line is in `src/legal/privacy.md` and the terms line in `src/legal/terms.md`, with `TERMS_VERSION` at `2026-10-18` in `shared/legal.ts` and what changed in `TERMS_CHANGES`.
+2. `TYPED_ON_REAL_GAME = true` in `shared/chat.ts`.
+3. Yves pushes and merges into `production` as usual.

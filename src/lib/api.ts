@@ -78,6 +78,9 @@ export const api = {
 
   me: (token: string) => call<{ profile: Profile }>('/api/me', token),
 
+  /** Accept the current Terms of play and Privacy notice (shared/legal.ts). */
+  acceptTerms: (token: string, version: string) => call<{ profile: Profile }>('/api/terms', token, post({ version })),
+
   updateMe: (token: string, patch: ProfilePatch) => call<{ profile: Profile }>('/api/me', token, post(patch, 'PATCH')),
   /** Is this name free? With ideas when it isn't. */
   checkName: (token: string, name: string) =>

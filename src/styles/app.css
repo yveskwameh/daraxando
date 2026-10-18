@@ -708,6 +708,11 @@ dialog.sheet.closing::backdrop { animation: fade-out 220ms ease-in forwards; }
 /* Two small buttons that stack on narrow phones rather than break their labels onto two lines. */
 .more.stack-narrow > .btn { min-width: min(100%, 164px); max-width: none; }
 .appeal-status { font-weight: 700; color: var(--text); }
+/* New terms to accept (src/screens/TermsUpdate.tsx): what changed, both texts, one button. */
+.terms-update { justify-content: center; gap: var(--space-group); }
+.tu-head { display: flex; align-items: center; gap: var(--space-block); }
+.tu-changes { display: grid; gap: var(--space-item); margin: 0; padding: 0 0 0 20px; line-height: 1.5; }
+.tu-changes li::marker { color: var(--fuchsia-glow); }
 .empty { display: grid; justify-items: center; gap: var(--space-pair); padding: 24px 12px; text-align: center; color: var(--muted); }
 .empty > svg.big, .empty > .av { margin-bottom: var(--space-pair); }
 .empty > .btn { margin-top: calc(var(--space-group) - var(--space-pair)); }

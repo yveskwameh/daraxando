@@ -5,6 +5,7 @@
  * (two player updates and their index entries, ledger rows, one match row). Ranks reads
  * through partial indexes, so the top 50 is a 50-row read, not a table scan.
  */
+import { TERMS_VERSION } from '../shared/legal';
 import { parseHabits } from '../shared/habits';
 import { levelInfo, dayKey, DAILY_GOAL, GOAL_BONUS, START_RATING, type Kind, type Result } from '../shared/progression';
 import type { StateCode } from '../shared/places';
@@ -78,6 +79,7 @@ export const toProfile = (r: PlayerRow): Profile => ({
   saved: r.saved === 1,
   ban: r.banned_at ? { at: r.banned_at, reason: r.ban_reason ?? '' } : null,
   nameAsk: r.name_set === 2 ? 'taken' : r.name_set === 0 && r.first_result ? 'new' : null,
+  termsDue: (r.terms_version ?? null) !== TERMS_VERSION,
 });
 
 export const toPublic = (p: Profile): PublicPlayer => ({

@@ -92,6 +92,11 @@ export interface Profile {
    * and the game added a number. Null once they've chosen.
    */
   nameAsk: 'new' | 'taken' | null;
+  /**
+   * The terms changed in a way that matters since this player accepted them (shared/legal.ts).
+   * The app asks them to accept the new version before they keep playing, as the terms promise.
+   */
+  termsDue: boolean;
 }
 
 /** How a player signs in. */

@@ -12,7 +12,7 @@
  *
  * A pass counts once: the decided match marks it used in the same write that checks it wasn't.
  * A game that fails the replay uses the pass up, so a phone can't keep trying versions. Off on
- * the real game until the lawyer approves the privacy notice lines (OFFLINE_ON_REAL_GAME).
+ * the real game since the lawyer approved the privacy notice lines on 18 October 2026 (OFFLINE_ON_REAL_GAME).
  */
 import { isBotLevel, type BotLevel } from '../shared/bot';
 import { isModeId, type ModeId } from '../shared/modes';
@@ -31,7 +31,7 @@ import { bump } from './stats';
 
 const DAY = 86_400_000;
 
-/** Offline play is on here: the test copy and the Mac now, the real game once the lawyer approves. */
+/** Offline play is on here: everywhere since the lawyer approved it on 18 October 2026 (the switch stays, to turn it off quickly if needed). */
 export const offlineOn = (env: Env) => env.ENVIRONMENT !== 'production' || OFFLINE_ON_REAL_GAME;
 
 interface PassRow {

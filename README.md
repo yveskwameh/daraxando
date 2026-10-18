@@ -9,6 +9,8 @@ A project by Yves Kwameh. Web addresses and handles spell the name out: `daraxan
 
 **Status, 16 October 2026:** the game and its server are built. The test copy is live. The lawyer and the native speaker have approved everything they were asked to check, including the privacy notice and terms. Next is the launch (`docs/LAUNCH.md`).
 
+**18 October 2026:** offline play against Baba Ayo and typed messages in a match are built and on (`docs/BACKEND.md`). The lawyer approved their privacy notice and terms lines the same day, so the terms version went up and every existing player accepts the new terms once, on a "We updated our terms" screen.
+
 ---
 
 ## 1. How we work
@@ -158,6 +160,7 @@ scripts/             Icons, notification keys, the release step
 
 - **15 October 2026:** the native speaker approved every Yoruba, Igbo and Hausa word and the 20 titles. The lawyer approved Dara Seeds, the streak items and the one-tap age confirmation (`docs/COWRIES-REVIEW.md`).
 - **16 October 2026:** the lawyer approved the safety rules (`docs/SAFETY-REVIEW.md`) and the privacy notice and terms (`docs/LEGAL-REVIEW.md`). The native speaker approved the name filter's words (`docs/NAMES-REVIEW.md`).
+- **18 October 2026:** the lawyer approved the privacy notice lines for offline play and typed messages, and a new terms line on messages (`docs/CHAT-REVIEW.md`, `docs/NEXT-ROUND.md` step 6).
 
 Any change to how seeds work, to the age line or to the legal texts goes back to the lawyer first. Any new Yoruba, Igbo or Hausa word goes to the native speaker.
 

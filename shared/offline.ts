@@ -12,8 +12,8 @@
  * Offline matches have no turn clock, so a game is just its moves. Baba Ayo is always O and the
  * player X, as online.
  *
- * On the real game only once the lawyer approves the privacy notice lines (docs/NEXT-ROUND.md,
- * step 6). Until then the test copy and the Mac have it, the real game doesn't.
+ * The lawyer approved the privacy notice lines for it on 18 October 2026 (docs/NEXT-ROUND.md,
+ * step 6), so it's on everywhere (OFFLINE_ON_REAL_GAME in shared/passes.ts).
  */
 import { botMove, type BotLevel } from './bot';
 import { maxGames, MODES, variantOf, winsNeeded, type ModeId } from './modes';

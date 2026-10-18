@@ -1,6 +1,6 @@
 # Privacy notice
 
-Last updated 16 October 2026.
+Last updated 18 October 2026.
 
 > **The short version.** To run the game we keep your player (name, animal, state and progress), your games, and your email or Google account only if you save your progress. We never ask for your real name, phone number or exact location. We don't sell anything about you, show ads or track you around the internet. You can delete your player at any time in Settings.
 
@@ -59,13 +59,21 @@ We count things like how many people played each day, how many came back, and ho
 
 ## On your phone
 
-The game keeps a few things in your browser's storage, all needed for it to work: your login, the phone id, your settings (sound, music, vibration, nudges, notifications), the friend room you're hosting, and when we last showed you a pop-up. The game sets no cookies.
+The game keeps a few things in your browser's storage, all needed for it to work: your login, the phone id, your settings (sound, music, vibration, nudges, notifications), the friend room you're hosting, when we last showed you a pop-up, and how many matches you've finished on this phone, so pop-ups come at the right moment. The game sets no cookies.
+
+So you can play Baba Ayo without internet, it also keeps:
+
+- a copy of your player and of Ranks as you last saw them;
+- up to 10 one-use passes from us, which let games played offline count;
+- the games you play without internet (the mode, the level, your moves and the time), until they're sent to us.
+
+When you're back online, the game sends those games to us and removes them from your phone. We check every move before a game counts.
 
 ## What other players can see
 
 - **Everyone,** on Ranks, in leagues and in the Quick match list: your player name, animal, print, state, rating and title.
 - **Anyone with your room code:** your player name, animal and state.
-- **The other player in a match:** the above, your moves and emotes, and whether you're in the app.
+- **The other player in a match:** the above, your moves, the messages you send them (the quick ones and the ones you type), and whether you're in the app. Messages go only to that player, for a few seconds, and we don't keep them.
 - **Friends you add:** whether you played today, for your friend streak.
 
 Nobody can see your email, your phone id or your seeds history.
@@ -92,6 +100,8 @@ These services run outside Nigeria. Our database is stored in Western Europe, an
 - **Sign-in codes:** 2 days. **Google sign-in steps in progress:** 5 minutes.
 - **Notification details:** until you turn notifications off, remove the app, or delete your player.
 - **Error reports and server error lines:** 3 days. **Database backups:** 7 days.
+- **On your phone, for playing without internet:** games until they're sent to us, and passes until they're used or 7 days have passed.
+- **Passes for playing without internet, on our side:** which passes we gave your player, how the games played with each one ended (won, lost or drawn), and when it was used, for 10 days, so each offline game counts only once.
 - **Matches against other people:** they stay in your opponents' history. After you delete your player, they're tied to an id that no longer leads to anyone.
 - **Our admin log:** kept after a player is deleted, so a banned person can't simply start again. It holds the player id, what we did and why.
 

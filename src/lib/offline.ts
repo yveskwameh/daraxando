@@ -7,7 +7,7 @@
 import { OFFLINE_ON_REAL_GAME, REAL_GAME_HOST } from '../../shared/passes';
 import type { Profile } from '../../shared/protocol';
 
-/** On for the test copy and the Mac now, on the real game once the lawyer approves. */
+/** On everywhere since the lawyer approved it on 18 October 2026 (the switch stays, to turn it off quickly if needed). */
 export const offlineOn = () => location.hostname !== REAL_GAME_HOST || OFFLINE_ON_REAL_GAME;
 
 /** Matches played on this phone without internet have ids that start like this. */

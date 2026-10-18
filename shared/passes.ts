@@ -3,8 +3,8 @@
  * download can check the switch and the pass limits without pulling in Baba Ayo or the rules.
  */
 
-/** Turn offline play on for the real game, with the privacy notice lines, once the lawyer says yes. */
-export const OFFLINE_ON_REAL_GAME = false;
+/** Offline play on the real game: on since the lawyer approved the privacy notice lines (18 October 2026). */
+export const OFFLINE_ON_REAL_GAME = true;
 
 /** The real game's address. Everywhere else (the test copy, the Mac) has offline play now. */
 export const REAL_GAME_HOST = 'daraxando.yveskwameh.com';

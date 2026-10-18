@@ -1,6 +1,6 @@
 # Terms of play
 
-Last updated 16 October 2026.
+Last updated 18 October 2026.
 
 > These are the rules for playing Dara X&O. You accept them when you tap Play now. The short version: be 13 or older, play fair and be kind. Dara Seeds are points for fun, with no money value, and you can't buy, sell, send or cash them out. The game is free and comes as it is, so our responsibility for problems is limited.
 
@@ -49,6 +49,7 @@ Don't:
 
 - use names that are rude, hateful or sexual, or that pretend to be the game, Baba Ayo or its staff;
 - insult, threaten or harass other players;
+- use messages to share phone numbers, links or other ways to reach you outside the game;
 - make extra players to win seeds from yourself, or arrange with others to lose on purpose;
 - cheat, use bots or scripts, or use a bug to your advantage (please tell us about it instead);
 - try to break, overload or get into the game's servers or other players' accounts;
