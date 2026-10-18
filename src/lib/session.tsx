@@ -134,22 +134,68 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [token]);
 
-  // The connection comes and goes: check again when it's back.
-  const latest = useRef(refresh);
-  latest.current = refresh;
+  // The phone says the connection dropped: believe it at once.
   useEffect(() => {
-    const up = () => {
-      fetchedAt.current = 0;
-      void latest.current();
-    };
     const down = () => setOnline(false);
-    addEventListener('online', up);
     addEventListener('offline', down);
-    return () => {
-      removeEventListener('online', up);
-      removeEventListener('offline', down);
-    };
+    return () => removeEventListener('offline', down);
   }, []);
+
+  // Without internet (or with "Can't reach the game" on screen), keep checking quietly until the
+  // server answers (Yves, 18 October 2026: Home stayed on Offline after his data came back).
+  // A phone says it's back online a moment before the connection works, so one check at that
+  // moment isn't enough: check then, and again after 1, 2, 4 and 8 seconds, then every 15
+  // while the app is on screen. Wi-Fi with no internet never says it's offline, which the
+  // every-15 covers. A check that can't get out never reaches Cloudflare, so it costs nothing on
+  // the free plan. Nothing runs while the phone says it's offline or the app is in the background.
+  const cut = status === 'offline' || (status === 'ready' && !online);
+  useEffect(() => {
+    if (!cut || !token) return;
+    let stop = false;
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let busy = false;
+    const later = () => {
+      clearTimeout(timer);
+      timer = setTimeout(check, Math.min(15_000, 1000 * 2 ** tries++));
+    };
+    function check() {
+      clearTimeout(timer);
+      if (stop || busy || document.hidden || !navigator.onLine) return;
+      busy = true;
+      api.me(token!).then(
+        ({ profile }) => {
+          busy = false;
+          if (stop) return;
+          fetchedAt.current = Date.now();
+          setProfile(profile);
+          setOnline(true);
+          setStatus('ready');
+        },
+        (err: ApiError) => {
+          busy = false;
+          if (stop) return;
+          if (err.status === 0) return later();
+          // The server answered, so the connection is back. Whatever it said is for the
+          // screen that asks next; "Can't reach the game" keeps its Try again.
+          if (status === 'ready') setOnline(true);
+        },
+      );
+    }
+    const now = () => {
+      tries = 0;
+      check();
+    };
+    addEventListener('online', now);
+    document.addEventListener('visibilitychange', now);
+    later();
+    return () => {
+      stop = true;
+      clearTimeout(timer);
+      removeEventListener('online', now);
+      document.removeEventListener('visibilitychange', now);
+    };
+  }, [cut, token, status]);
 
   // With offline play on: keep a copy of your player, and send matches played without
   // internet once the server answers again, also each time the app comes back on screen.
@@ -230,6 +276,21 @@ export function useSession() {
   const v = useContext(Ctx);
   if (!v) throw new Error('useSession outside SessionProvider');
   return v;
+}
+
+/**
+ * Goes up by one each time the game reaches the server again after being cut off. A screen
+ * showing a copy from without internet (Ranks) lists it in its effect, so it fetches afresh.
+ */
+export function useBackOnline() {
+  const { online } = useSession();
+  const [n, setN] = useState(0);
+  const was = useRef(online);
+  useEffect(() => {
+    if (online && !was.current) setN((x) => x + 1);
+    was.current = online;
+  }, [online]);
+  return n;
 }
 
 /** For screens that only render once someone is signed in. */

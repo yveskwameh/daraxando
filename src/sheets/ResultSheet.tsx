@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { BOT_LEVEL_INFO, BOT_LEVELS, type BotLevel } from '../../shared/bot';
 import { nextUnlockLevel, unlocksAt } from '../../shared/collections';
 import { MODE_IDS, MODES, seriesLabel, type ModeId } from '../../shared/modes';
-import { titleFor, titleMeans } from '../../shared/progression';
+import { auraForLevel, titleFor, titleMeans } from '../../shared/progression';
 import type { MatchView, Rematch, Reward, SeatView } from '../../shared/protocol';
 import { fmt, FRIEND_TABLES, prize, type StakeBack } from '../../shared/stakes';
 import { Icon } from '../components/art';
@@ -21,6 +21,18 @@ import { sfx } from '../lib/sound';
 import { toast } from '../lib/toast';
 
 export type RematchAsk = { mode?: ModeId; stake?: number; level?: BotLevel };
+
+/** "Earn 120 more Aura for the title Gwani and the Elephant avatar." Short, and says what to do. */
+function teaser(level: number, aura: number) {
+  const opens = unlocksAt(level);
+  const more = opens.length > 1;
+  return (
+    <>
+      Earn <b>{fmt(auraForLevel(level) - aura)} more Aura</b> for the title <b>{titleFor(level)}</b>
+      {more ? ', ' : ' and '}the {opens[0]}{more ? ' and more' : ''}.
+    </>
+  );
+}
 
 interface Props {
   open: boolean;
@@ -219,7 +231,9 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
       )}
 
       {!levelled && unlockLevel && (
-        <p className="unlock">{titleFor(unlockLevel)} unlocks: <b>{unlocksAt(unlockLevel).join(', ')}</b>.</p>
+        // Yves, 18 October 2026: "Gwani unlocks: Elephant avatar" didn't say what Gwani is or how
+        // to get there. Now: what to earn, that it's a title, and the first thing it opens.
+        <p className="unlock">{teaser(unlockLevel, reward!.auraTotal)}</p>
       )}
 
       {offer ? (

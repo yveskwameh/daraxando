@@ -192,16 +192,23 @@ svg.ic { width: 22px; height: 22px; flex: none; }
 .wordmark.sm .tag { font-size: 1.125rem; padding: 2px 10px 4px; }
 
 /* ---------- home: layout A (Yves, 17 October 2026, docs/NEXT-ROUND.md) ---------- */
-/* You, today's counters and Ranks. Your title and the Aura numbers are on You; here the ring
-   around your animal fills toward the next title. */
-.home-top { gap: 8px; }
+/* You, today's counters and Ranks. The ring around your animal fills toward the next title,
+   and a Danfo tag under it shows your Aura (Yves, 18 October 2026). Your title and the bar are
+   on You. */
+.home-top { gap: 8px; padding-bottom: 6px; }
 .me-ring {
   position: relative; display: grid; place-items: center;
   width: 48px; height: 48px; flex: none; padding: 0; border: 0; border-radius: 50%;
   background: conic-gradient(var(--danfo) var(--pct, 4%), var(--line) 0);
 }
-.me-ring::before { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--night); }
+.me-ring::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--night); }
 .me-ring .av { position: relative; }
+.me-aura {
+  position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%);
+  padding: 2px 6px; border-radius: 999px; background: var(--danfo); color: var(--night);
+  font: 800 0.6875rem/1 var(--head); font-variant-numeric: tabular-nums; white-space: nowrap;
+  box-shadow: 0 0 0 2px var(--night);
+}
 .counters {
   flex: 1; min-width: 0;
   display: flex; justify-content: space-around; align-items: center;
@@ -1169,8 +1176,11 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 
 /* stars on badges */
 .stars { display: inline-flex; gap: 2px; }
-.stars svg { width: 16px; height: 16px; color: var(--line); }
-.stars svg.on { color: var(--danfo); }
+/* A star not earned yet is an outline in the muted text colour (it was the card's border
+   colour, which Yves couldn't see); an earned one is filled Danfo. The symbol fills with
+   currentColor and sets no stroke, so color and stroke here draw it either way. */
+.stars svg { width: 16px; height: 16px; color: transparent; stroke: var(--muted); stroke-width: 1.6px; stroke-linejoin: round; }
+.stars svg.on { color: var(--danfo); stroke: var(--danfo); }
 
 /* the weekly league */
 .league-head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 12px; border-radius: 16px; background: var(--deep); }

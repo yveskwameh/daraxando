@@ -352,7 +352,8 @@ export function Home({ go }: { go: Go }) {
 
 /**
  * The top of Home: you, today's counters and Ranks. Your animal sits in a ring that fills as
- * you earn Aura toward your next title (the title itself is on You). The flame is grey until
+ * you earn Aura toward your next title, with your Aura on a tag under it (the title itself is
+ * on You). The flame is grey until
  * your first match of the day, then lit. A streak that has just ended, and can still be
  * restored, gets a fuchsia dot.
  */
@@ -384,6 +385,8 @@ function HomeTop({ profile, onYou, onStreak, onQuests, onSeeds, onRanks }: {
         onClick={onYou}
       >
         <Avatar avatar={profile.avatar} print={profile.print} size={40} />
+        {/* Your Aura as a number too (Yves, 18 October 2026); the label above already says it. */}
+        <span className="me-aura" aria-hidden="true">{short(profile.aura)}</span>
       </button>
       <div className="counters" role="group" aria-label="Today">
         <button type="button" className={`ct${now.playedToday ? ' lit' : ''}${ended ? ' warn' : ''}`} aria-label={`${streakSay} Open your streak.`} onClick={onStreak}>
