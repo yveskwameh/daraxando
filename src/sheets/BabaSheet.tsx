@@ -5,13 +5,14 @@ import { MODES, seriesLabel, type ModeId } from '../../shared/modes';
 import { AURA_BOT } from '../../shared/progression';
 import { Avatar } from '../components/art';
 import { Sheet } from '../components/Sheet';
-import { api } from '../lib/api';
+import { api, type ApiError } from '../lib/api';
+import { offlineOn } from '../lib/offline';
 import type { Go } from '../lib/router';
 import { usePlayer } from '../lib/session';
 import { toast } from '../lib/toast';
 
 export function BabaSheet({ open, onClose, mode, go }: { open: boolean; onClose: () => void; mode: ModeId; go: Go }) {
-  const { token } = usePlayer();
+  const { token, profile, online } = usePlayer();
   const [busy, setBusy] = useState<BotLevel | null>(null);
   // A double tap must start one game, not two: the state above only updates after a render.
   const starting = useRef(false);
@@ -21,11 +22,21 @@ export function BabaSheet({ open, onClose, mode, go }: { open: boolean; onClose:
     if (starting.current) return;
     starting.current = true;
     setBusy(level);
+    // No internet: Baba Ayo plays on the phone (src/lib/localMatch.ts), and the match counts
+    // once it's sent, if there was a pass for it.
+    const local = async () => {
+      const r = (await import('../lib/localMatch')).startLocal(profile.id, mode, level);
+      onClose();
+      toast(r.counts ? "Playing offline. It counts when you're back online." : "Playing offline, just for fun this time.");
+      go({ name: 'play', id: r.id });
+    };
     try {
+      if (!online && offlineOn()) return await local();
       const { matchId } = await api.playBot(token, mode, level);
       onClose();
       go({ name: 'play', id: matchId });
     } catch (err) {
+      if ((err as ApiError).status === 0 && offlineOn()) return local().catch(() => {});
       toast.error((err as Error).message);
       starting.current = false;
       setBusy(null);

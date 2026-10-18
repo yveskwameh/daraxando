@@ -122,6 +122,28 @@ export function nameProblem(name: string): NameProblem | null {
   return null;
 }
 
+/**
+ * A typed match message with a rude word in it (shared/chat.ts, Yves, 18 October 2026). The same
+ * lists as names, but checked word by word, because a sentence joined up hides words across its
+ * gaps ("what happen is" holds "penis"). Single letters spaced out ("f u c k") are joined first.
+ */
+export function rudeText(text: string) {
+  const words: string[] = [];
+  let run = '';
+  for (const t of plain(text).split(/[^a-z&]+/).filter(Boolean)) {
+    if (t.length === 1) run += t;
+    else {
+      if (run) words.push(run);
+      run = '';
+      words.push(t);
+    }
+  }
+  if (run) words.push(run);
+  if (words.some((w) => ANYWHERE.some((x) => w.includes(x) || w.replace(/(.)\1+/g, '$1').includes(x)))) return true;
+  const asTyped = base(text).split(/[^a-z&]+/).filter(Boolean);
+  return [...words, ...asTyped].some((w) => WHOLE_WORD.includes(w));
+}
+
 /** What to tell the player. */
 export const NAME_PROBLEM_MESSAGE: Record<NameProblem, string> = {
   rude: "That name isn't allowed. Pick another one.",

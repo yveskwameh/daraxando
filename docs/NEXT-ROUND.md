@@ -90,6 +90,7 @@ Recommendations first. **Answered on 17 October 2026:** 1 (a), Home layout A, pi
 ### Step 6. Lawyer packet (send during step 5, so step 8 isn't held up)
 - Changes to the privacy notice's "On your phone" section only: a copy of your player and the games you played without internet, until they're sent; and the count of matches finished on this phone (kept since 16 October, not yet listed). Nothing about seeds changes. Bump `TERMS_VERSION` only if the lawyer says the change matters.
 - Claude writes the exact lines; Yves sends them.
+- **Written 18 October 2026** as one doc for the lawyer, together with the typed-messages line (`docs/CHAT-REVIEW.md`): "Dara X&O: privacy notice changes for review", https://claude.ai/code/artifact/72dd7e05-b2a3-479d-8aa5-382a30029f07. Proposed for "On your phone": the existing list plus "how many matches you've finished on this phone, so pop-ups come at the right moment", then "So you can play Baba Ayo without internet, it also keeps: a copy of your player and of Ranks as you last saw them; up to 10 one-use passes from us, which let games played offline count; the games you play without internet (the mode, the level, your moves and the time), until they're sent to us. When you're back online, the game sends those games to us and removes them from your phone. We check every move before a game counts." Proposed for "How long we keep it": "On your phone, for playing without internet: games until they're sent to us, and passes until they're used or 7 days have passed." and "Passes for playing without internet, on our side: which passes we gave your player, how the games played with each one ended (won, lost or drawn), and when it was used, for 10 days, so each offline game counts only once." Also asked: whether a one-time "We updated the privacy notice" note in the app meets the notice's promise to "show it in the app, and say what changed". Waiting for the lawyer.
 
 ### Step 7. Release 1: fixes, new Home, copy, names (needs steps 2 and 5)
 - The full regression run, once (17 browser and server scripts plus the newer ones), and any fixes.
@@ -97,17 +98,21 @@ Recommendations first. **Answered on 17 October 2026:** 1 (a), Home layout A, pi
 - Recommended: share the public link after this release, so first impressions are the calmer Home and unique names.
 
 ### Step 8. Offline play (needs step 6 approved and release 1 out)
+
+**Built 18 October 2026, switched off on the real game** until the lawyer approves step 6 (`docs/BACKEND.md`, "Playing Baba Ayo without internet"). What changed from the plan below: passes are rows on the server rather than signed tickets (so they count once and are capped per day), games go one per request because a whole match can be too much to replay in 10 ms, offline matches have no turn clock, and a counted offline match gets the daily seeds like an online Baba Ayo match, because it is recorded the moment it reaches the server. You and the streak sheet need no change: their buttons that need the server already say "You look offline".
 - **What works without data:** Home, You and Ranks as last seen (marked with when), and Baba Ayo on all four modes and all three levels. Quick match, friend rooms, buying a Streak Freeze or restoring a streak, and changing your name wait for the internet, each saying so.
-- **Tickets:** while online the phone keeps 10 tickets signed by the server. Each sets Baba Ayo's dice for one offline game and lets it count. With no tickets left, games are still playable but "just for fun" and don't count (the word "practice" stays out of the game).
+- **Tickets:** while online the phone keeps 10 tickets signed by the server, each good for 7 days (the expiry promised in the step 6 lines). Each sets Baba Ayo's dice for one offline game and lets it count. With no tickets left, games are still playable but "just for fun" and don't count (the word "practice" stays out of the game).
 - **Saving:** each finished game (ticket, mode, level, moves, the phone's time) goes into an outbox in IndexedDB. The phone works out the result and shows Aura and quests as "waiting to be sent".
 - **Sending:** on opening the app, coming back to it, after each game, and with Background Sync on Chrome, one game per request. The server checks the ticket, replays every move with the same rules and the same Baba Ayo, and only then records the match exactly as if it had been played online. A ticket counts once, so a retry is never counted twice. The server's numbers then replace the phone's.
 - **Streak:** an offline game keeps the streak only if it reaches the server before midnight Lagos time that day. Aura, quests and badges count whenever it arrives.
 - **Seeds:** unchanged. Baba Ayo games have no stake, and the daily seeds wait for the next online match.
 - **Protecting the outbox:** ask Chrome for persistent storage after the first offline game, and on iPhone the install ask explains that the Home Screen app keeps games safe.
 - **Screens:** "No internet. You can still play Baba Ayo." on Home; greyed-out buttons that say why; "Saved on this phone. It counts when you're back online." after a game; "3 games sent" when they go.
+- **Privacy notice:** the approved lines go into `src/legal/privacy.md` with a new "Last updated" date, and the app shows a one-time "We updated the privacy notice" note with a link, as the notice promises (if the lawyer agrees that's enough).
 - Check: unit tests for tickets and replay (including tampered games, reused tickets, wrong seeds), a browser script that turns the network off and on, all screens at 320, 360 and 390 px, first download still under 100 KB, and the full regression run before release 2.
 
-### Step 9. Release 2: offline play
+### Step 9. Release 2: offline play and typed messages
+- Once the lawyer approves the doc from step 6: Claude puts the approved lines into `src/legal/privacy.md` (new "Last updated" date), adds the one-time "We updated the privacy notice" note if the lawyer agrees it's enough, and sets `OFFLINE_ON_REAL_GAME` (`shared/passes.ts`) and `TYPED_ON_REAL_GAME` (`shared/chat.ts`) to true.
 - Yves pushes, tests on his phone with data off and on, merges into `production`.
 
 ### Step 10. Later

@@ -21,6 +21,7 @@ import { body, fail, json, secretOf } from './http';
 import { askFriend, buyFreeze, dropFriend, friendsOf, leagueFor, placeBet, restore } from './habits';
 import { randomId } from './matchmaker';
 import { adminRoute } from './admin';
+import { offlineRoute } from './offline';
 import { pushEndpointOk, pushReady, sendPush } from './push';
 import { freeNames, isNameClash, NAME_PROBLEM_MESSAGE, NAME_TAKEN_MESSAGE, nameKey, nameProblem, takenNames } from './names';
 import { appealOf, askReview, BANNED_MESSAGE, deviceOf, isBanned } from './safety';
@@ -206,6 +207,9 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
 
   /* --- your profile --- */
   if (path === '/api/me' && method === 'GET') return json({ profile: me });
+
+  /* --- playing Baba Ayo without internet: passes, and the games played with them (worker/offline.ts) --- */
+  if (path.startsWith('/api/offline/') && method === 'POST') return offlineRoute(req, env, path, me, now);
 
   /* --- how you're saved (Settings), and deleting your account --- */
   if (path === '/api/account' && method === 'GET') return json(await accountOf(env.DB, me.id));

@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { StateCode } from '../../shared/places';
 import type { Profile } from '../../shared/protocol';
 import { ApiError, api, RESTING, type ProfilePatch } from './api';
+import { offlineOn, syncOffline } from './offline';
 import { hosted } from './room';
 import { KEYS, store } from './storage';
 import { toast } from './toast';
@@ -15,6 +16,11 @@ type Status = 'loading' | 'guest' | 'ready' | 'offline' | 'resting';
 
 interface SessionValue {
   status: Status;
+  /**
+   * The game's server answered last time we asked. False without internet: with offline play on
+   * (src/lib/offline.ts), Home opens from the copy of your player and Baba Ayo plays on the phone.
+   */
+  online: boolean;
   token: string | null;
   profile: Profile | null;
   /**
@@ -51,6 +57,12 @@ const RETURNING = (() => {
 
 const Ctx = createContext<SessionValue | null>(null);
 
+/** The copy of your player kept for playing without internet, if it belongs to this login. */
+function saved(token: string): Profile | null {
+  const s = store.json<{ t: string | null; p: Profile | null }>(KEYS.me, { t: null, p: null });
+  return s.t === token ? s.p : null;
+}
+
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => store.get(KEYS.token));
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -63,6 +75,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // A profile fetched a moment ago is fresh enough: Home asks on every visit, and on the free
   // plan every request counts (docs/BACKEND.md).
   const fetchedAt = useRef(0);
+  const [online, setOnline] = useState(() => navigator.onLine);
 
   useEffect(() => {
     if (!token || fresh.current === token) return;
@@ -73,6 +86,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       ({ profile }) => {
         if (live) {
           setProfile(profile);
+          setOnline(true);
           setStatus('ready');
         }
       },
@@ -82,6 +96,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           store.remove(KEYS.token);
           setToken(null);
           setStatus('guest');
+        } else if (err.status === 0 && offlineOn() && saved(token)) {
+          // No internet: open from the copy of your player, so Baba Ayo can still be played.
+          setProfile(saved(token));
+          setOnline(false);
+          setStatus('ready');
         } else {
           setStatus(err.status === RESTING ? 'resting' : 'offline');
         }
@@ -108,8 +127,44 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     fetchedAt.current = Date.now();
     try {
       setProfile((await api.me(token)).profile);
-    } catch { /* keep what we have */ }
+      setOnline(true);
+    } catch (err) {
+      // Keep what we have.
+      if ((err as ApiError).status === 0) setOnline(false);
+    }
   }, [token]);
+
+  // The connection comes and goes: check again when it's back.
+  const latest = useRef(refresh);
+  latest.current = refresh;
+  useEffect(() => {
+    const up = () => {
+      fetchedAt.current = 0;
+      void latest.current();
+    };
+    const down = () => setOnline(false);
+    addEventListener('online', up);
+    addEventListener('offline', down);
+    return () => {
+      removeEventListener('online', up);
+      removeEventListener('offline', down);
+    };
+  }, []);
+
+  // With offline play on: keep a copy of your player, and send matches played without
+  // internet once the server answers again, also each time the app comes back on screen.
+  const pid = profile?.id;
+  useEffect(() => {
+    if (!profile || !token || !online || !offlineOn()) return;
+    store.set(KEYS.me, JSON.stringify({ t: token, p: profile }));
+  }, [profile, token, online]);
+  useEffect(() => {
+    if (status !== 'ready' || !online || !token || !pid) return;
+    const go = () => !document.hidden && syncOffline(token, pid, setProfile);
+    go();
+    document.addEventListener('visibilitychange', go);
+    return () => document.removeEventListener('visibilitychange', go);
+  }, [status, online, token, pid]);
 
   const update = useCallback(
     async (patch: ProfilePatch) => {
@@ -131,6 +186,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const reset = useCallback(() => {
     store.remove(KEYS.token);
+    // The copies kept for playing without internet belong to the player leaving.
+    store.remove(KEYS.me);
+    store.remove(KEYS.ranks);
     setToken(null);
     setProfile(null);
     setStatus('guest');
@@ -159,10 +217,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<SessionValue>(
     () => ({
-      status, token, profile, start, refresh, setProfile, update, reset, signIn, signOut, returning, returned,
+      status, online, token, profile, start, refresh, setProfile, update, reset, signIn, signOut, returning, returned,
       retry: () => { fresh.current = null; setAttempt((n) => n + 1); },
     }),
-    [status, token, profile, start, refresh, update, reset, signIn, signOut, returning, returned],
+    [status, online, token, profile, start, refresh, update, reset, signIn, signOut, returning, returned],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

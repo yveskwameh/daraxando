@@ -51,7 +51,7 @@ export const BOT = {
 } as const;
 
 /**
- * Lines a player can send during a match. The server only passes on these. The match screen keeps
+ * Quick lines a player can send during a match, besides what they type (shared/chat.ts). The match screen keeps
  * its Pidgin, these included (Yves, 18 October 2026, undoing that part of the 17 October copy pass).
  */
 export const EMOTES = ['Gbam!', 'Haba!', 'Oya nau', 'Shine your eye', 'You too much', 'No rage bait me'] as const;
@@ -243,6 +243,8 @@ export interface MatchView {
   bo: number;
   /** A new player's first match against Baba Ayo: one game until they win. */
   first: boolean;
+  /** Players can type their own messages, not just the quick ones (shared/chat.ts). */
+  typing: boolean;
   /** Each player's stake. The pot is twice this. */
   stake: number;
   phase: Phase;
@@ -350,6 +352,8 @@ export type ServerMsg =
   | { t: 'state'; s: MatchView }
   | { t: 'emote'; seat: 0 | 1; e: string }
   | { t: 'say'; text: string }
+  /** Your typed message broke a rule and wasn't passed on (shared/chat.ts). */
+  | { t: 'unsent'; message: string }
   | { t: 'reward'; r: Reward }
   | { t: 'error'; code: ErrorCode; message: string };
 

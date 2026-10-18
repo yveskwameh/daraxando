@@ -7,6 +7,7 @@ import ReconnectingWebSocket from 'partysocket/ws';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ClientMsg, ErrorCode, MatchView, Reward, ServerMsg } from '../../shared/protocol';
 import { socketUrl } from './api';
+import { toast } from './toast';
 
 /** How often a match socket checks it can still hear the server. */
 const PING_MS = 10_000;
@@ -86,6 +87,9 @@ export function useMatch(matchId: string, token: string) {
         case 'say':
           setSaid({ id: nextId++, seat: 'bot', text: m.text });
           break;
+        case 'unsent':
+          toast.error(m.message);
+          break;
         case 'error':
           if (m.code === 'bad-move') break;
           // Once you are in a match, a stake problem is about a rematch: a note, not the end.
@@ -139,8 +143,11 @@ export function useMatch(matchId: string, token: string) {
     [send],
   );
 
+  /** A message you typed. It shows once the server passes it on, so you never see one the other player didn't get. */
+  const say = useCallback((text: string) => send({ t: 'emote', e: text }), [send]);
+
   const clearReward = useCallback(() => setReward(null), []);
   const serverNow = useCallback(() => Date.now() + offset.current, []);
 
-  return { view, status, error, notice, reward, said, send, emote, serverNow, clearReward };
+  return { view, status, error, notice, reward, said, send, emote, say, serverNow, clearReward };
 }

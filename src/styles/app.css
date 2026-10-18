@@ -168,7 +168,7 @@ svg.ic { width: 22px; height: 22px; flex: none; }
 .btn.sm.baba { box-shadow: 0 0 0 2px var(--cream); }
 .btn.is-down { transform: scale(.94); }
 .btn.is-down::before { transform: translate(22px, 14px) rotate(8deg); }
-.btn:disabled { opacity: .5; cursor: default; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: .5; cursor: default; }
 .sparks { position: fixed; inset: 0; pointer-events: none; z-index: 300; }
 .spark { position: absolute; width: 9px; height: 9px; border-radius: 2px; }
 .mini-btn { min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--cream); color: var(--night); font: 800 0.875rem/1 var(--head); white-space: nowrap; }
@@ -458,6 +458,12 @@ svg.ic { width: 22px; height: 22px; flex: none; }
 .tray { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .tray button { min-height: 44px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--cream); color: var(--night); font: 800 0.9375rem/1 var(--head); }
 .tray button:disabled { opacity: .5; }
+/* Typing your own message (shared/chat.ts): the field and Send on one line, the rule under it. */
+.say-form { display: grid; gap: var(--space-pair); }
+.say-row { display: flex; align-items: center; gap: var(--space-pair); }
+.say-row .text-in { flex: 1; min-width: 0; }
+.say-row .mini-btn { min-height: 44px; }
+.say-form .say-no { color: var(--fuchsia-glow); }
 
 /* friend room, waiting for the friend */
 .invite { flex: 1; min-height: 0; display: grid; align-content: center; gap: 14px; text-align: center; }
@@ -917,6 +923,12 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
   .onb .edit { gap: 8px; padding: 10px; }
   .onb .edit .chips-row button:nth-child(n+3):not(:last-child) { display: none; }
   .onb .edit .ideas { display: none; }
+  /* Changing your name on You: the ideas stay on one line and scroll sideways, shuffle first,
+     so the editor never pushes You past the screen (found 18 October 2026 at 320 × 568). */
+  .name-form:not(.in-sheet) .chips-row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .name-form:not(.in-sheet) .chips-row::-webkit-scrollbar { display: none; }
+  .name-form:not(.in-sheet) .chips-row button { flex: none; white-space: nowrap; }
+  .name-form:not(.in-sheet) .chips-row button:last-child { order: -1; }
   .me-card .mini-btn { padding: 0 12px; }
   .onb-avs .av { --s: 48px !important; }
   .wordmark { font-size: 1.875rem; }

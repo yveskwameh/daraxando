@@ -21,6 +21,7 @@ import { reducedMotion } from '../lib/device';
 import { buzz } from '../lib/haptics';
 import { askAfterMatch, markAsked, takeMoment, takeVisit, visitFree } from '../lib/asks';
 import { closeInstallPop, showInstallPop } from '../lib/install';
+import { offlineOn } from '../lib/offline';
 import { prefs, usePrefs } from '../lib/prefs';
 import { PushAsk } from '../components/PushAsk';
 import { SaveAsk } from '../components/SaveAsk';
@@ -31,12 +32,18 @@ import type { Go } from '../lib/router';
 import { sfx } from '../lib/sound';
 import { usePlayer } from '../lib/session';
 import { toast } from '../lib/toast';
-import { BabaSheet } from '../sheets/BabaSheet';
-import { FriendSheet } from '../sheets/FriendSheet';
 import { StakeSheet } from '../sheets/StakeSheet';
 import { WalletSheet } from '../sheets/WalletSheet';
 
-// Loaded the first time they open, so Home's first download stays small.
+/** Without internet, only Baba Ayo can be played, where offline play is on (src/lib/offline.ts). */
+const noNet = () => (offlineOn() ? 'No internet. You can still play Baba Ayo.' : 'No internet. Check your connection.');
+
+// Loaded the first time they open, so Home's first download stays small. The two ways to
+// play are fetched quietly a moment after Home shows, so they open at once.
+const loadBaba = () => import('../sheets/BabaSheet');
+const loadFriend = () => import('../sheets/FriendSheet');
+const BabaSheet = lazy(() => loadBaba().then((x) => ({ default: x.BabaSheet })));
+const FriendSheet = lazy(() => loadFriend().then((x) => ({ default: x.FriendSheet })));
 const StreakSheet = lazy(() => import('../sheets/StreakSheet'));
 const QuestsSheet = lazy(() => import('../sheets/QuestsSheet'));
 const LiveSheet = lazy(() => import('../sheets/LiveSheet'));
@@ -55,7 +62,7 @@ let banShown = false;
 
 
 export function Home({ go }: { go: Go }) {
-  const { profile, refresh, token } = usePlayer();
+  const { profile, refresh, token, online: connected } = usePlayer();
   const p = usePrefs();
   const [sheet, setSheet] = useState<SheetName>(null);
   const [opened, setOpened] = useState<Set<SheetName>>(() => new Set());
@@ -72,7 +79,7 @@ export function Home({ go }: { go: Go }) {
   const close = () => setSheet(null);
   const ban = profile.ban;
   // Playing other people: a banned player gets the reason instead.
-  const online = (s: 'stake' | 'friend' | 'live') => (ban ? open('ban') : s === 'live' ? open('live') : setSheet(s));
+  const online = (s: 'stake' | 'friend' | 'live') => (ban ? open('ban') : s === 'stake' ? setSheet(s) : open(s));
   // The live games come down one socket the server pushes to (src/lib/useLive.ts).
   const live = useLive(token).games?.length ?? 0;
   // Nobody to join: your own game, with your last game and stake.
@@ -144,6 +151,11 @@ export function Home({ go }: { go: Go }) {
   }, []);
 
   useEffect(() => {
+    const t = setTimeout(() => void loadBaba().then(loadFriend), 1500);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
     void refresh();
     // The install pop-up belongs to Home. Leaving Home puts it away.
     return () => closeInstallPop();
@@ -185,19 +197,20 @@ export function Home({ go }: { go: Go }) {
         <button
           type="button"
           className="btn primary block lg"
-          aria-label={live ? `Quick match. ${live} ${live === 1 ? 'game is' : 'games are'} waiting for a player.` : `Quick match. Nobody is waiting yet. You can start your own ${m.name} game${p.stake ? ` at ${fmt(p.stake)}` : ', free'}.`}
-          onClick={() => online('live')}
+          aria-label={!connected ? 'Quick match. Needs the internet.' : live ? `Quick match. ${live} ${live === 1 ? 'game is' : 'games are'} waiting for a player.` : `Quick match. Nobody is waiting yet. You can start your own ${m.name} game${p.stake ? ` at ${fmt(p.stake)}` : ', free'}.`}
+          aria-disabled={!connected || undefined}
+          onClick={() => (connected ? online('live') : toast(noNet()))}
         >
           Quick match{' '}
           <span className="stake-pill">
-            {live ? (
+            {!connected ? 'Offline' : live ? (
               <><i className="live-dot" aria-hidden="true" />{live} live</>
             ) : p.stake ? <Cowries n={p.stake} /> : 'Free'}
           </span>
         </button>
         <div className="more">
-          <button type="button" className="btn alt sm" onClick={() => online('friend')}>Play a friend</button>
-          <button type="button" className="btn baba sm" onClick={() => setSheet('baba')}>Play Baba Ayo</button>
+          <button type="button" className="btn alt sm" aria-disabled={!connected || undefined} onClick={() => (connected ? online('friend') : toast(noNet()))}>Play a friend</button>
+          <button type="button" className="btn baba sm" onClick={() => open('baba')}>Play Baba Ayo</button>
         </div>
       </div>
 
@@ -303,17 +316,17 @@ export function Home({ go }: { go: Go }) {
         }}
       />
       <WalletSheet open={sheet === 'wallet'} onClose={close} />
-      <FriendSheet open={sheet === 'friend'} onClose={close} mode={p.mode} go={go} />
-      <BabaSheet open={sheet === 'baba'} onClose={close} mode={p.mode} go={go} />
       <Suspense fallback={null}>
         {(opened.has('streak') || opened.has('friends')) && (
           <StreakSheet open={sheet === 'streak' || sheet === 'friends'} onClose={close} tab={sheet === 'friends' ? 'friends' : 'mine'} />
         )}
+        {opened.has('friend') && <FriendSheet open={sheet === 'friend'} onClose={close} mode={p.mode} go={go} />}
+        {opened.has('baba') && <BabaSheet open={sheet === 'baba'} onClose={close} mode={p.mode} go={go} />}
         {opened.has('quests') && <QuestsSheet open={sheet === 'quests'} onClose={close} />}
         {opened.has('live') && (
-          <LiveSheet open={sheet === 'live'} onClose={close} go={go} onStartOwn={startOwn} onChange={() => setSheet('stake')} onBaba={() => setSheet('baba')} />
+          <LiveSheet open={sheet === 'live'} onClose={close} go={go} onStartOwn={startOwn} onChange={() => setSheet('stake')} onBaba={() => open('baba')} />
         )}
-        {ban && opened.has('ban') && <BanSheet open={sheet === 'ban'} ban={ban} onClose={close} onBaba={() => setSheet('baba')} />}
+        {ban && opened.has('ban') && <BanSheet open={sheet === 'ban'} ban={ban} onClose={close} onBaba={() => open('baba')} />}
         {opened.has('save') && <SaveSheet open={sheet === 'save'} onClose={close} intent="save" back="/" from="ask" />}
         {opened.has('mode') && (
           <ModeSheet

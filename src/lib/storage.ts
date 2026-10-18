@@ -45,4 +45,12 @@ export const KEYS = {
   asks: 'dara:asks',
   /** Matches finished on this phone, for the save ask. */
   matches: 'dara:matches',
+  /** A copy of your player, so Home and You open without internet (src/lib/offline.ts). */
+  me: 'dara:me',
+  /** One-use passes for counted offline matches, and which ones this phone used (src/lib/offlineSync.ts). */
+  passes: 'dara:passes',
+  /** The offline match in progress (src/lib/localMatch.ts). */
+  localMatch: 'dara:offline-match',
+  /** Ranks as last seen, for opening it without internet (src/screens/Ranks.tsx). */
+  ranks: 'dara:ranks',
 } as const;

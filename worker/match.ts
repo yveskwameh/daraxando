@@ -16,6 +16,7 @@
  */
 import { DurableObject } from 'cloudflare:workers';
 import { botMove, isBotLevel, type BotLevel } from '../shared/bot';
+import { cleanMessage, hasContact, MSG_CONTACT, MSG_RUDE, TYPED_ON_REAL_GAME } from '../shared/chat';
 import { pairOf } from '../shared/collections';
 import { isModeId, MODES, maxGames, winsNeeded, type ModeId } from '../shared/modes';
 import { auraFor, eloDelta, levelInfo, MIN_RATING, type Kind, type Result } from '../shared/progression';
@@ -33,6 +34,7 @@ import { LINES, line } from './baba';
 import { recordSeries, refund, takeStakes, type SeriesInput } from './db';
 import type { Env } from './env';
 import { afterMatch } from './habits';
+import { rudeText } from './names';
 import { tellHostFriendJoined } from './push';
 import { BANNED_MESSAGE, bannedAmong, stakeBack } from './safety';
 
@@ -118,8 +120,10 @@ export interface RoomPeek {
 const IDLE_CLEANUP_MS = 10 * 60_000;
 /** Delete a room nobody ever finished with, however it ended up. */
 const ROOM_TTL_MS = 45 * 60_000;
-/** One line per person per this long. */
+/** One quick line per person per this long. */
 const EMOTE_GAP_MS = 700;
+/** One typed message per person per this long (shared/chat.ts). */
+const TYPED_GAP_MS = 1500;
 
 const BOT_RATING: Record<BotLevel, number> = { jeje: 900, sharp: 1200, agba: 1600 };
 const BOT_SHOWN_LEVEL: Record<BotLevel, number> = { jeje: 3, sharp: 12, agba: 30 };
@@ -395,10 +399,23 @@ export class Match extends DurableObject<Env> {
       }
 
       case 'emote': {
-        if (!(EMOTES as readonly string[]).includes(m.e)) return;
-        if (now - (this.lastEmote.get(a.pid) ?? 0) < EMOTE_GAP_MS) return;
+        // A quick line, or a message the player typed (shared/chat.ts). Typed ones are checked
+        // here too, never stored or logged, and come back to the sender once they pass, so the
+        // sender never sees a bubble the other player didn't get.
+        if (typeof m.e !== 'string') return;
+        const quick = (EMOTES as readonly string[]).includes(m.e);
+        const text = quick ? m.e : cleanMessage(m.e).trim();
+        if (!quick) {
+          if (!this.typing() || !text) return;
+          const why = hasContact(text) ? MSG_CONTACT : rudeText(text) ? MSG_RUDE : null;
+          if (why) {
+            try { ws.send(JSON.stringify({ t: 'unsent', message: why } satisfies ServerMsg)); } catch { /* closing */ }
+            return;
+          }
+        }
+        if (now - (this.lastEmote.get(a.pid) ?? 0) < (quick ? EMOTE_GAP_MS : TYPED_GAP_MS)) return;
         this.lastEmote.set(a.pid, now);
-        this.send({ t: 'emote', seat: a.seat, e: m.e }, ws);
+        this.send({ t: 'emote', seat: a.seat, e: text }, quick ? ws : undefined);
         if (s.kind === 'bot' && Math.random() < 0.6) {
           setTimeout(() => this.say(line(LINES.emote)), 700 + Math.random() * 600);
         }
@@ -1015,6 +1032,7 @@ export class Match extends DurableObject<Env> {
       level: s.level,
       bo: this.bestOf(),
       first: !!s.first,
+      typing: this.typing(),
       stake: s.stake,
       phase: s.phase,
       game: s.game,
@@ -1087,6 +1105,11 @@ export class Match extends DurableObject<Env> {
     for (const ws of this.live()) {
       if (this.att(ws)?.pid === pid) try { ws.send(text); } catch { /* closing */ }
     }
+  }
+
+  /** Typed messages: on the test copy and the Mac now, on the real game once the lawyer approves (shared/chat.ts). */
+  private typing() {
+    return this.env.ENVIRONMENT !== 'production' || TYPED_ON_REAL_GAME;
   }
 
   private say(text: string) {
