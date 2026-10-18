@@ -5,7 +5,7 @@
  * too. Nothing shows when nothing happened.
  */
 import { useEffect, useState } from 'react';
-import { BADGES, BET_DAYS, type Habits } from '../../shared/habits';
+import { BADGES, BET_DAYS, canRepair, type Habits } from '../../shared/habits';
 import { dayKey } from '../../shared/progression';
 import type { HabitOutcome } from '../../shared/protocol';
 import { fmt } from '../../shared/stakes';
@@ -89,14 +89,17 @@ export function Celebrate({ outcome, habits, onDone }: { outcome: HabitOutcome; 
 
 function StreakStep({ o, habits }: { o: HabitOutcome; habits: Habits }) {
   const [n, setN] = useState(Math.max(0, o.streak - 1));
-  const [baba] = useState(() => (o.broke && prefs.get().nudges ? babaLine('ended', { n: o.broke }) : null));
+  // Only a streak that can be restored gets the "it ended" line and Baba Ayo's sulk. A 1-day
+  // streak that ended is just day 1 again.
+  const repairable = canRepair(o.broke);
+  const [baba] = useState(() => (repairable && prefs.get().nudges ? babaLine('ended', { n: o.broke }) : null));
   useEffect(() => {
     const t = setTimeout(() => setN(o.streak), 450);
     return () => clearTimeout(t);
   }, [o.streak]);
   let line: string;
   if (o.milestone) line = `${o.milestone.days}-day streak. +${o.milestone.aura} Aura${o.milestone.freeze ? ' and a free Streak Freeze' : ''}.`;
-  else if (o.broke) line = `Your ${o.broke}-day streak ended, so this is day 1. You can restore the old one from your streak for a few days.`;
+  else if (repairable) line = `Your ${o.broke}-day streak ended, so this is day 1. You can restore the old one from your streak for a few days.`;
   else if (o.streak === 1) line = 'Day 1. Play tomorrow to make it 2.';
   else line = `Play tomorrow to make it ${o.streak + 1}.`;
   return (

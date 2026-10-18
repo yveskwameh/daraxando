@@ -106,7 +106,7 @@ One matchmaker object handles hundreds of new searches a second, far more than w
 
 Yves split the two ways into a quick match:
 
-- **Start your own game:** tap a card on the Deck, pick a stake, and wait on the search screen (everything above still applies).
+- **Start your own game:** tap **Quick match**, then **Start my own game** (your last game and stake) or **Change game or stake** to pick both first, and wait on the search screen (everything above still applies). Both buttons show whether or not games are waiting (17 October 2026). The game can also be changed from the chip on Home's game picture.
 - **Join one that's waiting:** tap **Quick match**. The Matchmaker lists everyone waiting (`live()`), the server drops the tables you can't sit at (`tableLock`), and sorts the rest: your state, then your zone, then the longest wait. The sheet shows one at a time with **Join** and "Show another". A join is a search that targets one player, so it pairs with them at once or hears they're gone.
 
 Stakes never conflict: the person who started the game set it, and the joiner sees it before tapping Join. With nobody waiting, Quick match never starts a game by itself (changed 15 October 2026: the 3-second countdown was too fast). It keeps watching and shows how many other people are looking at Quick match right now, so two people tapping at the same moment see each other and one starts a game for the other to join. The player chooses: Start my own game (their last game and stake), Change game or stake, or Play Baba Ayo. The button on Home shows how many games are live. Both get the list over one live connection that the matchmaker pushes changes down (15 October 2026, for Cloudflare's free plan: asking every 2 seconds used most of a day's requests).

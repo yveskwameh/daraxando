@@ -241,6 +241,9 @@ svg.ic { width: 22px; height: 22px; flex: none; }
   transition: transform 160ms var(--ease-pop);
 }
 .gp-pick:active { transform: scale(.96); }
+.stake-game { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 2px; }
+.stake-game > span { min-width: 0; font-size: 0.9375rem; color: var(--muted); }
+.stake-game b { font-family: var(--head); font-weight: 800; color: var(--text); }
 .gp-pick .chev { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--night); color: var(--cream); }
 .gp-pick .chev svg { width: 18px; height: 18px; }
 .game-pic .rule { font-size: 0.9375rem; color: var(--muted); }
@@ -1109,8 +1112,11 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
   .live-wait-short { display: inline; }
   .live-who { grid-template-columns: auto minmax(0, 1fr); }
 }
-/* Short phones: a tighter card, so Join stays in view. */
+/* Short phones: a tighter card, so Join and the two buttons under it stay in view. The dots
+   and the next card peeking in already say you can swipe. */
 @media (max-height: 640px) {
+  .live-swipe { display: none; }
+  .live-dots button { height: 16px; }
   .live-card { gap: 8px; padding: 12px; }
   .live-game { padding: 9px 10px; }
   .live-game span { font-size: 0.75rem; }

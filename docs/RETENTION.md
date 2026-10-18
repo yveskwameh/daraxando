@@ -168,7 +168,7 @@ Yves kept everything except lives (they clash with "no play limits") and fake pl
 | **Streak celebration** | After your first match of the day, before the result | Full screen: the count goes up, this week's days, Continue |
 | **Milestones** | Same screen | 3, 7, 14, 30, 50, 100 days (then every 100): Aura, and a free Streak Freeze at 7, 30 and 100 |
 | **Streak Freeze** | Streak sheet | 200 Dara Seeds, hold up to 2, used automatically on a missed day. Shown as ice on the week strip |
-| **Restore** | Streak sheet, and a warning on Home | 500 Dara Seeds, up to 3 days after a streak of 2 or more ends |
+| **Restore** | Streak sheet, and a warning on Home | 500 Dara Seeds, up to 3 days after a streak of 2 or more ends. A 1-day streak that ends is just day 1 again: no restore line after the match and no Baba Ayo sulk (fixed 18 October 2026, `canRepair`) |
 | **Streak stake** (Duolingo's Streak Wager) | Streak sheet | Stake 200, keep your streak 7 more days, get 400. One at a time. Lost if the streak ends |
 | **Daily quests** | Home, right button | Win 3 matches every day, plus two that change daily, each with Aura |
 | **Quest and badge moments** | After a match | Full screen when a quest finishes or a badge gets a star |

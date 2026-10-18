@@ -82,6 +82,8 @@ export function Home({ go }: { go: Go }) {
   }, [go]);
   const updateReady = useUpdateReady();
   const [updateHidden, setUpdateHidden] = useState(false);
+  // Picking a game from the stake picker goes back to the stake picker.
+  const [modeBack, setModeBack] = useState(false);
 
   useEffect(() => {
     if (!ban || banShown) return;
@@ -286,6 +288,14 @@ export function Home({ go }: { go: Go }) {
         onClose={close}
         profile={profile}
         stake={p.stake}
+        game={{
+          name: m.name,
+          series: seriesLabel(m.bo),
+          onChange: () => {
+            setModeBack(true);
+            open('mode');
+          },
+        }}
         onGo={(stake) => {
           prefs.set({ stake });
           close();
@@ -308,12 +318,16 @@ export function Home({ go }: { go: Go }) {
         {opened.has('mode') && (
           <ModeSheet
             open={sheet === 'mode'}
-            onClose={close}
+            onClose={() => {
+              setModeBack(false);
+              close();
+            }}
             mode={p.mode}
             onPick={(mode) => {
               prefs.set({ mode });
               sfx.tap();
-              close();
+              setSheet(modeBack ? 'stake' : null);
+              setModeBack(false);
             }}
           />
         )}

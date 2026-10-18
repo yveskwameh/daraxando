@@ -7,7 +7,8 @@
  * game set its stake, so you never pick one here: you see it, and Join is agreeing to it.
  *
  * "Start my own game" is the way to host your own game from Home (since 17 October 2026, Home's
- * game picture no longer starts one when tapped).
+ * game picture no longer starts one when tapped). "Change game or stake" sits next to it in both
+ * views, so the stake picker can be reached whether or not anyone is waiting.
  *
  * Nobody waiting (Yves, 15 October 2026: the old 3-second countdown was too fast): nothing
  * starts by itself. The sheet keeps watching (the server pushes new games) and says so, with how long it has
@@ -176,7 +177,7 @@ function Body({ go, onStartOwn, onChange, onBaba }: Props) {
       <div className="titled">
         <h2>Live now</h2>
         <p className="fine">
-          {games.length === 1 ? '1 game is waiting for a player.' : `${games.length} games are waiting for a player. Swipe to see them all.`}
+          {games.length === 1 ? '1 game is waiting for a player.' : <>{games.length} games are waiting for a player.<span className="live-swipe"> Swipe to see them all.</span></>}
         </p>
       </div>
       <div
@@ -205,8 +206,11 @@ function Body({ go, onStartOwn, onChange, onBaba }: Props) {
       >
         {joining ? 'Joining…' : `Join ${game.name}`}
       </button>
+      {/* Since Home's game picture no longer opens the stake picker (17 October 2026), changing the
+          game or stake has to be reachable here too, not only when nobody is waiting. */}
       <div className="more">
         <button type="button" className="btn ghost sm" disabled={!!joining} onClick={onStartOwn}>Start my own game</button>
+        <button type="button" className="btn ghost sm" disabled={!!joining} onClick={onChange}>{'Change\u00a0game or stake'}</button>
       </div>
       {game.stake > 0 && <p className="fine center live-note">Joining puts in your stake. You can't buy, sell, send or cash out Dara Seeds.</p>}
     </>

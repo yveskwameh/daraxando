@@ -306,7 +306,7 @@ describe('quick match search', () => {
 /* ---------------------------------------------------------------- habits: streak, quests, badges, leagues */
 
 import {
-  BET_DAYS, BET_WIN, FREEZE_MAX, addDays, betNow, emptyHabits, leagueMove, leagueZones, playBadges, playQuests,
+  BET_DAYS, BET_WIN, FREEZE_MAX, addDays, betNow, canRepair, emptyHabits, leagueMove, leagueZones, playBadges, playQuests,
   playStreak, questsFor, questsToday, restoreStreak, streakNow, weekKey,
 } from '../shared/habits';
 
@@ -375,6 +375,19 @@ describe('day streak', () => {
     s = play(c, 0, d0).streak;
     s = play(c, s, addDays(d0, 1)).streak;
     expect(streakNow(c, s, addDays(d0, 6)).restorable).toBeNull();
+  });
+
+  it('never offers to restore a 1-day streak (Yves, 18 October 2026)', () => {
+    const h = emptyHabits();
+    let s = play(h, 0, d0).streak;
+    // Played one day, missed the next, played today.
+    const step = play(h, s, addDays(d0, 2));
+    s = step.streak;
+    expect(step.broke).toBe(1);
+    expect(canRepair(step.broke)).toBe(false);
+    expect(streakNow(h, s, addDays(d0, 2)).restorable).toBeNull();
+    expect(restoreStreak(h, s, addDays(d0, 2)).ok).toBe(false);
+    expect(canRepair(2)).toBe(true);
   });
 
   it('pays the streak bet after 7 days, and loses it when the streak ends', () => {
