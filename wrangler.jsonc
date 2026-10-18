@@ -5,11 +5,7 @@
   "name": "daraxando",
   "main": "./worker/index.ts",
   "compatibility_date": "2026-10-01",
-  // GOOGLE_CLIENT_ID: the "Dara X&O web" client in Google Cloud (project Dara X&O). Not secret;
-  // its secret is GOOGLE_CLIENT_SECRET, kept in Cloudflare and .dev.vars.
-  // EMAIL_FROM: who sign-in code emails come from. The domain is verified in Resend; the key that
-  // sends is RESEND_API_KEY, a secret. Vars aren't shared with the copies below, so each lists its own.
-  "vars": { "ENVIRONMENT": "local", "GOOGLE_CLIENT_ID": "1069630475668-njcg1281okurjd2t3qqs2llnet64am1f.apps.googleusercontent.com", "EMAIL_FROM": "\"Dara X&O\" <code@noreply.daraxando.yveskwameh.com>" },
+  "vars": { "ENVIRONMENT": "local", "GOOGLE_CLIENT_ID": "1069630475668-njcg1281okurjd2t3qqs2llnet64am1f.apps.googleusercontent.com", "EMAIL_FROM": "\"Dara X&O\" <admin@noreply.daraxando.yveskwameh.com>" },
 
   "assets": {
     // Any path that is not a file gets index.html, so /r/K7P2Q opens the app.
@@ -82,7 +78,7 @@
       // change here. No extra preview address per version.
       "workers_dev": true,
       "preview_urls": false,
-      "vars": { "ENVIRONMENT": "staging", "GOOGLE_CLIENT_ID": "1069630475668-njcg1281okurjd2t3qqs2llnet64am1f.apps.googleusercontent.com", "EMAIL_FROM": "\"Dara X&O\" <code@noreply.daraxando.yveskwameh.com>" },
+      "vars": { "ENVIRONMENT": "staging", "GOOGLE_CLIENT_ID": "1069630475668-njcg1281okurjd2t3qqs2llnet64am1f.apps.googleusercontent.com", "EMAIL_FROM": "\"Dara X&O\" <admin@noreply.daraxando.yveskwameh.com>" },
       "durable_objects": {
         "bindings": [
           { "name": "MATCH", "class_name": "Match" },
@@ -114,7 +110,7 @@
       // Cloudflare makes the DNS record and the HTTPS certificate on the first deploy. The domain
       // must be active on Cloudflare (it is: its nameservers point there).
       "routes": [{ "pattern": "daraxando.yveskwameh.com", "custom_domain": true }],
-      "vars": { "ENVIRONMENT": "production", "GOOGLE_CLIENT_ID": "1069630475668-njcg1281okurjd2t3qqs2llnet64am1f.apps.googleusercontent.com", "EMAIL_FROM": "\"Dara X&O\" <code@noreply.daraxando.yveskwameh.com>" },
+      "vars": { "ENVIRONMENT": "production", "GOOGLE_CLIENT_ID": "1069630475668-njcg1281okurjd2t3qqs2llnet64am1f.apps.googleusercontent.com", "EMAIL_FROM": "\"Dara X&O\" <admin@noreply.daraxando.yveskwameh.com>" },
       "durable_objects": {
         "bindings": [
           { "name": "MATCH", "class_name": "Match" },

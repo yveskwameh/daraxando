@@ -7,13 +7,13 @@
  * whole API is switched off and answers 404, so a copy of the game without it has no admin at
  * all. Every change is written to admin_actions with what changed and why.
  */
-import { cleanName } from '../shared/protocol';
+import { cleanName, NAME_RULE } from '../shared/protocol';
 import { cleanEmail } from './accounts';
 import { sameText } from './auth';
 import { toProfile, type PlayerRow } from './db';
 import type { Env } from './env';
 import { body } from './http';
-import { NAME_PROBLEM_MESSAGE, nameProblem } from './names';
+import { isNameClash, NAME_PROBLEM_MESSAGE, nameKey, nameProblem, takenNames } from './names';
 import { dropSubs, sendPush, type PushSub } from './push';
 import { buildReport, reportDay, reportEmail, reportTo, sendReport } from './report';
 import { dayKey } from '../shared/progression';
@@ -253,13 +253,19 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
   /* --- rename: the same rules as the game, so a new name can't be rude either --- */
   if (act === 'rename') {
     const name = cleanName(b.name);
-    if (!name) return fail(400, 'Names are 2 to 16 letters or numbers.');
+    if (!name) return fail(400, NAME_RULE);
     const problem = nameProblem(name);
     if (problem) return fail(400, NAME_PROBLEM_MESSAGE[problem]);
-    await db.batch([
-      db.prepare('UPDATE players SET name = ?, updated_at = ? WHERE id = ?').bind(name, now, id),
-      log('rename', { from: row.name, to: name }),
-    ]);
+    if ((await takenNames(db, [name], id)).size) return fail(409, 'Another player has that name. Pick another one.');
+    try {
+      await db.batch([
+        db.prepare('UPDATE players SET name = ?, name_key = ?, name_set = 1, updated_at = ? WHERE id = ?').bind(name, nameKey(name), now, id),
+        log('rename', { from: row.name, to: name }),
+      ]);
+    } catch (err) {
+      if (isNameClash(err)) return fail(409, 'Another player has that name. Pick another one.');
+      throw err;
+    }
     return send({ player: summary((await fresh())!) });
   }
 

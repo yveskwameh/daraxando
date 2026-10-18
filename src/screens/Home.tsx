@@ -1,20 +1,20 @@
 /**
- * Home. Your title and Aura at the top, the Deck of modes in the middle (swipe, or tap the
- * dots), your streak and daily quests, and the three ways to play at the bottom. Tapping a
- * card starts your own game of that mode (pick a stake, then wait for a player). Quick match
- * joins a game someone is already waiting in; its button says how many are live, as the server
- * pushes them (no polling).
+ * Home, layout A (Yves, 17 October 2026: calmer, one obvious button, docs/NEXT-ROUND.md).
+ * At the top: you (the ring fills toward your next title), today's counters (streak, quests,
+ * Dara Seeds) and Ranks. In the middle: the game you play next, its rule and a demo of it on a
+ * loop, with a chip to pick another game. At the bottom: Quick match, the one big button, then
+ * Play a friend and Play Baba Ayo, smaller. Quick match joins a game someone is already waiting
+ * in; its button says how many are live, as the server pushes them (no polling).
  */
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { questsToday, streakNow } from '../../shared/habits';
-import { MODE_IDS, MODES, seriesLabel, type ModeId } from '../../shared/modes';
+import { isNewMode, MODES, seriesLabel } from '../../shared/modes';
 import { auraForLevel, dayKey, levelInfo } from '../../shared/progression';
 import type { FriendView, Profile } from '../../shared/protocol';
 import { fmt, short } from '../../shared/stakes';
 import { printBg } from '../art/prints';
-import { Avatar, Cowries, Icon, Wordmark } from '../components/art';
+import { Avatar, Cowries, Icon } from '../components/art';
 import { DemoBoard } from '../components/DemoBoard';
-import { MusicToggle } from '../components/MusicToggle';
 import { api } from '../lib/api';
 import { babaNudge, takeNudgeSlot, type Nudge } from '../lib/babaNudge';
 import { reducedMotion } from '../lib/device';
@@ -24,6 +24,7 @@ import { closeInstallPop, showInstallPop } from '../lib/install';
 import { prefs, usePrefs } from '../lib/prefs';
 import { PushAsk } from '../components/PushAsk';
 import { SaveAsk } from '../components/SaveAsk';
+import { TopPop } from '../components/TopPop';
 import { applyUpdate, useUpdateReady } from '../lib/pwa';
 import { useLive } from '../lib/useLive';
 import type { Go } from '../lib/router';
@@ -43,8 +44,11 @@ const LiveSheet = lazy(() => import('../sheets/LiveSheet'));
 const BanSheet = lazy(() => import('../sheets/BanSheet'));
 // Only when a guest taps Save on the save ask.
 const SaveSheet = lazy(() => import('../sheets/SaveSheet'));
+const ModeSheet = lazy(() => import('../sheets/ModeSheet'));
+// Only for players who still need to pick their name.
+const NameSheet = lazy(() => import('../sheets/NameSheet'));
 
-type SheetName = 'stake' | 'wallet' | 'friend' | 'baba' | 'streak' | 'friends' | 'quests' | 'live' | 'ban' | 'save' | null;
+type SheetName = 'stake' | 'wallet' | 'friend' | 'baba' | 'streak' | 'friends' | 'quests' | 'live' | 'ban' | 'save' | 'mode' | 'name' | null;
 
 /** A banned player sees why once each time the app opens, then whenever they tap a way to play someone. */
 let banShown = false;
@@ -69,7 +73,6 @@ export function Home({ go }: { go: Go }) {
   const ban = profile.ban;
   // Playing other people: a banned player gets the reason instead.
   const online = (s: 'stake' | 'friend' | 'live') => (ban ? open('ban') : s === 'live' ? open('live') : setSheet(s));
-  const lv = levelInfo(profile.aura);
   // The live games come down one socket the server pushes to (src/lib/useLive.ts).
   const live = useLive(token).games?.length ?? 0;
   // Nobody to join: your own game, with your last game and stake.
@@ -78,6 +81,7 @@ export function Home({ go }: { go: Go }) {
     go({ name: 'search' });
   }, [go]);
   const updateReady = useUpdateReady();
+  const [updateHidden, setUpdateHidden] = useState(false);
 
   useEffect(() => {
     if (!ban || banShown) return;
@@ -86,6 +90,15 @@ export function Home({ go }: { go: Go }) {
     // Once per app open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ban]);
+
+  // Pick your name: after the first match, or when the game had to add a number to it. It comes
+  // before any other pop-up, and stays until a name is saved.
+  useEffect(() => {
+    if (!profile.nameAsk) return;
+    if (visitFree()) takeVisit();
+    open('name');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.nameAsk]);
 
   // Someone asked you for a friend streak: say so, like a friend request.
   useEffect(() => {
@@ -107,7 +120,7 @@ export function Home({ go }: { go: Go }) {
     const t = setTimeout(() => {
       const { profile: pr, nudges, updateReady: busy } = latest.current;
       const moment = takeMoment();
-      if (asking.current || busy || pr.ban || !visitFree()) return;
+      if (asking.current || busy || pr.ban || pr.nameAsk || !visitFree()) return;
       const kind = moment && moment.result !== 'loss' ? askAfterMatch(pr) : null;
       if (kind === 'save' || kind === 'streak' || kind === 'install') {
         takeVisit();
@@ -134,64 +147,55 @@ export function Home({ go }: { go: Go }) {
     return () => closeInstallPop();
   }, [refresh]);
 
-  const aria = `You. Your title: ${lv.title}. ${fmt(profile.aura)} of ${fmt(auraForLevel(lv.level + 1))} Aura to become ${lv.nextTitle}.`;
+  const m = MODES[p.mode];
+  const isNew = isNewMode(m, dayKey(Date.now()));
 
   return (
-    <main className="screen" aria-label="Home">
-      <header className="top">
-        <button type="button" className="me-chip" aria-label={aria} onClick={() => go({ name: 'profile' })}>
-          <Avatar avatar={profile.avatar} print={profile.print} size={40} />
-          <span className="lv">
-            <b>{lv.title}</b>
-            <span className="aura-bar"><i style={{ width: `${Math.max(4, (lv.into / lv.span) * 100)}%` }} /></span>
-          </span>
-        </button>
-        <span className="spacer" />
-        <button type="button" className="chip" aria-label={`Your Dara Seeds: ${fmt(profile.cowries)}`} onClick={() => setSheet('wallet')}>
-          <Icon id="i-seed" className="" />
-          {short(profile.cowries)}
-        </button>
-        <button type="button" className="icon-btn" aria-label="Ranks" onClick={() => go({ name: 'ranks' })}>
-          <Icon id="i-ranks" />
-        </button>
-        <MusicToggle />
-      </header>
-
-      <div className="brand">
-        <Wordmark />
-        <p className="tagline">Three in a row, the Naija way.</p>
-      </div>
-
-      <Deck
-        mode={p.mode}
-        piece={profile.piece}
-        onMode={(mode) => prefs.set({ mode })}
-        onPlay={(mode) => {
-          prefs.set({ mode });
-          online('stake');
-        }}
+    <main className="screen home" aria-label="Home">
+      <HomeTop
+        profile={profile}
+        onYou={() => go({ name: 'profile' })}
+        onStreak={() => open('streak')}
+        onQuests={() => open('quests')}
+        onSeeds={() => setSheet('wallet')}
+        onRanks={() => go({ name: 'ranks' })}
       />
-      <HabitBar profile={profile} onStreak={() => open('streak')} onQuests={() => open('quests')} />
+
+      <section className="game-pic" style={{ '--band': printBg(m.band) } as CSSProperties} aria-label={`Your game: ${m.name}. ${m.rule} ${seriesLabel(m.bo)}.`}>
+        <div className="gp-head">
+          <button type="button" className="gp-pick" aria-label={`Game: ${m.name}. Pick another game.`} onClick={() => open('mode')}>
+            {m.name}
+            <span className="chev" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </span>
+          </button>
+          <span className="spacer" />
+          {isNew && <span className="pill hot">New</span>}
+          <span className="pill">{seriesLabel(m.bo)}</span>
+        </div>
+        <p className="rule">{m.rule}</p>
+        <div className="mb-wrap">
+          <DemoBoard key={p.mode} mode={p.mode} piece={profile.piece} playing={!reducedMotion()} />
+        </div>
+      </section>
 
       <div className="actions">
         <button
           type="button"
           className="btn primary block lg"
-          aria-label={live ? `Quick match. ${live} ${live === 1 ? 'game is' : 'games are'} waiting for a player.` : `Quick match. Nobody is waiting yet. You can start your own ${MODES[p.mode].name} game${p.stake ? ` at ${fmt(p.stake)}` : ', free'}.`}
+          aria-label={live ? `Quick match. ${live} ${live === 1 ? 'game is' : 'games are'} waiting for a player.` : `Quick match. Nobody is waiting yet. You can start your own ${m.name} game${p.stake ? ` at ${fmt(p.stake)}` : ', free'}.`}
           onClick={() => online('live')}
         >
           Quick match{' '}
           <span className="stake-pill">
             {live ? (
               <><i className="live-dot" aria-hidden="true" />{live} live</>
-            ) : (
-              <>{MODES[p.mode].name} · {p.stake ? <Cowries n={p.stake} /> : 'Free'}</>
-            )}
+            ) : p.stake ? <Cowries n={p.stake} /> : 'Free'}
           </span>
         </button>
-        <div className="row2">
-          <button type="button" className="btn alt" onClick={() => online('friend')}>Play a friend</button>
-          <button type="button" className="btn baba" onClick={() => setSheet('baba')}>Play Baba Ayo</button>
+        <div className="more">
+          <button type="button" className="btn alt sm" onClick={() => online('friend')}>Play a friend</button>
+          <button type="button" className="btn baba sm" onClick={() => setSheet('baba')}>Play Baba Ayo</button>
         </div>
       </div>
 
@@ -216,7 +220,7 @@ export function Home({ go }: { go: Go }) {
       )}
 
       {nudge && !ask && (
-        <div className="install-pop baba-pop" role="alertdialog" aria-label="Baba Ayo">
+        <TopPop className="baba-pop" role="alertdialog" label="Baba Ayo" onHide={() => setNudge(null)}>
           <span className={`baba-face ${nudge.kind}`}><Avatar avatar="baba" size={44} /></span>
           <div>
             <b>Baba Ayo</b>
@@ -233,11 +237,12 @@ export function Home({ go }: { go: Go }) {
             </button>
           </div>
           <button type="button" className="x-btn" aria-label="Not now" onClick={() => setNudge(null)}><Icon id="i-close" className="" /></button>
-        </div>
+        </TopPop>
       )}
 
       {ask && (
-        <div className="install-pop room-pop" role="alertdialog" aria-label={`${ask.name} wants a friend streak`}>
+        // Swiping up only hides the request. It's still there next time Home opens; X declines it.
+        <TopPop className="room-pop" role="alertdialog" label={`${ask.name} wants a friend streak`} onHide={() => setAsk(null)}>
           <Avatar avatar={ask.avatar} print={ask.print} size={40} />
           <div><b>{ask.name} wants a friend streak</b><span>Keep a streak going together.</span></div>
           <button
@@ -263,16 +268,17 @@ export function Home({ go }: { go: Go }) {
           >
             <Icon id="i-close" className="" />
           </button>
-        </div>
+        </TopPop>
       )}
 
-      {updateReady && (
-        <div className="install-pop" role="status">
+      {updateReady && !updateHidden && (
+        // Hidden, the new version still arrives by itself the next time the player leaves the app.
+        <TopPop role="status" onHide={() => setUpdateHidden(true)}>
           <img className="app-ic" src="/icons/icon-192.png" alt="" width={40} height={40} />
           <div><b>A new version is ready</b><span>Reload to get the latest Dara X&amp;O.</span></div>
           <button type="button" className="mini-btn" onClick={() => void applyUpdate()}>Reload</button>
           <span />
-        </div>
+        </TopPop>
       )}
 
       <StakeSheet
@@ -299,149 +305,76 @@ export function Home({ go }: { go: Go }) {
         )}
         {ban && opened.has('ban') && <BanSheet open={sheet === 'ban'} ban={ban} onClose={close} onBaba={() => setSheet('baba')} />}
         {opened.has('save') && <SaveSheet open={sheet === 'save'} onClose={close} intent="save" back="/" from="ask" />}
+        {opened.has('mode') && (
+          <ModeSheet
+            open={sheet === 'mode'}
+            onClose={close}
+            mode={p.mode}
+            onPick={(mode) => {
+              prefs.set({ mode });
+              sfx.tap();
+              close();
+            }}
+          />
+        )}
+        {opened.has('name') && <NameSheet open={sheet === 'name'} kind={profile.nameAsk ?? 'new'} onDone={close} />}
       </Suspense>
     </main>
   );
 }
 
-/** Swipeable mode cards. The card in the middle plays a short demo of its mode. */
-function Deck({ mode, piece, onMode, onPlay }: { mode: ModeId; piece: string; onMode: (m: ModeId) => void; onPlay: (m: ModeId) => void }) {
-  const deck = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState(() => Math.max(0, MODE_IDS.indexOf(mode)));
-  const activeRef = useRef(active);
-  const still = reducedMotion();
-
-  const centerOf = (el: HTMLElement, d: HTMLElement) => el.offsetLeft - (d.clientWidth - el.offsetWidth) / 2;
-
-  // Start with the last mode played in the middle.
-  useEffect(() => {
-    const d = deck.current;
-    const card = d?.children[active] as HTMLElement | undefined;
-    if (d && card) d.scrollLeft = centerOf(card, d);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // When a swipe settles, the card closest to the middle becomes the mode.
-  useEffect(() => {
-    const d = deck.current;
-    if (!d) return;
-    let t: ReturnType<typeof setTimeout>;
-    const onScroll = () => {
-      clearTimeout(t);
-      t = setTimeout(() => {
-        const mid = d.scrollLeft + d.clientWidth / 2;
-        let best = 0;
-        let dist = Infinity;
-        Array.from(d.children).forEach((c, i) => {
-          const el = c as HTMLElement;
-          const dd = Math.abs(el.offsetLeft + el.offsetWidth / 2 - mid);
-          if (dd < dist) { dist = dd; best = i; }
-        });
-        if (activeRef.current !== best) {
-          activeRef.current = best;
-          setActive(best);
-          sfx.tap();
-          onMode(MODE_IDS[best]);
-        }
-      }, 90);
-    };
-    d.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      d.removeEventListener('scroll', onScroll);
-      clearTimeout(t);
-    };
-  }, [onMode]);
-
-  const goTo = (i: number) => {
-    const d = deck.current;
-    const card = d?.children[i] as HTMLElement | undefined;
-    if (d && card) d.scrollTo({ left: centerOf(card, d), behavior: still ? 'auto' : 'smooth' });
-  };
-
-  return (
-    <div className="deck-wrap">
-      <div className="deck" ref={deck} role="group" aria-label="Game modes. Swipe to change.">
-        {MODE_IDS.map((id, i) => {
-          const m = MODES[id];
-          return (
-            <article
-              key={id}
-              className="mode-card"
-              role="button"
-              tabIndex={0}
-              aria-label={`Play ${m.name}. ${m.rule} ${seriesLabel(m.bo)}.`}
-              aria-current={i === active}
-              style={{ '--band': printBg(m.band) } as CSSProperties}
-              onClick={() => {
-                if (i !== active) goTo(i);
-                onPlay(id);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onPlay(id);
-                }
-              }}
-            >
-              <div className="meta">
-                {'hot' in m && <span className="pill hot">{m.hot}</span>}
-                <span className="pill">{seriesLabel(m.bo)}</span>
-                <span className="pill play" aria-hidden="true">Tap to play</span>
-              </div>
-              <h2>{m.name}</h2>
-              <p className="rule">{m.rule}</p>
-              <div className="mb-wrap">
-                <DemoBoard key={i === active ? 'on' : 'off'} mode={id} piece={piece} playing={i === active && !still} />
-              </div>
-            </article>
-          );
-        })}
-      </div>
-      <div className="dots" role="group" aria-label="Pick a mode">
-        {MODE_IDS.map((id, i) => (
-          <button key={id} type="button" aria-label={MODES[id].name} aria-current={i === active} onClick={() => goTo(i)} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /**
- * Your streak and today's quests, as two buttons. A grey flame means you haven't played
- * today yet; it lights up after your first match, the way every streak app does it.
+ * The top of Home: you, today's counters and Ranks. Your animal sits in a ring that fills as
+ * you earn Aura toward your next title (the title itself is on You). The flame is grey until
+ * your first match of the day, then lit. A streak that has just ended, and can still be
+ * restored, gets a fuchsia dot.
  */
-function HabitBar({ profile, onStreak, onQuests }: { profile: Profile; onStreak: () => void; onQuests: () => void }) {
+function HomeTop({ profile, onYou, onStreak, onQuests, onSeeds, onRanks }: {
+  profile: Profile;
+  onYou: () => void;
+  onStreak: () => void;
+  onQuests: () => void;
+  onSeeds: () => void;
+  onRanks: () => void;
+}) {
+  const lv = levelInfo(profile.aura);
   const today = dayKey(Date.now());
   const now = streakNow(profile.habits, profile.dayStreak, today);
   const quests = questsToday(profile.habits, profile.id, today, profile.dayWins);
   const done = quests.filter((q) => q.done).length;
-  let sub = 'Play a match today';
-  if (now.restorable && now.streak === 0) sub = `Your ${now.restorable.n}-day streak ended`;
-  else if (now.playedToday) sub = 'Done for today';
-  else if (now.streak > 0) sub = 'Play today to keep it';
+  const ended = !!now.restorable && now.streak === 0;
+  const pct = Math.max(4, (lv.into / lv.span) * 100);
+  let streakSay = `${now.streak}-day streak. ${now.playedToday ? 'Done for today' : now.streak > 0 ? 'Play today to keep it' : 'Play a match today to start one'}.`;
+  if (ended) streakSay = `Your ${now.restorable!.n}-day streak ended. You can still restore it.`;
+  if (now.freezes) streakSay += ` ${now.freezes} Streak Freeze${now.freezes > 1 ? 's' : ''}.`;
   return (
-    <div className="habits">
+    <header className="top home-top">
       <button
         type="button"
-        className={`hb${now.playedToday ? ' lit' : ''}${now.restorable && now.streak === 0 ? ' warn' : ''}`}
-        aria-label={`${now.streak}-day streak. ${sub}.${now.freezes ? ` ${now.freezes} Streak Freeze${now.freezes > 1 ? 's' : ''}.` : ''} Open your streak.`}
-        onClick={onStreak}
+        className="me-ring"
+        style={{ '--pct': `${pct}%` } as CSSProperties}
+        aria-label={`You. Your title: ${lv.title}. ${fmt(profile.aura)} of ${fmt(auraForLevel(lv.level + 1))} Aura to become ${lv.nextTitle}.`}
+        onClick={onYou}
       >
-        <Icon id={now.playedToday ? 'i-flame' : 'i-flame-off'} className="hb-ic" />
-        <span className="t">
-          <b>{now.streak > 0 ? `${now.streak}-day streak` : 'Start a streak'}</b>
-          <small>{sub}</small>
-        </span>
-        {now.freezes > 0 && <span className="ice-n" aria-hidden="true"><Icon id="i-freeze" className="" />{now.freezes}</span>}
+        <Avatar avatar={profile.avatar} print={profile.print} size={40} />
       </button>
-      <button type="button" className="hb" aria-label={`Daily quests. ${done} of ${quests.length} done. Open quests.`} onClick={onQuests}>
-        <Icon id="i-quest" className="hb-ic q" />
-        <span className="t">
-          <b>Quests</b>
-          <small>{done === quests.length ? 'All done today' : `${done} of ${quests.length} done`}</small>
-        </span>
-        <span className="pips" aria-hidden="true">{quests.map((q) => <i key={q.id} className={q.done ? 'on' : ''} />)}</span>
+      <div className="counters" role="group" aria-label="Today">
+        <button type="button" className={`ct${now.playedToday ? ' lit' : ''}${ended ? ' warn' : ''}`} aria-label={`${streakSay} Open your streak.`} onClick={onStreak}>
+          <Icon id={now.playedToday ? 'i-flame' : 'i-flame-off'} className="" />
+          {now.streak}
+        </button>
+        <button type="button" className="ct q" aria-label={`Daily quests. ${done} of ${quests.length} done. Open quests.`} onClick={onQuests}>
+          <Icon id="i-quest" className="" />
+          {done}/{quests.length}
+        </button>
+        <button type="button" className="ct" aria-label={`Your Dara Seeds: ${fmt(profile.cowries)}`} onClick={onSeeds}>
+          <Icon id="i-seed" className="" />
+          {short(profile.cowries)}
+        </button>
+      </div>
+      <button type="button" className="icon-btn" aria-label="Ranks" onClick={onRanks}>
+        <Icon id="i-ranks" />
       </button>
-    </div>
+    </header>
   );
 }

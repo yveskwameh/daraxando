@@ -1,11 +1,13 @@
 /**
  * Quick match: join a game someone is already waiting in (Yves, 15 October 2026).
  *
- * Tapping a card on the Deck starts your own game and waits for someone. Quick match does the
- * opposite: it shows the games waiting right now as cards you swipe through, best first (your
+ * It shows the games waiting right now as cards you swipe through, best first (your
  * state, then your zone, then whoever has waited longest), with dots under them (Yves, 15
  * October 2026: pick the player you want, not just the next one). The person who started a
  * game set its stake, so you never pick one here: you see it, and Join is agreeing to it.
+ *
+ * "Start my own game" is the way to host your own game from Home (since 17 October 2026, Home's
+ * game picture no longer starts one when tapped).
  *
  * Nobody waiting (Yves, 15 October 2026: the old 3-second countdown was too fast): nothing
  * starts by itself. The sheet keeps watching (the server pushes new games) and says so, with how long it has

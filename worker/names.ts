@@ -14,7 +14,13 @@
  *    Bassey, "dick" would catch Dickson.
  *  - Anywhere in the name with the spaces taken out, for longer words that don't, so "F U C K"
  *    and "fuckboy" are both caught.
+ *
+ * No two players share a name (Yves, 17 October 2026). `nameKey` is how two names are compared,
+ * and `players.name_key` holds it with a unique index (migrations/0010_names.sql).
  */
+import { NAME_POOL } from '../shared/names';
+import { TITLES } from '../shared/progression';
+import { NAME_MAX } from '../shared/protocol';
 
 /** Caught anywhere in the name, spaces and dots removed. Only words no ordinary name contains. */
 const ANYWHERE = [
@@ -75,6 +81,24 @@ function base(raw: string) {
 /** The same, with digits and signs that look like letters made into letters ("b1tch"). */
 const plain = (raw: string) => base(raw).replace(/[01345@$7!|]/g, (c) => LOOKS[c] ?? c).replace(/(.)\1{2,}/g, '$1');
 
+/** The titles players earn (JJC to Idan) aren't names: "Chief" or "Idan 2" alone would look like a rank. */
+const TITLE_KEYS = new Set(TITLES.map((t) => t.name.toLowerCase()));
+
+/**
+ * A name as it's compared for "taken": lower case, accents off, look-alike letters made Latin,
+ * single spaces. "Ọlá", "OLA" and "Ola" are the same name. Digits stay digits, so "Tobi 2" is
+ * not "Tobi".
+ */
+export function nameKey(name: string) {
+  return name
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^\x00-\x7f]/g, (c) => ALIKE[c] ?? c)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export type NameProblem = 'rude' | 'reserved';
 
 /** Why a cleaned name can't be used, or null if it can. */
@@ -90,6 +114,7 @@ export function nameProblem(name: string): NameProblem | null {
 
   // "Dara" alone, or "Dara X&O" and its spellings, pass for the game. A real name like Dara Ade is fine.
   if (joined === 'dara' || RESERVED_ANYWHERE.some((w) => joined.includes(w))) return 'reserved';
+  if (TITLE_KEYS.has(nameKey(name).replace(/ \d+$/, ''))) return 'reserved';
   if (anyWord(RESERVED_WORD)) return 'reserved';
 
   if (ANYWHERE.some((w) => joined.includes(w) || single.includes(w))) return 'rude';
@@ -102,3 +127,66 @@ export const NAME_PROBLEM_MESSAGE: Record<NameProblem, string> = {
   rude: "That name isn't allowed. Pick another one.",
   reserved: 'That name belongs to the game. Pick another one.',
 };
+
+export const NAME_TAKEN_MESSAGE = 'That name is taken. Pick another one.';
+
+/**
+ * A name with a number on the end ("Tobi 7"). Too long for 16 letters, it drops whole words from
+ * the end first ("Oba Market Mama" gives "Oba Market 42"), and only cuts a word when it's one word.
+ */
+export function numbered(name: string, n: number) {
+  const tail = ` ${n}`;
+  const fits = (s: string) => [...s].length + tail.length <= NAME_MAX;
+  const words = name.split(' ');
+  while (words.length > 1 && !fits(words.join(' '))) words.pop();
+  const base = words.join(' ');
+  return (fits(base) ? base : [...base].slice(0, NAME_MAX - tail.length).join('')) + tail;
+}
+
+/** Which of these names other players already hold. */
+export async function takenNames(db: D1Database, names: string[], exceptId?: string): Promise<Set<string>> {
+  const keys = [...new Set(names.map(nameKey))];
+  if (!keys.length) return new Set();
+  const rows = await db
+    .prepare(`SELECT name_key FROM players WHERE name_key IN (${keys.map(() => '?').join(',')})${exceptId ? ' AND id <> ?' : ''}`)
+    .bind(...keys, ...(exceptId ? [exceptId] : []))
+    .all<{ name_key: string }>();
+  return new Set(rows.results.map((r) => r.name_key));
+}
+
+const shuffle = <T>(list: T[]) => {
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return list;
+};
+
+/**
+ * Names nobody holds, checked in one read. With `wanted`, ideas built on it come first ("Tobi 7",
+ * "Tobi 42"); then ideas from the pool, with a number when the pool name itself is taken.
+ */
+export async function freeNames(db: D1Database, count: number, opts: { wanted?: string; exceptId?: string } = {}): Promise<string[]> {
+  const nums = shuffle(Array.from({ length: 97 }, (_, i) => i + 2));
+  const mine = opts.wanted ? nums.slice(0, 6).map((n) => numbered(opts.wanted!, n)) : [];
+  const pool = shuffle([...NAME_POOL]).slice(0, 8);
+  // "FESTAC 77" already has its number.
+  const poolNumbered = pool.filter((n) => !/\d/.test(n)).map((n, i) => numbered(n, nums[10 + i]));
+  const all = [...mine, ...pool, ...poolNumbered].filter((n) => !nameProblem(n));
+  const taken = await takenNames(db, all, opts.exceptId);
+  const free: string[] = [];
+  const seen = new Set<string>();
+  // From what they typed, then the pool, then numbered pool names.
+  const order = opts.wanted ? [...mine.slice(0, Math.min(2, count)), ...pool, ...mine.slice(2), ...poolNumbered] : [...pool, ...poolNumbered];
+  for (const n of order) {
+    const k = nameKey(n);
+    if (seen.has(k) || taken.has(k) || nameProblem(n)) continue;
+    seen.add(k);
+    free.push(n);
+    if (free.length === count) break;
+  }
+  return free;
+}
+
+/** True when a database error is the unique name index refusing a name someone just took. */
+export const isNameClash = (err: unknown) => /UNIQUE constraint failed: players\.name_key/.test(String((err as Error)?.message ?? err));

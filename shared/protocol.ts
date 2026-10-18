@@ -11,8 +11,10 @@ import type { StateCode } from './places';
 import type { Cell, Hist, Mark } from './rules';
 import type { StakeBack } from './stakes';
 
-export const NAME_MIN = 2;
+/** Names are 3 to 16 letters, numbers and single spaces (Yves, 17 October 2026; it was 2). */
+export const NAME_MIN = 3;
 export const NAME_MAX = 16;
+export const NAME_RULE = `Names are ${NAME_MIN} to ${NAME_MAX} letters or numbers.`;
 
 /** A quick match where the other player never connects is called off after this long. */
 export const ABANDON_MS = 20_000;
@@ -49,7 +51,8 @@ export const BOT = {
 } as const;
 
 /** Lines a player can send during a match. The server only passes on these. */
-export const EMOTES = ['Gbam!', 'Haba!', 'Oya nau', 'Shine your eye', 'You too much', 'No rage bait me'] as const;
+/** Quick messages players send each other in a match: half plain, half the best-known three (Yves, 17 October 2026). */
+export const EMOTES = ['Good game', 'Nice one', 'Your move', 'Gbam!', 'Haba!', 'No rage bait me'] as const;
 
 export interface Profile {
   id: string;
@@ -81,6 +84,12 @@ export interface Profile {
   saved: boolean;
   /** Banned: no play against people, no Ranks or leagues. Baba Ayo still works (worker/admin.ts). */
   ban: { at: number; reason: string } | null;
+  /**
+   * Ask the player to pick their name (Yves, 17 October 2026): 'new' after their first match,
+   * when the name is still the one the game picked; 'taken' when another player had it first
+   * and the game added a number. Null once they've chosen.
+   */
+  nameAsk: 'new' | 'taken' | null;
 }
 
 /** How a player signs in. */

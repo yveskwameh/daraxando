@@ -5,26 +5,27 @@
  *    their streak ends at midnight (no Streak Freeze left to cover it). At most one a day.
  *  - A friend joined your room: straight away, only when the host isn't in the app.
  *
- * The lines are Baba Ayo's, in Pidgin like other game moments: what's at stake, then the one
- * quick thing that fixes it. Insults, shame and anything about money stay out. Any new Yoruba,
+ * The streak reminder is Baba Ayo's, in his light Pidgin (Yves, 17 October 2026,
+ * docs/COPY-PASS.md): what's at stake, then the one quick thing that fixes it. "Friend joined"
+ * comes from Dara X&O, so it's plain. Insults, shame and anything about money stay out. Any new Yoruba,
  * Igbo or Hausa word goes to the native speaker first.
  */
 
 /** 7 pm in Lagos is 18:00 UTC (Lagos doesn't change its clocks). The cron in wrangler.jsonc matches. */
 export const REMINDER_HOUR_LAGOS = 19;
 
-/** The streak reminder. {n} is the streak in days. */
+/** The streak reminder. {n} is the streak in days; {days} is the same with "day" or "days" after it. */
 export const BABA_PUSH = [
-  'Your {n}-day streak go end for midnight o. One quick match go save am.',
-  '{n} days no be small thing. Play one match before midnight make e no cut.',
-  'Oya, your {n}-day streak dey wait you. One match before midnight, e still dey.',
-  'No let {n} days waste o. Just one match tonight and your streak still dey.',
+  'Your {n}-day streak ends at midnight o. One quick match saves it.',
+  "{days} is no small thing. Play one match before midnight so it doesn't break.",
+  'Oya, your {n}-day streak is waiting. One match before midnight keeps it.',
+  "Don't let {days} go to waste o. One match tonight keeps your streak.",
 ] as const;
 
 /** A friend joined the room you made. {name} is the friend. */
 export const FRIEND_PUSH = [
-  '{name} don enter your room. Oya, come play!',
-  '{name} dey wait you for your room. Oya, come!',
+  '{name} joined your room. Come and play.',
+  '{name} is waiting in your room.',
 ] as const;
 
 /**

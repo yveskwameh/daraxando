@@ -1,5 +1,5 @@
 /**
- * Choices that live on this phone only: the mode on the deck, the last stake, and the
+ * Choices that live on this phone only: the game picked on Home, the last stake, and the
  * music, sound and vibration switches. A tiny store any component can read with usePrefs().
  */
 import { useSyncExternalStore } from 'react';

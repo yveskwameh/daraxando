@@ -484,7 +484,7 @@ export async function sendEmail(env: Env, to: string | string[], mail: Email, ke
       method: 'POST',
       headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json', 'idempotency-key': key },
       body: JSON.stringify({
-        from: env.EMAIL_FROM ?? '"Dara X&O" <code@noreply.daraxando.yveskwameh.com>',
+        from: env.EMAIL_FROM ?? '"Dara X&O" <admin@noreply.daraxando.yveskwameh.com>',
         to: Array.isArray(to) ? to : [to],
         subject: mail.subject,
         html: mail.html,

@@ -30,7 +30,7 @@ export function inviteText(code: string, stake: number) {
   const url = `${location.origin}/play/${code}`;
   return {
     url,
-    text: `Oya, play me on Dara X&O. Code ${code}${stake ? `, stake ${fmt(stake)} Dara Seeds` : ''}.`,
+    text: `Play me on Dara X&O. Code ${code}${stake ? `, stake ${fmt(stake)} Dara Seeds` : ''}.`,
   };
 }
 

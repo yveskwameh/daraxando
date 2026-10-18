@@ -5,8 +5,11 @@ import type { FriendsData, LeaderRow, LeagueData, LiveGame, Profile } from '../.
 import { deviceId } from './device';
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  /** Free names, when the server says a name is taken. */
+  ideas?: string[];
+  constructor(public status: number, message: string, ideas?: string[]) {
     super(message);
+    this.ideas = ideas;
   }
 }
 
@@ -25,7 +28,7 @@ export async function call<T>(path: string, token: string | null, init: RequestI
     throw new ApiError(0, 'You look offline. Check your connection and try again.');
   }
   const text = await res.text().catch(() => '');
-  let data = {} as T & { error?: string };
+  let data = {} as T & { error?: string; ideas?: string[] };
   let json = true;
   try {
     data = JSON.parse(text);
@@ -35,7 +38,7 @@ export async function call<T>(path: string, token: string | null, init: RequestI
   if (!res.ok) {
     // Cloudflare's own page, not ours: the free plan's daily limit (error 1027). See docs/BACKEND.md.
     if (!json && (res.status === 429 || text.includes('1027'))) throw new ApiError(RESTING, restingMessage());
-    throw new ApiError(res.status, data.error ?? 'The server did not answer. Try again.');
+    throw new ApiError(res.status, data.error ?? 'The server did not answer. Try again.', Array.isArray(data.ideas) ? data.ideas : undefined);
   }
   return data;
 }
@@ -64,7 +67,7 @@ export interface RoomPeek {
 }
 
 export const api = {
-  createPlayer: (p: { name: string; avatar: string; state: StateCode; age: boolean; terms: string }) =>
+  createPlayer: (p: { name: string; avatar: string; state: StateCode; age: boolean; terms: string; auto?: boolean }) =>
     call<{ token: string; profile: Profile }>('/api/session', null, { ...post(p), headers: { 'x-device': deviceId() } }),
 
   where: () => call<{ state: StateCode | null }>('/api/where', null),
@@ -76,6 +79,11 @@ export const api = {
   me: (token: string) => call<{ profile: Profile }>('/api/me', token),
 
   updateMe: (token: string, patch: ProfilePatch) => call<{ profile: Profile }>('/api/me', token, post(patch, 'PATCH')),
+  /** Is this name free? With ideas when it isn't. */
+  checkName: (token: string, name: string) =>
+    call<{ ok: boolean; message?: string; ideas?: string[] }>(`/api/names?check=${encodeURIComponent(name)}`, token),
+  /** A few names nobody has. */
+  nameIdeas: (token: string) => call<{ ideas: string[] }>('/api/names', token),
 
   sapa: (token: string) => call<{ profile: Profile }>('/api/wallet/sapa', token, post({})),
 

@@ -192,6 +192,8 @@ function League({ go }: { go: Go }) {
         <Icon id="i-shield" className="lg-ic" />
         <div>
           <b>{name} League</b>
+          {/* The landmark names stay, with the tier in plain words (Yves, 17 October 2026). */}
+          <small className="tier">League {data.tier + 1} of {LEAGUES.length}</small>
           <span>Ends in {until(data.endsAt)} · {rule}</span>
         </div>
       </div>

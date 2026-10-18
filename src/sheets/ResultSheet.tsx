@@ -35,12 +35,6 @@ interface Props {
 }
 
 /** What each game is, in a few words, so nobody has to guess. */
-const MODE_HINT: Record<ModeId, string> = {
-  classic: '3×3, three in a row',
-  fading: '3×3, oldest piece vanishes',
-  big: '5×5, four in a row',
-  pro: '7×7, five in a row',
-};
 const LEVEL_HINT: Record<BotLevel, string> = { jeje: 'Easy', sharp: 'Medium', agba: 'Hard' };
 
 /** "Big · Stake 500" or "Classic · No stake". */
@@ -136,12 +130,12 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
   }
 
   let title: string;
-  if (s?.reason === 'abandon') title = won ? 'Your opponent don japa. You win.' : 'You left, so they take it.';
+  if (s?.reason === 'abandon') title = won ? `${opp.name} left. You win.` : 'You left, so they take it.';
   else if (s?.reason === 'idle') title = won ? `${opp.name} didn't start the next game. You take it.` : "You didn't start the next game in time, so they take it.";
   else if (s?.reason === 'resign') title = won ? `${opp.name} left. You take it.` : 'You left, so they take it.';
-  else if (won) title = single ? 'Gbam! You win.' : `E choke! You take it ${a} to ${b}.`;
-  else if (lost) title = single ? `Chai. ${bot ? 'Baba Ayo' : 'They'} got this one.` : `Chai. ${bot ? 'Baba Ayo takes' : 'They take'} it ${b} to ${a}.`;
-  else title = single ? 'Draw. Notin spoil.' : `Level, ${a} to ${b}. Notin spoil.`;
+  else if (won) title = single ? 'You win.' : `You win the match, ${a} to ${b}.`;
+  else if (lost) title = single ? `${opp.name} wins this one.` : `${opp.name} wins the match, ${b} to ${a}.`;
+  else title = single ? 'Draw.' : `Level, ${a} to ${b}. Nobody wins.`;
 
   const cw = reward ? reward.cowries : null;
   // A farming rule sent both stakes back (shared/stakes.ts): the win counts, the seeds don't move.
@@ -169,7 +163,7 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
   return (
     <>
       <div className="result-head">
-        <span className="kicker">{won ? 'Odogwu' : lost ? 'Shikena' : 'Gbas gbos'}</span>
+        <span className="kicker">{MODES[v.mode].name} · {seriesLabel(v.bo)}</span>
         <p className="big">{title}</p>
       </div>
 
@@ -236,7 +230,7 @@ function Result({ open, view: v, me, opp, reward, notice, onRematch, onNew, onHo
               ? 'You beat Baba Ayo. Now take on players across Nigeria.'
               : v.first
                 ? 'Baba Ayo says: again? One game, you start.'
-                : bot ? 'Baba Ayo says: again?' : lost ? 'Run it back?' : `${opp.name} says: no rage bait me. Rematch?`}
+                : bot ? 'Baba Ayo says: again?' : 'Rematch?'}
           </p>
         )
       )}
@@ -308,7 +302,7 @@ function ChangeRematch({ view: v, opp, onAsk, onBack }: Props & { onAsk: (ask: R
         {MODE_IDS.map((id) => (
           <button key={id} type="button" className="pick" aria-pressed={id === mode} onClick={() => { buzz('tap'); setMode(id); }}>
             <b>{MODES[id].name}</b>
-            <span>{MODE_HINT[id]}</span>
+            <span>{MODES[id].hint}</span>
             <span>{seriesLabel(MODES[id].bo)}</span>
           </button>
         ))}

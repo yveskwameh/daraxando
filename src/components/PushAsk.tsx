@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { pushPrefs, setPush, type PushKind } from '../lib/push';
 import { toast } from '../lib/toast';
 import { Icon } from './art';
+import { TopPop } from './TopPop';
 
 const DONE: Record<PushKind, string> = {
   streak: 'Streak reminders are on.',
@@ -24,11 +25,11 @@ export function PushAsk({ kind, title, line, token, onDone }: { kind: PushKind; 
     onDone();
   };
   return (
-    <div className="install-pop push-pop" role="alertdialog" aria-label={title}>
+    <TopPop className="push-pop" role="alertdialog" label={title} onHide={onDone}>
       <span className="push-ic"><Icon id="i-bell" className="" /></span>
       <div><b>{title}</b><span>{line}</span></div>
       <button type="button" className="mini-btn" disabled={busy} onClick={turnOn}>Turn on</button>
       <button type="button" className="x-btn" aria-label="Not now" onClick={onDone}><Icon id="i-close" className="" /></button>
-    </div>
+    </TopPop>
   );
 }

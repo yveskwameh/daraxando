@@ -14,6 +14,8 @@ import type { BotLevel } from './bot';
 /* ------------------------------------------------------------------ days */
 
 const DAY_MS = 86_400_000;
+/** "1 day", "2 days": a count of days in a sentence (Yves, 17 October 2026: never "1 days"). */
+export const nDays = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`;
 /** Whole days from a to b. "2026-10-14" to "2026-10-15" is 1. */
 export const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / DAY_MS);
 export const addDays = (day: string, n: number) => new Date(Date.parse(day) + n * DAY_MS).toISOString().slice(0, 10);

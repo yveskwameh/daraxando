@@ -21,7 +21,7 @@ interface SessionValue {
    * Makes a new player. `first` runs with their token before the app switches over, so the
    * first screen they see can already be their first game.
    */
-  start: (p: { name: string; avatar: string; state: StateCode }, first?: (token: string) => Promise<void>) => Promise<void>;
+  start: (p: { name: string; avatar: string; state: StateCode; auto?: boolean }, first?: (token: string) => Promise<void>) => Promise<void>;
   refresh: () => Promise<void>;
   setProfile: (p: Profile) => void;
   /** Changes your profile straight away, then saves it. Puts it back if saving fails. */
@@ -92,7 +92,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
   }, [token, attempt]);
 
-  const start = useCallback(async (p: { name: string; avatar: string; state: StateCode }, first?: (token: string) => Promise<void>) => {
+  const start = useCallback(async (p: { name: string; avatar: string; state: StateCode; auto?: boolean }, first?: (token: string) => Promise<void>) => {
     const res = await api.createPlayer({ ...p, age: true, terms: TERMS_VERSION });
     store.set(KEYS.token, res.token);
     // If the first game can't be set up, they still land on Home, signed in.

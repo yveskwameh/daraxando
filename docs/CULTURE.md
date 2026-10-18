@@ -84,28 +84,15 @@ Left out on purpose: the leopard (the Ekpe society's emblem), monkeys and gorill
 
 ## Voice: game moments
 
-The game speaks Pidgin and English as its base, then rotates in Yoruba, Igbo and Hausa words. Instructions and settings stay in plain standard English, so nobody is ever confused about what a button does. The flavour lives in game moments.
+**Changed on 17 October 2026** (Yves: the Nigerian vibe was too much; cut it down without stripping it out). The approved wording, row by row, is `docs/COPY-PASS.md`. Now:
 
-| Moment | Line | Meaning |
-| --- | --- | --- |
-| Your move | "Oya, your move" | Let's go |
-| Timer low | "Sharp sharp!" | Quickly |
-| Waiting for opponent | "Jeje, e dey come" | Gently, it's coming |
-| Opponent can win next move | "Shine your eye" | Be careful |
-| Your line gets blocked | "Haba!" (Hausa) | Come on now |
-| Win | "Gbam!" or "Yawwa!" (Hausa) | Exactly / bravo |
-| Series win | "E choke!", title "Odogwu" (Igbo) | Overwhelming / champion |
-| Level up | "Jisi ike" (Igbo) | Keep it up |
-| Loss | "Chai!", then "Ndo" (Igbo) or "Sannu" (Hausa) | Disappointment, then sorry |
-| After a loss | "We move" | On to the next |
-| Draw | "Notin spoil" | All is well |
-| Close game | "Gbas gbos!" | Back and forth |
-| Opponent left | "Your opponent don japa" | They ran |
-| Timeout | "Otilo!" | It's gone |
-| Rematch taunt | "No rage bait me" | Don't provoke me. From Trench Boy's skits, viral since late September 2026. Rotate it out by early 2027 |
-| Game over stamp | "Shikena" (Hausa) | That's it |
+- **Match text is plain** ("Your move. Place your drum.", "Their move", "They blocked you.", "THEY WIN", "DRAW"), with **one fun line on wins**: the stamp when you win a game is one of GBAM!, ODOGWU! or E CHOKE!, picked at random.
+- **Baba Ayo keeps a light Pidgin voice in his own lines only**: his chat in games against him (`worker/baba.ts`), his nudges and leave lines (`shared/nudges.ts`) and the 7 pm reminder (`shared/notify.ts`). English anyone reads at a glance, with his "o", "abeg", "Haba", "Oya", "Notin spoil", "Shikena", "Yawwa", "Odogwu" and "You too much". Words most players would have to look up (Jeje in a sentence, Jisi ike, Ndo, Gbas gbos) are gone from his lines.
+- **Quick messages players send each other**: Good game, Nice one, Your move, Gbam!, Haba!, No rage bait me ("No rage bait me" is from Trench Boy's skits, viral since late September 2026; rotate it out by early 2027).
+- Instructions, labels, settings and the notification "friend joined your room" are plain standard English. "Sapa relief" in the wallet is now "Free top-up".
+- Unchanged: the titles, Baba Ayo's levels (Jeje, Sharp-sharp, Agba), the animals, pieces and prints with their names, places and the music.
 
-Baba Ayo's own lines are in `worker/baba.ts`. The game moments above are in `src/screens/Game.tsx` and `src/sheets/ResultSheet.tsx`.
+Words still in use and what they mean: Oya (let's go), Haba (come on now, Hausa), Gbam (exactly), Yawwa (bravo, Hausa), E choke (overwhelming), Odogwu (champion, Igbo), Notin spoil (all is well), Shikena (that's it, Hausa), Shine your eye (be careful), abeg (please), "o" (emphasis). No new Yoruba, Igbo or Hausa word may be added without the native speaker's check.
 
 Never use: insults aimed at the player (werey, mumu, olodo, ode), vulgar words (shege, waaka), political slogans (emi lo kan, obidient, soro soke, no gree for anybody), religious phrases (wallahi, God when, inshallah), "aboki" (widely heard as a slur), and phrases tied to artists in controversy.
 

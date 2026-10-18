@@ -1,4 +1,4 @@
-/** "Gbas gbos!" Who you're up against, and the pot if there is one. Shown as a match begins. */
+/** Who you're up against, and the pot if there is one. Shown as a match begins. */
 import { m } from 'motion/react';
 import { stateName } from '../../shared/places';
 import type { SeatView } from '../../shared/protocol';
@@ -12,7 +12,7 @@ export function VsSplash({ me, opp, stake, friend }: { me: SeatView; opp: SeatVi
         <Avatar avatar={me.avatar} print={me.print} size={64} />
         <div><b>{me.name}</b><span>{stateName(me.state)}</span></div>
       </div>
-      <div className="vs-word">Gbas gbos!</div>
+      <div className="vs-word">VS</div>
       {stake > 0 && <div className="pot"><Icon id="i-seed" className="" />Pot {fmt(stake * 2)}</div>}
       <div className="vs-card op">
         <Avatar avatar={opp.avatar} print={opp.print} size={64} />

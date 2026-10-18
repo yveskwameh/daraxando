@@ -103,7 +103,7 @@ describe('which push addresses the server will call', () => {
 describe('notification copy', () => {
   it('keeps every line short, with the numbers and names filled in', () => {
     for (const l of BABA_PUSH) {
-      expect(l).toContain('{n}');
+      expect(l).toMatch(/\{n\}|\{days\}/);
       expect(l.length).toBeLessThanOrEqual(90);
     }
     for (const l of FRIEND_PUSH) expect(l).toContain('{name}');

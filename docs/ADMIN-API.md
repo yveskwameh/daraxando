@@ -95,7 +95,7 @@ Each of these answers with the player's summary after the change (`{ "player": {
 
 | Request | Body | What it does |
 | --- | --- | --- |
-| `POST /api/admin/players/<id>/rename` | `{ "name": "Player 4021" }` | Renames them. The same rules as in the game: 2 to 16 letters or numbers, no rude or reserved names |
+| `POST /api/admin/players/<id>/rename` | `{ "name": "Player 4021" }` | Renames them. The same rules as in the game: 3 to 16 letters or numbers, no rude or reserved names, and not a name another player has (409 "Another player has that name"). The player isn't asked to pick again afterwards. |
 | `POST /api/admin/players/<id>/ban` | `{ "reason": "Rude names, reported three times." }` | Bans them: no play against people, off Ranks and leagues, Baba Ayo still works. The player sees the reason, so write it to them (3 to 200 characters). Banning again replaces the reason |
 | `POST /api/admin/players/<id>/unban` | none | Lifts the ban, and answers any open review request as lifted. 409 if they aren't banned |
 | `POST /api/admin/players/<id>/seeds` | `{ "amount": 1000, "reason": "Stake lost to a server fault" }` | Adds seeds, or takes them with a negative amount. A whole number up to 1,000,000 either way, never 0, with a reason. 409 if it would take them below 0. Written to the ledger as `admin` |

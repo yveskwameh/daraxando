@@ -153,7 +153,7 @@ The same study credits Duolingo with good patterns too: clear buttons, notificat
 
 - Day streak on Home.
 - Daily goal: win 3 today, +50 Aura.
-- +500 Dara Seeds for the first match each day, and Sapa relief.
+- +500 Dara Seeds for the first match each day, and the free top-up (once "Sapa relief").
 - Aura and levels, with 32 unlocks (avatars, prints, pieces) and the next unlock shown after each match.
 - Ranks by state and for all of Nigeria.
 - Rematch first, the Next game sheet, and friend rooms with share links.

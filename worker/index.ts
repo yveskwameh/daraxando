@@ -10,7 +10,7 @@ import { isStateCode, zoneOf } from '../shared/places';
 import { dayKey } from '../shared/progression';
 import { TERMS_VERSION } from '../shared/legal';
 import {
-  CLOSE, CODE_ALPHABET, CODE_LENGTH, cleanName, isMatchId, isRoomCode, type LiveGame, type Profile, type PublicPlayer,
+  CLOSE, CODE_ALPHABET, CODE_LENGTH, cleanName, isMatchId, NAME_RULE, isRoomCode, type LiveGame, type Profile, type PublicPlayer,
 } from '../shared/protocol';
 import { fmt, isFriendTable, isTable, sapaReady, tableLock } from '../shared/stakes';
 import { accountOf, authRoute, deleteAccount } from './accounts';
@@ -22,7 +22,7 @@ import { askFriend, buyFreeze, dropFriend, friendsOf, leagueFor, placeBet, resto
 import { randomId } from './matchmaker';
 import { adminRoute } from './admin';
 import { pushEndpointOk, pushReady, sendPush } from './push';
-import { NAME_PROBLEM_MESSAGE, nameProblem } from './names';
+import { freeNames, isNameClash, NAME_PROBLEM_MESSAGE, NAME_TAKEN_MESSAGE, nameKey, nameProblem, takenNames } from './names';
 import { appealOf, askReview, BANNED_MESSAGE, deviceOf, isBanned } from './safety';
 import { bump, isPushFrom, STAT } from './stats';
 import { REPORT_CRON, sendReport } from './report';
@@ -60,13 +60,18 @@ function forward(req: Request, stub: { fetch(r: Request): Promise<Response> }, p
   return stub.fetch(new Request(req.url, { method: 'GET', headers }));
 }
 
+/** "That name is taken", with three names nobody has. */
+async function taken(db: D1Database, name: string, exceptId?: string) {
+  return json({ error: NAME_TAKEN_MESSAGE, ideas: await freeNames(db, 3, { wanted: name, exceptId }) }, 409);
+}
+
 /** Checks a profile change against the player's level. Returns an error message, or the clean patch. */
 function checkPatch(me: Profile | null, b: Partial<Record<keyof ProfilePatch, unknown>>): string | ProfilePatch {
   const level = me?.level ?? 1;
   const patch: ProfilePatch = {};
   if (b.name !== undefined) {
     const name = cleanName(b.name);
-    if (!name) return 'Names are 2 to 16 letters or numbers.';
+    if (!name) return NAME_RULE;
     const problem = nameProblem(name);
     if (problem) return NAME_PROBLEM_MESSAGE[problem];
     patch.name = name;
@@ -105,17 +110,32 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     if (env.IP_LIMITER && !(await env.IP_LIMITER.limit({ key: `ip:${ip}` })).success) {
       return fail(429, 'Lots of new players on your network. Wait a minute.');
     }
-    const b = await body<{ name: string; avatar: string; state: string; age: boolean; terms: string }>(req);
+    const b = await body<{ name: string; avatar: string; state: string; age: boolean; terms: string; auto: boolean }>(req);
     if (b.age !== true) return fail(400, 'Dara X&O is for players aged 13 and up.');
     // Tapping Play now accepts the terms on screen, and that version is kept as the record.
     if (b.terms !== TERMS_VERSION) return fail(409, 'The terms have changed. Close the app, open it again, then tap Play now.');
     const checked = checkPatch(null, { name: b.name, avatar: b.avatar, state: b.state });
     if (typeof checked === 'string') return fail(400, checked);
     if (!checked.name || !checked.avatar || !checked.state) return fail(400, 'Pick a name, an avatar and your state.');
-    const profile = await createPlayer(env.DB, {
-      name: checked.name, avatar: checked.avatar, state: checked.state as Profile['state'], device: await deviceOf(req, env), terms: TERMS_VERSION,
-    });
-    return json({ token: await signToken(profile.id, secretOf(env)), profile });
+    // Names are unique, and the first screen stays one tap: a taken name gets a number ("Durbar
+    // Queen 7") instead of an error. The game's own pick (`auto`) is asked about after the first
+    // match; a name they typed is theirs, unless it had to get a number, and then Home asks too.
+    let name = checked.name;
+    let nameSet: 0 | 1 | 2 = b.auto === true ? 0 : 1;
+    const phone = await deviceOf(req, env);
+    for (let tries = 0; ; tries++) {
+      if ((await takenNames(env.DB, [name])).size) {
+        name = (await freeNames(env.DB, 1, { wanted: checked.name }))[0] ?? name;
+        if (nameSet === 1) nameSet = 2;
+      }
+      try {
+        const profile = await createPlayer(env.DB, { name, nameSet, avatar: checked.avatar, state: checked.state as Profile['state'], device: phone, terms: TERMS_VERSION });
+        return json({ token: await signToken(profile.id, secretOf(env)), profile });
+      } catch (err) {
+        // Someone took it in the same moment.
+        if (!isNameClash(err) || tries >= 2) throw err;
+      }
+    }
   }
 
   /* --- Ranks (cached at the edge for 20 seconds, then personalised) --- */
@@ -197,7 +217,28 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   if (path === '/api/me' && method === 'PATCH') {
     const checked = checkPatch(me, await body<ProfilePatch>(req));
     if (typeof checked === 'string') return fail(400, checked);
-    return json({ profile: await updatePlayer(env.DB, me.id, checked) });
+    if (checked.name && (await takenNames(env.DB, [checked.name], me.id)).size) return taken(env.DB, checked.name, me.id);
+    try {
+      return json({ profile: await updatePlayer(env.DB, me.id, checked) });
+    } catch (err) {
+      if (checked.name && isNameClash(err)) return taken(env.DB, checked.name, me.id);
+      throw err;
+    }
+  }
+
+  /* --- names: is this one free, and some free ideas (the name editor checks as you type) --- */
+  if (path === '/api/names' && method === 'GET') {
+    if (env.PEEK_LIMITER && !(await env.PEEK_LIMITER.limit({ key: `name:${me.id}` })).success) return fail(429, 'Slow down a little, then try again.');
+    const raw = url.searchParams.get('check');
+    if (raw === null) return json({ ideas: await freeNames(env.DB, 4, { exceptId: me.id }) });
+    const name = cleanName(raw);
+    if (!name) return json({ ok: false, message: NAME_RULE });
+    const problem = nameProblem(name);
+    if (problem) return json({ ok: false, message: NAME_PROBLEM_MESSAGE[problem] });
+    if (nameKey(name) !== nameKey(me.name) && (await takenNames(env.DB, [name], me.id)).size) {
+      return json({ ok: false, message: NAME_TAKEN_MESSAGE, ideas: await freeNames(env.DB, 3, { wanted: name, exceptId: me.id }) });
+    }
+    return json({ ok: true });
   }
 
   /* --- a banned player asking for a ban review, and seeing the answer --- */
@@ -254,9 +295,9 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
 
   /* --- Sapa relief: a free top-up when you're nearly out --- */
   if (path === '/api/wallet/sapa' && method === 'POST') {
-    if (!sapaReady(me.cowries, me.sapaAt, now)) return fail(409, 'Sapa relief is for balances under 500, once every 4 hours.');
+    if (!sapaReady(me.cowries, me.sapaAt, now)) return fail(409, 'Free top-ups are for balances under 500, once every 4 hours.');
     const profile = await claimSapa(env.DB, me.id, now);
-    return profile ? json({ profile }) : fail(409, 'Sapa relief is for balances under 500, once every 4 hours.');
+    return profile ? json({ profile }) : fail(409, 'Free top-ups are for balances under 500, once every 4 hours.');
   }
 
   /* --- play a friend: make a room with a short code --- */

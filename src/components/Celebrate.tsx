@@ -95,7 +95,7 @@ function StreakStep({ o, habits }: { o: HabitOutcome; habits: Habits }) {
     return () => clearTimeout(t);
   }, [o.streak]);
   let line: string;
-  if (o.milestone) line = `Gbam! ${o.milestone.days}-day streak. +${o.milestone.aura} Aura${o.milestone.freeze ? ' and a free Streak Freeze' : ''}.`;
+  if (o.milestone) line = `${o.milestone.days}-day streak. +${o.milestone.aura} Aura${o.milestone.freeze ? ' and a free Streak Freeze' : ''}.`;
   else if (o.broke) line = `Your ${o.broke}-day streak ended, so this is day 1. You can restore the old one from your streak for a few days.`;
   else if (o.streak === 1) line = 'Day 1. Play tomorrow to make it 2.';
   else line = `Play tomorrow to make it ${o.streak + 1}.`;
