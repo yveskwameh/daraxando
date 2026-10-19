@@ -84,8 +84,11 @@ export interface Profile {
   habits: Habits;
   /** Google or an email is linked, so the player can sign in on any phone (worker/accounts.ts). */
   saved: boolean;
-  /** Banned: no play against people, no Ranks or leagues. Baba Ayo still works (worker/admin.ts). */
-  ban: { at: number; reason: string } | null;
+  /**
+   * Banned: no play against people, no Ranks or leagues. Baba Ayo still works (worker/admin.ts).
+   * `until` is when a timed ban ends by itself, or null for a ban that lasts until it's lifted.
+   */
+  ban: { at: number; reason: string; until?: number | null } | null;
   /**
    * Ask the player to pick their name (Yves, 17 October 2026): 'new' after their first match,
    * when the name is still the one the game picked; 'taken' when another player had it first

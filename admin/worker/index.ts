@@ -26,6 +26,10 @@ type Copy = 'live' | 'test';
 
 /** The admin API routes the dashboard may use: [method, path after /api/admin/]. */
 const ROUTES: [string, RegExp][] = [
+  ['GET', /^info$/],
+  ['GET', /^players\/(list|counts)$/],
+  ['GET', /^now$/],
+  ['GET', /^(traffic|retention|first-days)$/],
   ['GET', /^stats$/],
   ['GET', /^report$/],
   ['POST', /^report$/],
@@ -77,6 +81,29 @@ export function keepFor(day: string, today: string, report: { usage?: { problems
   const yesterday = lagosDay(Date.parse(`${today}T12:00:00Z`) - 3_600_000 - DAY_MS);
   if (day >= yesterday || !report.usage || report.usage.problems?.length) return 600;
   return 30 * 86_400;
+}
+
+/**
+ * Views that change slowly are kept in Cloudflare's cache for a few minutes (seconds here), so
+ * opening the dashboard again doesn't read every player again. Live now is never kept.
+ */
+const KEEP: Record<string, number> = { 'players/counts': 60, retention: 600, 'first-days': 600 };
+/**
+ * How long a traffic view is kept: a minute for the last hours or since a time, so a link just
+ * shared shows up quickly, and 10 minutes for whole days.
+ */
+export const keepTraffic = (search: string) => (new URLSearchParams(search).has('days') ? 600 : 60);
+
+async function cached(env: Env, copy: Copy, rest: string, search: string, seconds: number) {
+  const cache = typeof caches === 'undefined' ? null : caches.default;
+  const key = new Request(`https://daraxando-admin.cache/${copy}/${rest}${search}`);
+  const hit = cache ? await cache.match(key) : undefined;
+  const headers = { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' };
+  if (hit) return new Response(hit.body, { status: 200, headers });
+  const res = await callGame(env, copy, rest, { method: 'GET', search });
+  const text = await res.text();
+  if (res.ok && cache) await cache.put(key, new Response(text, { headers: { 'content-type': 'application/json', 'cache-control': `public, max-age=${seconds}` } }));
+  return new Response(text, { status: res.status, headers });
 }
 
 /** The days from `end` back, oldest first. */
@@ -163,6 +190,8 @@ export default {
       if (!keyFor(env, copy)) return fail(409, `The ${copy} game's admin key isn't saved on the dashboard yet (admin/README.md).`);
       if (rest === 'range' && req.method === 'GET') return range(env, copy, url);
       if (!ROUTES.some(([m, re]) => m === req.method && re.test(rest))) return fail(404, 'not found');
+      const keep = req.method !== 'GET' ? undefined : rest === 'traffic' ? keepTraffic(url.search) : KEEP[rest];
+      if (keep) return cached(env, copy, rest, url.search, keep);
       const res = await callGame(env, copy, rest, { method: req.method, search: url.search, body: req.method === 'POST' ? await req.text() : undefined });
       const type = res.headers.get('content-type') ?? 'application/json';
       const headers: Record<string, string> = { 'content-type': type, 'cache-control': 'no-store', 'x-robots-tag': 'noindex', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' };

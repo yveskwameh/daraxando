@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useApp } from '../App.tsx';
 import { api } from '../api.ts';
 import type { Appeal } from '../types.ts';
-import { Button, Empty, Field, go, Loading, Problem, toast, useLoad } from '../ui.tsx';
+import { Button, Empty, Field, go, Problem, Skeleton, toast, useLoad } from '../ui.tsx';
 import { when } from '../format.ts';
 
 export function Reviews() {
@@ -19,18 +19,18 @@ export function Reviews() {
         <h1>Ban reviews</h1>
         <p className="muted">Banned players can ask you to look at their ban again, once at a time, and again a week after you keep it.</p>
       </div>
-      <div className="seg wide" role="radiogroup" aria-label="Which reviews">
+      <div className="seg wide fit" role="radiogroup" aria-label="Which reviews">
         <button type="button" role="radio" aria-checked={show === 'open'} onClick={() => setShow('open')}>Waiting</button>
         <button type="button" role="radio" aria-checked={show === 'all'} onClick={() => setShow('all')}>Answered</button>
       </div>
       {list.error ? (
         <Problem text={list.error} onRetry={list.reload} />
       ) : !list.data ? (
-        <Loading />
+        <Skeleton kind="cards" rows={2} />
       ) : items.length === 0 ? (
         <Empty title={show === 'open' ? 'Nothing waiting.' : 'No answered reviews yet.'} text={show === 'open' ? 'When a banned player asks, it shows here.' : undefined} />
       ) : (
-        <ul className="list gap">
+        <ul className="list gap review-list">
           {items.map((a) => <Review key={a.id} a={a} onDone={list.reload} />)}
         </ul>
       )}

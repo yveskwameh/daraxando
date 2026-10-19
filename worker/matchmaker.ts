@@ -204,6 +204,17 @@ export class Matchmaker extends DurableObject<Env> {
     return { games, looking: looking.size - (looking.has(viewer) ? 1 : 0) };
   }
 
+  /**
+   * Right now, for the admin dashboard's Live now card: players with Home open (each counted
+   * once, however many tabs), how many of them have the Quick match sheet open, and players
+   * waiting in a game of their own. Players in a match aren't on Home, so they aren't here.
+   */
+  async now(): Promise<{ home: number; looking: number; waiting: number }> {
+    const home = new Set(this.watchers().map((x) => x.w.id));
+    const waiting = new Set(this.waiting().map((x) => x.t.id));
+    return { home: home.size, looking: this.lookingIds().size, waiting: waiting.size };
+  }
+
   /** Adds to the game numbers (worker/stats.ts) without holding anyone up. A failure only loses a count. */
   private count(items: [string, number][]) {
     if (!items.length) return;

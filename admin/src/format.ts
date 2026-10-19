@@ -27,3 +27,16 @@ export function dayName(day: string, today = lagosDay()) {
   if (day === addDays(today, -1)) return 'Yesterday';
   return shortDay(day);
 }
+
+/** When a player last played, from a Lagos day: "Today", "Yesterday", "3 days ago" or "12 Oct". */
+export function lastPlayed(day: string | null | undefined, today = lagosDay()) {
+  if (!day) return null;
+  const n = Math.round((Date.parse(`${today}T12:00:00Z`) - Date.parse(`${day}T12:00:00Z`)) / 86_400_000);
+  if (n <= 0) return 'Today';
+  if (n === 1) return 'Yesterday';
+  if (n < 7) return `${n} days ago`;
+  return new Date(`${day}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+}
+
+/** "26 Oct" in Lagos time, for when a timed ban ends. */
+export const shortDate = (ms: number) => new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Africa/Lagos' });

@@ -16,6 +16,7 @@ import { addDays } from '../shared/habits';
 import { MODES, type ModeId } from '../shared/modes';
 import { dayKey } from '../shared/progression';
 import { KEEP_CODES_MS, sendEmail, type Sent } from './accounts';
+import { liftEndedBans } from './db';
 import type { Email } from './email';
 import type { Env } from './env';
 import { PUSH_FROM, STAT, WAIT_BUCKETS, type PushFrom } from './stats';
@@ -246,7 +247,7 @@ function cohort(db: D1Database, joined: string, later: string) {
 
 /* ---------- the free plan, from Cloudflare's GraphQL Analytics API ---------- */
 
-const GRAPHQL = 'https://api.cloudflare.com/client/v4/graphql';
+export const GRAPHQL = 'https://api.cloudflare.com/client/v4/graphql';
 
 export const usageReady = (env: Env) => !!(env.CF_ACCOUNT_ID && env.CF_ANALYTICS_TOKEN);
 
@@ -606,6 +607,8 @@ export async function sendReport(env: Env, opts: { day?: string; force?: boolean
       env.DB.prepare('DELETE FROM email_codes WHERE created_at < ?').bind(now - KEEP_CODES_MS),
       env.DB.prepare('DELETE FROM auth_handoffs WHERE expires_at < ?').bind(now),
     ]).catch((err) => console.error('[tidy]', err));
+    // Timed bans that ended for players who haven't opened the game since (migrations/0012_admin.sql).
+    await liftEndedBans(env.DB, now);
   }
   if (!to.length) return { sent: 'off', day };
   if (!opts.force) {

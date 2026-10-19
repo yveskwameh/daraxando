@@ -13,6 +13,7 @@ import { toast } from '../lib/toast';
 const MIN = 10;
 const MAX = 500;
 const day = (at: number) => new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+const time = (at: number) => new Date(at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
 export default function BanSheet({ open, ban, onClose, onBaba }: {
   open: boolean;
@@ -68,7 +69,10 @@ function Info({ ban, view, onClose, onBaba, onAsk }: {
     <>
       <div className="titled">
         <h2>You can't play other people right now</h2>
-        <p className="fine">Online play was turned off for your account on {day(ban.at)}.</p>
+        <p className="fine">
+          Online play was turned off for your account on {day(ban.at)}.
+          {ban.until ? ` It comes back on ${day(ban.until)} at ${time(ban.until)}.` : ''}
+        </p>
       </div>
       {/* Scrolls on a small phone if the reason or the review's answer is long, so the buttons stay in view. */}
       <div className="scroll">

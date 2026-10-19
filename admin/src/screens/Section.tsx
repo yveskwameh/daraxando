@@ -7,7 +7,7 @@ import { Bars, HBars, Meter, Split, valueText } from '../charts.tsx';
 import { addDays, fmt, shortDay } from '../format.ts';
 import { BUCKET_LABEL, cap, KIND_LABEL, limitsOf, MODE_IDS, modeName, sectionById, WAIT_BUCKETS, whenFor } from '../sections.ts';
 import type { Kind, Report } from '../types.ts';
-import { back, Empty, go, Icon, Loading, Problem, useLoad } from '../ui.tsx';
+import { back, Empty, go, Icon, Problem, Skeleton, useLoad } from '../ui.tsx';
 import { DayBar, pointsFor } from './Today.tsx';
 
 export function Section({ id }: { id: string }) {
@@ -37,7 +37,7 @@ export function Section({ id }: { id: string }) {
       {range.error ? (
         <Problem text={range.error} onRetry={range.reload} />
       ) : !range.data ? (
-        <Loading label="Getting the numbers" />
+        <Skeleton kind="block" rows={1} label="Getting the numbers" />
       ) : (
         <>
           <section className="card" aria-label={`${m.label}, day by day`}>

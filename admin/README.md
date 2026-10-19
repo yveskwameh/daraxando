@@ -2,13 +2,19 @@
 
 The admin dashboard at **https://admin.daraxando.yveskwameh.com**. It is the 8 am email as pages you can act on, for any day, plus the admin API's tools on screen.
 
-- **Today**: what needs you first (ban reviews waiting, the free plan past half, sharp drops in players), then the email's headline and every section with the last 14 days. View the email or send it to yourself for any day.
+It fits the screen it's on. On a computer: a sidebar with the five areas, search and the Live and Test switch, Players and the Log as tables (click a column title to change the order), and pages laid out in columns. On a phone or tablet: a slim bar at the top and a floating bar of tabs at the bottom. Search from anywhere with Ctrl K (Cmd K on a Mac), the / key, or the search button: type a name, an email or a player id, or the name of a page.
+
+- **Today**: Live now (players with the game open on Home, looking at Quick match, waiting in a game of their own, and how many finished a match today), then what needs you (ban reviews waiting, the free plan past half, sharp drops in players), then the email's headline and every section with the last 14 days. View the email or send it to yourself for any day.
 - **Section pages**: pick a number, see it day by day over 14 or 30 days, tap a bar to open that day, and read every row the email has.
-- **Players**: find a player by name, email or id. See their sign-in, seeds history, matches, other players on the same phone and ban reviews. Rename, ban or lift a ban, add or take seeds, send a test notification.
+- **Players**: every player, newest first, with counts and tabs (all, played today, new this week, banned, saved), search as you type by name, email or id, filters (state, saved or guest) and an order (newest, last played, most seeds, most Aura, rating, name). 25, 50 or 100 a page with numbered pages; the page and its size are in the address, so Back from a player returns to them.
+- **A player**: their status, stats, the days they played over 12 weeks, and a timeline of their matches against people, seeds, sign-ins, ban reviews and your changes. One Actions menu: rename, add or take seeds, send a test notification, and ban (for 24 hours, 7 days, 30 days or until you lift it) or lift a ban.
+- **Growth**: traffic and new players for the last 1, 5, 12, 24 or 48 hours, 3, 7 or 30 days, or since a time you pick (the time you shared a link, say; the address keeps it, so you can bookmark it). Visits and new players by quarter hour, hour or day, each against the same length of time just before, the sites that sent them, countries and devices (visits from Cloudflare Web Analytics on the live game), how many new players finished their first match, and how many players saved their progress. It updates every minute while it's on screen. Below it: new players' first days (finished the first match, came back, played on 3 days, saved) and weekly retention. Live now on Today links to the last hour.
 - **Reviews**: answer ban reviews. **Log**: every change made through the admin API.
+
+Bans that end by themselves work on the test game now. On the live game they wait for the lawyer to approve one line in the privacy notice (`docs/BANS-REVIEW.md` in the game); until then a ban there lasts until you lift it.
 - **Live and Test** at the top switches between the live game and the test game.
 
-It changes nothing in the game. It is its own Worker (`daraxando-admin`) that calls the game's existing admin API (`worker/admin.ts`, `docs/ADMIN-API.md`), so every change still follows the game's rules and lands in the game's admin log. It keeps no data of its own. To remove it, delete the `daraxando-admin` Worker; the game doesn't notice.
+It is its own Worker (`daraxando-admin`) that calls the game's admin API (`worker/admin.ts` and `worker/adminViews.ts`, `docs/ADMIN-API.md`), so every change still follows the game's rules and lands in the game's admin log. It keeps no data of its own. To remove it, delete the `daraxando-admin` Worker; the game doesn't notice.
 
 ## Setting it up (once)
 
@@ -40,7 +46,7 @@ Optional, so a change to the dashboard doesn't rebuild the game: in the `daraxan
 
 ## Cost
 
-$0, on the free plan. A finished day's numbers are kept in Cloudflare's cache for 30 days (yesterday for 10 minutes), so opening the dashboard usually asks the game for one or two days, not fourteen.
+$0, on the free plan. A finished day's numbers are kept in Cloudflare's cache for 30 days (yesterday for 10 minutes), so opening the dashboard usually asks the game for one or two days, not fourteen. Player counts are kept for a minute, traffic for the last hours for a minute (whole days for 10 minutes), and the other Growth views for 10 minutes. Live now asks the game every 30 seconds, and only while the dashboard is on screen.
 
 ## For whoever works on it
 

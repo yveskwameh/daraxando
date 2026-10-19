@@ -1,6 +1,6 @@
 // Every call the dashboard makes, to its own Worker (admin/worker/index.ts), which passes it on
 // to the live or test game's admin API.
-import type { AdminAction, Appeal, Copy, PlayerDetail, PlayerSummary, RangeResult } from './types.ts';
+import type { AdminAction, Appeal, Copy, Counts, FirstDays, Info, Now, PageSize, PlayerDetail, PlayerPage, PlayerSummary, RangeResult, Retention, Sort, Tab, Traffic } from './types.ts';
 
 export class ApiError extends Error {
   constructor(message: string, readonly status: number) {
@@ -44,6 +44,20 @@ export const api = {
   sendReport: (copy: Copy, day: string) => call<{ sent: boolean; to: number }>(`/api/${copy}/report?day=${day}`, { method: 'POST' }),
 
   players: (copy: Copy, q: string) => call<{ players: PlayerSummary[] }>(`/api/${copy}/players?q=${enc(q)}`),
+  info: (copy: Copy) => call<Info>(`/api/${copy}/info`),
+  counts: (copy: Copy) => call<Counts>(`/api/${copy}/players/counts`),
+  list: (copy: Copy, f: { tab: Tab; sort: Sort; q?: string; state?: string; account?: string; size?: PageSize }, page: number) => {
+    const p = new URLSearchParams({ tab: f.tab, sort: f.sort, page: String(page), size: String(f.size ?? 50) });
+    if (f.q) p.set('q', f.q);
+    if (f.state) p.set('state', f.state);
+    if (f.account) p.set('account', f.account);
+    return call<PlayerPage>(`/api/${copy}/players/list?${p}`);
+  },
+  now: (copy: Copy) => call<Now>(`/api/${copy}/now`),
+  /** `q` is `hours=5`, `days=7` or `since=<ms>`. */
+  traffic: (copy: Copy, q: string) => call<Traffic>(`/api/${copy}/traffic?${q}`),
+  retention: (copy: Copy, weeks = 8) => call<Retention>(`/api/${copy}/retention?weeks=${weeks}`),
+  firstDays: (copy: Copy, days: 7 | 30 | 90) => call<FirstDays>(`/api/${copy}/first-days?days=${days}`),
   player: (copy: Copy, id: string) => call<PlayerDetail>(`/api/${copy}/players/${id}`),
   act: (copy: Copy, id: string, act: 'rename' | 'ban' | 'unban' | 'seeds' | 'push', body: Record<string, unknown> = {}) =>
     call<{ player?: PlayerSummary; phones?: number; sent?: number }>(`/api/${copy}/players/${id}/${act}`, { method: 'POST', body }),
