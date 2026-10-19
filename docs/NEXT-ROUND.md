@@ -4,10 +4,9 @@ Written 17 October 2026, from Yves's messages of 17 October (offline play, the 8
 
 ## Where things stand
 
-- The real game at daraxando.yveskwameh.com runs the code of 16 October (Yves merged `main` into `production` at 6:05 pm and 8:26 pm). On 16 October, 6 players played 42 matches. The link hasn't been shared publicly yet.
-- The full regression run planned for before launch hasn't run yet.
-- Waiting in Yves's folder, not pushed: the `admin@` sender address (`wrangler.jsonc`, `worker/accounts.ts`, `docs/BACKEND.md`). Yves wants the UI changes done before the next push.
-- The 8 am email can't read the free plan numbers. Cause found: the "Dara X&O report" token's Account Analytics Read sits in a policy limited to the Worker `daraxando`, so it never reaches the account. Fix in step 0.
+- **18 October 2026, 1:13 pm Lagos:** Yves merged `main` into `production` (pull request #4), so the real game at daraxando.yveskwameh.com now runs releases 1 and 2 (steps 7 and 9): layout A, the copy pass with the match screen's Pidgin kept, unique names, offline play, typed messages, the new terms screen, the reconnect fix, and the Aura tag, bar and outlined stars. Migrations 0010 and 0011 ran on the real database. 13 players then; each accepts the new terms the next time they open the game.
+- The link hasn't been shared publicly yet. Sharing it now is the recommendation from step 7.
+- The 8 am email couldn't read the free plan numbers: the "Dara X&O report" token's Account Analytics Read sat in a policy limited to the Worker `daraxando`. The fix is step 0.
 
 ## What Yves asked for
 

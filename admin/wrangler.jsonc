@@ -1,0 +1,38 @@
+{
+  // Cloudflare config for the admin dashboard (README.md in this folder). This is its own Worker,
+  // daraxando-admin, separate from the game's Workers, and nothing here changes the game.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "daraxando-admin",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-10-01",
+
+  // The dashboard's screens, built by `vite build` into dist/. Only /api/* and /auth/* run the
+  // Worker; every other address gets the screens, free and without using a Worker request.
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/auth/*"]
+  },
+
+  // Its own address. Cloudflare makes the DNS record and the certificate on the first deploy.
+  // No workers.dev address, so the dashboard is only at this address.
+  "routes": [{ "pattern": "admin.daraxando.yveskwameh.com", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
+
+  // The two games, reached directly and privately. The game's code doesn't change for this.
+  "services": [
+    { "binding": "LIVE", "service": "daraxando" },
+    { "binding": "TEST", "service": "daraxando-staging" }
+  ],
+
+  // Five sign-in tries a minute per network address.
+  "ratelimits": [{ "name": "SIGNIN_LIMITER", "namespace_id": "3001", "simple": { "limit": 5, "period": 60 } }],
+
+  // Secrets, saved in Cloudflare (Settings, Variables and Secrets), never in this file:
+  //   ADMIN_KEY_LIVE  the live game's ADMIN_TOKEN. It is also the key you sign in with.
+  //   ADMIN_KEY_TEST  the test game's ADMIN_TOKEN.
+
+  // Like the game: the Worker's own error lines are kept for 3 days, and invocation logs are off.
+  "observability": { "enabled": true, "logs": { "invocation_logs": false } }
+}

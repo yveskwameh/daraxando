@@ -1,0 +1,28 @@
+{
+  "name": "daraxando-admin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:worker": "wrangler dev -c wrangler.jsonc --port 8787",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.worker.json",
+    "test": "node --test test/*.test.ts",
+    "deploy": "vite build && wrangler deploy -c wrangler.jsonc"
+  },
+  "dependencies": {
+    "@fontsource-variable/gabarito": "5.3.0",
+    "@fontsource-variable/onest": "5.3.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261014.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "typescript": "7.0.2",
+    "vite": "8.3.4",
+    "wrangler": "4.151.0"
+  }
+}
