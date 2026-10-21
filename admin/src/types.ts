@@ -122,6 +122,10 @@ export interface PlayerDetail {
     opponent: { id: string; name: string | null };
   }[];
   samePhone: { id: string; name: string }[];
+  /** Everyone who has been on one of this player's phones, and how (since 19 October 2026). */
+  linked?: Linked[];
+  /** This player's phones, by the first 8 characters of their keyed hash. */
+  phones?: { phone: string; how: PhoneHow; firstAt: number; lastAt: number }[];
   appeals: { id: number; message: string; at: number; status: string; note: string | null; decidedAt: number | null }[];
   actions: { id: number; at: number; action: string; detail: Record<string, unknown> | null }[];
   /** The days they finished a match in the last 12 weeks, and on how many days in all. */
@@ -151,7 +155,27 @@ export interface AdminAction {
 
 /* ---------- the dashboard's views of the whole game (the game's worker/adminViews.ts) ---------- */
 
-export interface Info { copy: string; timedBans: boolean; banDays: number[] }
+/** `phoneLinks`: every phone a player uses is linked, and a phone makes 2 new players in 30 days (the game's worker/phones.ts). */
+export interface Info { copy: string; timedBans: boolean; banDays: number[]; phoneLinks?: boolean }
+
+export type PhoneHow = 'made' | 'signin' | 'seen';
+/** A player linked to another through a phone. */
+export interface Linked { id: string; name: string; createdAt: number; saved: boolean; cowries: number; banned: boolean; how: PhoneHow; phones: number; lastAt: number }
+/** Phones with 2 or more players (the game's worker/adminViews.ts, sharedPhones). */
+export interface SharedPhones {
+  min: number;
+  total: number;
+  /** Phones with 3 or more players that gained one in the last day. */
+  busy: number;
+  phones: {
+    id: string;
+    players: number;
+    newest: number;
+    lastAt: number;
+    made30: number;
+    list: { id: string; name: string; how: PhoneHow; firstAt: number; lastAt: number; createdAt: number; cowries: number; saved: boolean; banned: boolean }[];
+  }[];
+}
 
 export type Tab = 'all' | 'today' | 'new' | 'banned' | 'saved';
 export type Sort = 'new' | 'active' | 'seeds' | 'aura' | 'rating' | 'name';

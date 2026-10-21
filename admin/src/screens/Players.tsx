@@ -10,6 +10,7 @@ import { api } from '../api.ts';
 import { fmt, lagosDay, lastPlayed, shortDate } from '../format.ts';
 import type { PageSize, PlayerSummary, Sort, Tab } from '../types.ts';
 import { Button, Empty, go, Icon, Problem, Skeleton, useLoad, useMedia, usePath } from '../ui.tsx';
+import { PlayersSwitch } from './Phones.tsx';
 
 const SIZES: PageSize[] = [25, 50, 100];
 const TABS: { id: Tab; label: string }[] = [
@@ -94,6 +95,7 @@ export function Players() {
 
   return (
     <div className="stack-group">
+      <PlayersSwitch on="players" />
       <div className="page-title">
         <div className="titled">
           <h1>Players</h1>

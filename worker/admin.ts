@@ -18,7 +18,8 @@ import { body } from './http';
 import { isNameClash, NAME_PROBLEM_MESSAGE, nameKey, nameProblem, takenNames } from './names';
 import { dropSubs, sendPush, type PushSub } from './push';
 import { buildReport, reportDay, reportEmail, reportTo, sendReport } from './report';
-import { firstDays, liveNow, playDays, playerCounts, playerList, retention, summary, traffic } from './adminViews';
+import { firstDays, linkedOf, liveNow, playDays, playerCounts, playerList, retention, sharedPhones, summary, traffic, type LinkedRow } from './adminViews';
+import { phoneLinksOn } from './phones';
 import { dayKey } from '../shared/progression';
 
 /** Shorter than this and the key is too easy to guess, so the API stays off. */
@@ -109,7 +110,7 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
 
   /* --- what this copy can do, for the dashboard --- */
   if (path === '/api/admin/info' && method === 'GET') {
-    return send({ copy: env.ENVIRONMENT ?? 'local', timedBans: timedBansOn(env), banDays: BAN_DAYS });
+    return send({ copy: env.ENVIRONMENT ?? 'local', timedBans: timedBansOn(env), banDays: BAN_DAYS, phoneLinks: phoneLinksOn(env) });
   }
 
   /* --- the dashboard's views of the whole game (worker/adminViews.ts), all read-only --- */
@@ -121,6 +122,7 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
     if (path === '/api/admin/players/counts') return send(await playerCounts(env));
     if (path === '/api/admin/now') return send(await liveNow(env));
     if (path === '/api/admin/traffic') return send(await traffic(env, url));
+    if (path === '/api/admin/phones') return send(await sharedPhones(env, url));
     if (path === '/api/admin/retention') return send(await retention(env, url));
     if (path === '/api/admin/first-days') return send(await firstDays(env, url));
   }
@@ -216,9 +218,9 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
   const row = await db.prepare('SELECT * FROM players WHERE id = ?').bind(id).first<PlayerRow>();
   if (!row) return fail(404, 'No player with that id.');
 
-  /* --- one player: profile, sign-in methods, seeds history, matches, same phone, admin changes --- */
+  /* --- one player: profile, sign-in methods, seeds history, matches, linked players and phones, admin changes --- */
   if (!act && method === 'GET') {
-    const [identities, ledger, matches, samePhone, actions, appeals, recentDays, allDays] = await db.batch<Record<string, unknown>>([
+    const [identities, ledger, matches, linkedRows, phoneRows, actions, appeals, recentDays, allDays] = await db.batch<Record<string, unknown>>([
       db.prepare('SELECT provider, email, created_at AS createdAt FROM identities WHERE player_id = ? ORDER BY created_at').bind(id),
       db.prepare('SELECT delta, reason, match_id AS matchId, created_at AS at FROM ledger WHERE player_id = ? ORDER BY id DESC LIMIT 50').bind(id),
       db
@@ -229,9 +231,20 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
            WHERE m.x_id = ?1 OR m.o_id = ?1 ORDER BY m.created_at DESC LIMIT 20`,
         )
         .bind(id),
-      row.device
-        ? db.prepare('SELECT id, name FROM players WHERE device = ? AND id != ? LIMIT 20').bind(row.device, id)
-        : db.prepare('SELECT id, name FROM players WHERE 0'),
+      // Every player who has been on one of this player's phones (worker/phones.ts), and how.
+      db
+        .prepare(
+          `SELECT p.id, p.name, p.created_at AS createdAt, p.saved, p.cowries,
+                  (p.banned_at IS NOT NULL AND (p.ban_until IS NULL OR p.ban_until > ?2)) AS banned,
+                  MIN(CASE y.how WHEN 'made' THEN 0 WHEN 'signin' THEN 1 ELSE 2 END) AS howRank,
+                  COUNT(*) AS phones, MAX(y.last_at) AS lastAt
+           FROM player_phones x
+           JOIN player_phones y ON y.phone = x.phone AND y.player_id != x.player_id
+           JOIN players p ON p.id = y.player_id
+           WHERE x.player_id = ?1 GROUP BY p.id ORDER BY lastAt DESC LIMIT 30`,
+        )
+        .bind(id, Date.now()),
+      db.prepare('SELECT phone, how, first_at AS firstAt, last_at AS lastAt FROM player_phones WHERE player_id = ? ORDER BY first_at').bind(id),
       db.prepare('SELECT id, at, action, detail FROM admin_actions WHERE player_id = ? ORDER BY id DESC LIMIT 50').bind(id),
       db.prepare('SELECT id, message, created_at AS at, status, note, decided_at AS decidedAt FROM appeals WHERE player_id = ? ORDER BY id DESC LIMIT 20').bind(id),
       ...playDays(db, id),
@@ -256,7 +269,10 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
           opponent: mark === 'X' ? { id: m.oId, name: m.oName } : { id: m.xId, name: m.xName },
         };
       }),
-      samePhone: samePhone.results,
+      linked: (linkedRows.results as LinkedRow[]).map(linkedOf),
+      // The admin page before 19 October 2026 reads this.
+      samePhone: (linkedRows.results as LinkedRow[]).map((r) => ({ id: r.id, name: r.name })),
+      phones: (phoneRows.results as { phone: string; how: string; firstAt: number; lastAt: number }[]).map((r) => ({ ...r, phone: r.phone.slice(0, 8) })),
       appeals: appeals.results,
       actions: (actions.results as { detail: string | null }[]).map((a) => ({ ...a, detail: a.detail ? JSON.parse(a.detail) : null })),
       /** The days they played in the last 12 weeks, and on how many days in all. */

@@ -13,6 +13,7 @@ import type { LeaderRow, Profile, PublicPlayer } from '../shared/protocol';
 import { COOL_LOSSES, COOL_MS, DAILY_COWRIES, HIGH_TABLE, SAPA_BELOW, SAPA_EVERY_MS, SAPA_TO, START_COWRIES } from '../shared/stakes';
 import { tidyHabits } from './habits';
 import { nameKey } from './names';
+import { linkStatement } from './phones';
 import { bump, matchStat } from './stats';
 
 export interface PlayerRow {
@@ -145,6 +146,8 @@ export async function createPlayer(db: D1Database, p: { name: string; nameSet: 0
         'INSERT INTO players (id, name, name_key, name_set, avatar, state, rating, cowries, device, terms_version, terms_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
       )
       .bind(id, p.name, nameKey(p.name), p.nameSet, p.avatar, p.state, START_RATING, START_COWRIES, p.device, p.terms, now, now, now),
+    // The phone it was made on, as a link too (worker/phones.ts): the same hash as players.device.
+    ...(p.device ? [linkStatement(db, id, p.device, 'made', now)] : []),
   ]);
   const row = created.results?.[0];
   if (!row) throw new Error('Could not create player');

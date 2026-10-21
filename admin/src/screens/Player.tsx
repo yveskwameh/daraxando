@@ -9,10 +9,9 @@ import { useApp } from '../App.tsx';
 import { api } from '../api.ts';
 import { addDays, fmt, lagosDay, lastPlayed, shortDate, shortDay, when } from '../format.ts';
 import { modeName } from '../sections.ts';
-import type { Info, PlayerDetail } from '../types.ts';
-import { back, Button, copyText, Field, Icon, Problem, Sheet, Skeleton, toast, useLoad } from '../ui.tsx';
+import type { Info, PhoneHow, PlayerDetail } from '../types.ts';
+import { back, Button, copyText, Field, go, Icon, Problem, Sheet, Skeleton, toast, useLoad } from '../ui.tsx';
 import { actionText } from './Log.tsx';
-import { PlayerRow } from './Players.tsx';
 
 type Act = 'rename' | 'ban' | 'unban' | 'seeds' | 'push';
 
@@ -59,7 +58,7 @@ export function Player({ id }: { id: string }) {
             <div className="player-side">
               <Profile d={res.data} onMenu={() => setMenu(true)} />
               <Days d={res.data} />
-              <More d={res.data} />
+              <Linked d={res.data} info={info.data} />
             </div>
             <div className="player-main">
               <Timeline d={res.data} />
@@ -234,13 +233,53 @@ function Timeline({ d }: { d: PlayerDetail }) {
   );
 }
 
-function More({ d }: { d: PlayerDetail }) {
-  if (!d.samePhone.length) return null;
+const LINK_LABEL: Record<PhoneHow, string> = { made: 'Made on the same phone', signin: 'Signed in on the same phone', seen: 'Played on the same phone' };
+const OWN_LABEL: Record<PhoneHow, string> = { made: 'Made on it', signin: 'Signed in on it', seen: 'Played on it' };
+
+/** Everyone who has been on one of this player's phones (the game's worker/phones.ts), and the phones themselves. */
+function Linked({ d, info }: { d: PlayerDetail; info: Info | null }) {
+  const p = d.profile;
+  const list = d.linked ?? d.samePhone.map((x) => ({ ...x, how: 'made' as PhoneHow, phones: 1, banned: false, saved: false, cowries: 0, createdAt: 0, lastAt: 0 }));
+  const phones = d.phones ?? [];
   return (
-    <section className="card p-more" aria-labelledby="t-phone">
-      <h2 id="t-phone" className="kicker">Other players on the same phone</h2>
-      <p className="fine">Their wins against each other don't move seeds.</p>
-      <ul className="list">{d.samePhone.map((p) => <PlayerRow key={p.id} p={p} />)}</ul>
+    <section className="card p-more" aria-labelledby="t-linked">
+      <div className="section-top">
+        <h2 id="t-linked" className="kicker">Linked players</h2>
+        {phones.length > 0 && <span className="fine">{phones.length === 1 ? '1 phone' : `${phones.length} phones`}</span>}
+      </div>
+      {list.length === 0 ? (
+        <p className="fine">Nobody else has played on {p.name}'s {phones.length === 1 ? 'phone' : 'phones'}.</p>
+      ) : (
+        <>
+          <p className="fine">Players who have been on the same phone as {p.name}. Staked wins between them send both stakes back. Brothers and sisters share phones too, so this is a sign, not proof.</p>
+          <ul className="list">
+            {list.map((x) => (
+              <li key={x.id}>
+                <a className="prow" href={`/players/${x.id}`} onClick={(e) => { e.preventDefault(); go(`/players/${x.id}`); }}>
+                  <span className="initial sm" aria-hidden="true">{x.name.charAt(0).toUpperCase()}</span>
+                  <span className="prow-main">
+                    <b>{x.name}</b>
+                    <small>{[LINK_LABEL[x.how], x.phones > 1 ? `${x.phones} phones in common` : '', x.createdAt ? `joined ${shortDate(x.createdAt)}` : ''].filter(Boolean).join(' · ')}</small>
+                  </span>
+                  <span className="prow-tags">{x.banned && <span className="tag-pill bad">Banned</span>}</span>
+                  <Icon name="right" size={18} />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {phones.length > 0 && (
+        <>
+          <h3 className="sub-title">{p.name}'s phones</h3>
+          <ul className="mini-rows">
+            {phones.map((ph) => (
+              <li key={ph.phone}><span>Phone {ph.phone} · {OWN_LABEL[ph.how]}</span><b>{shortDate(ph.firstAt)}</b></li>
+            ))}
+          </ul>
+        </>
+      )}
+      {info && !info.phoneLinks && <p className="fine">On the live game, only the phone each player was made on is linked until the lawyer approves (docs/PHONES-REVIEW.md in the game).</p>}
     </section>
   );
 }
@@ -290,6 +329,9 @@ function ActSheet({ act, d, info, onClose, onDone }: { act: Act | null; d: Playe
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Ban the players linked through a phone too: for one person on several players, never by default.
+  const [alsoLinked, setAlsoLinked] = useState(false);
+  const others = (d.linked ?? []).filter((x) => !x.banned);
   const timed = !!info?.timedBans;
   const lengths = timed ? (info?.banDays ?? []) : [];
   // A first ban is usually short: 7 days where bans can end by themselves.
@@ -305,6 +347,7 @@ function ActSheet({ act, d, info, onClose, onDone }: { act: Act | null; d: Playe
     setAmount('');
     setMessage('');
     setName(p.name);
+    setAlsoLinked(false);
   };
   const close = () => {
     reset();
@@ -320,8 +363,16 @@ function ActSheet({ act, d, info, onClose, onDone }: { act: Act | null; d: Playe
         await api.act(copy, p.id, 'rename', { name: name.trim() });
         toast.ok(`Renamed to ${name.trim()}.`);
       } else if (act === 'ban') {
-        await api.act(copy, p.id, 'ban', days ? { reason: reason.trim(), days } : { reason: reason.trim() });
-        toast.ok(days ? `${p.name} is banned for ${LENGTH_LABEL[days] ?? `${days} days`}.` : `${p.name} is banned.`);
+        const ban = days ? { reason: reason.trim(), days } : { reason: reason.trim() };
+        await api.act(copy, p.id, 'ban', ban);
+        let failed = 0;
+        if (alsoLinked) {
+          // One at a time, so each lands in the log on its own.
+          for (const x of others) await api.act(copy, x.id, 'ban', ban).catch(() => { failed += 1; });
+        }
+        const who = alsoLinked && others.length ? `${p.name} and ${others.length - failed} linked ${others.length - failed === 1 ? 'player' : 'players'}` : p.name;
+        toast.ok(days ? `${who} banned for ${LENGTH_LABEL[days] ?? `${days} days`}.` : `${who} banned.`);
+        if (failed) toast.error(`${failed} linked ${failed === 1 ? 'player' : 'players'} couldn't be banned. Try from their page.`);
       } else if (act === 'unban') {
         await api.act(copy, p.id, 'unban');
         toast.ok(`${p.name}'s ban is lifted.`);
@@ -383,8 +434,17 @@ function ActSheet({ act, d, info, onClose, onDone }: { act: Act | null; d: Playe
                 </div>
                 {!timed && <span className="field-hint">Bans that end by themselves are on the test game. On the live game they wait for the lawyer's OK (docs/BANS-REVIEW.md).</span>}
               </div>
+              {others.length > 0 && (
+                <label className="check-row">
+                  <input type="checkbox" checked={alsoLinked} onChange={(e) => setAlsoLinked(e.target.checked)} />
+                  <span>
+                    <b>Also ban the {others.length === 1 ? 'linked player' : `${others.length} linked players`}</b>
+                    <small className="fine">{others.map((x) => x.name).join(', ')}. Only if you're sure it's the same person: brothers and sisters share phones.</small>
+                  </span>
+                </label>
+              )}
               <Button type="submit" kind="danger" busy={busy} block disabled={reason.trim().length < 3}>
-                {days ? `Ban ${p.name} for ${LENGTH_LABEL[days] ?? `${days} days`}` : `Ban ${p.name} until I lift it`}
+                {`Ban ${alsoLinked && others.length ? `${others.length + 1} players` : p.name} ${days ? `for ${LENGTH_LABEL[days] ?? `${days} days`}` : 'until I lift it'}`}
               </Button>
             </>
           )}

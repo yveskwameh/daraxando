@@ -797,6 +797,24 @@ dialog.palette[open] { animation: pal-in 180ms var(--ease-out); }
   .traffic-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-group); }
 }
 
+/* Players and shared phones */
+.view-switch { max-width: 360px; }
+.view-switch a {
+  flex: 1; display: grid; place-items: center;
+  min-height: 40px; padding: 0 14px; border-radius: 999px;
+  color: var(--muted); font: 800 0.9375rem/1 var(--head); white-space: nowrap;
+}
+.view-switch a[aria-current="page"] { background: var(--cream); color: var(--night); }
+.phone-grid { display: grid; gap: var(--space-item); margin: 0; padding: 0; list-style: none; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); align-items: start; }
+.phone-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-150); }
+.phone-ic { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: var(--raise); color: var(--indigo-glow); }
+.phone-name { font: 800 1rem/1.25 var(--head); font-variant-numeric: tabular-nums; }
+.titled.tight { gap: 2px; }
+.check-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-150); align-items: start; padding: var(--sp-150) var(--sp-200); border-radius: 16px; background: var(--night); box-shadow: inset 0 0 0 2px var(--line); cursor: pointer; }
+.check-row input { width: 22px; height: 22px; margin: 2px 0 0; accent-color: var(--fuchsia-glow); }
+.check-row span { display: grid; gap: 2px; }
+.check-row b { font: 700 0.9375rem/1.35 var(--body); }
+
 /* Growth */
 .growth-pair { display: grid; gap: var(--space-block); align-items: start; }
 .src-top, .src-grid { display: grid; gap: var(--space-block); }
@@ -819,6 +837,7 @@ dialog.palette[open] { animation: pal-in 180ms var(--ease-out); }
   .search-btn:hover { color: var(--text); box-shadow: inset 0 0 0 1px var(--indigo-glow); }
   .side-nav a:hover:not([aria-current="page"]) { background: var(--raise); color: var(--text); }
   .side-link:hover { background: var(--raise); color: var(--text); }
+  .view-switch a:hover:not([aria-current="page"]) { color: var(--text); }
   .ptable tbody tr:hover td { background: var(--raise); }
   .log-table tbody tr:hover td { background: transparent; }
   .th-btn:hover { color: var(--text); }

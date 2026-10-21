@@ -304,6 +304,77 @@ export async function traffic(env: Env, url: URL) {
   }
 }
 
+/* ---------- phones and players (worker/phones.ts) ---------- */
+
+const HOW = ['made', 'signin', 'seen'] as const;
+export type LinkedRow = { id: string; name: string; createdAt: number; saved: number; cowries: number; banned: number; howRank: number; phones: number; lastAt: number };
+/** A player linked to another through a phone: how they're on it (the closest way, made first), and on how many of the same phones. */
+export const linkedOf = (r: LinkedRow) => ({
+  id: r.id,
+  name: r.name,
+  createdAt: num(r.createdAt),
+  saved: r.saved === 1,
+  cowries: num(r.cowries),
+  banned: r.banned === 1,
+  how: HOW[Math.min(2, Math.max(0, num(r.howRank)))],
+  phones: num(r.phones),
+  lastAt: num(r.lastAt),
+});
+
+/**
+ * Phones with 2 or more players (`min` 2, 3 or 5), the newest link first, each with its players
+ * and how they're on it. `busy`: phones with 3 or more players that gained one in the last day,
+ * for Today's "Needs you". A phone shows by the first 8 characters of its keyed hash, enough to
+ * tell phones apart and nothing more.
+ */
+export async function sharedPhones(env: Env, url: URL) {
+  const n = Number(url.searchParams.get('min'));
+  const min = n === 3 || n === 5 ? n : 2;
+  const now = Date.now();
+  const [groups, total, busy] = await env.DB.batch<Record<string, unknown>>([
+    env.DB
+      .prepare(
+        `SELECT pp.phone, COUNT(*) AS n, MAX(pp.first_at) AS newest, MAX(pp.last_at) AS lastAt,
+                COALESCE(SUM(pp.how = 'made' AND pp.first_at >= ?2), 0) AS made30
+         FROM player_phones pp JOIN players p ON p.id = pp.player_id
+         GROUP BY pp.phone HAVING n >= ?1 ORDER BY newest DESC LIMIT 60`,
+      )
+      .bind(min, now - 30 * DAY_MS),
+    env.DB.prepare('SELECT COUNT(*) AS n FROM (SELECT pp.phone FROM player_phones pp JOIN players p ON p.id = pp.player_id GROUP BY pp.phone HAVING COUNT(*) >= ?)').bind(min),
+    env.DB.prepare('SELECT COUNT(*) AS n FROM (SELECT pp.phone FROM player_phones pp JOIN players p ON p.id = pp.player_id GROUP BY pp.phone HAVING COUNT(*) >= 3 AND MAX(pp.first_at) >= ?)').bind(now - DAY_MS),
+  ]);
+  const list = (groups.results ?? []) as { phone: string; n: number; newest: number; lastAt: number; made30: number }[];
+  type Row = { phone: string; how: string; firstAt: number; lastAt: number; id: string; name: string; createdAt: number; cowries: number; saved: number; banned: number };
+  const players: Row[] = list.length
+    ? (((
+        await env.DB
+          .prepare(
+            `SELECT pp.phone, pp.how, pp.first_at AS firstAt, pp.last_at AS lastAt, p.id, p.name, p.created_at AS createdAt, p.cowries, p.saved,
+                    (p.banned_at IS NOT NULL AND (p.ban_until IS NULL OR p.ban_until > ?1)) AS banned
+             FROM player_phones pp JOIN players p ON p.id = pp.player_id
+             WHERE pp.phone IN (${list.map((_, i) => `?${i + 2}`).join(', ')}) ORDER BY pp.first_at`,
+          )
+          .bind(now, ...list.map((g) => g.phone))
+          .all()
+      ).results ?? []) as unknown as Row[])
+    : [];
+  return {
+    min,
+    total: num((total.results?.[0] as { n?: number } | undefined)?.n),
+    busy: num((busy.results?.[0] as { n?: number } | undefined)?.n),
+    phones: list.map((g) => ({
+      id: g.phone.slice(0, 8),
+      players: num(g.n),
+      newest: num(g.newest),
+      lastAt: num(g.lastAt),
+      made30: num(g.made30),
+      list: players
+        .filter((p) => p.phone === g.phone)
+        .map((p) => ({ id: p.id, name: p.name, how: p.how, firstAt: num(p.firstAt), lastAt: num(p.lastAt), createdAt: num(p.createdAt), cowries: num(p.cowries), saved: p.saved === 1, banned: p.banned === 1 })),
+    })),
+  };
+}
+
 /* ---------- how new players get on ---------- */
 
 /** Monday of the week a Lagos day is in. */

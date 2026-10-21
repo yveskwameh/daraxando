@@ -39,6 +39,8 @@ export function Today() {
   const { copy, day, today } = useApp();
   const range = useRange(14);
   const appeals = useLoad(`${copy}:appeals-open`, () => api.appeals(copy, 'open'));
+  // Phones with 3 or more players that gained one in the last day (the game's worker/phones.ts).
+  const phones = useLoad(`${copy}:phones:3`, () => api.phones(copy, 3));
   const [sending, setSending] = useState(false);
   const yesterday = addDays(today, -1);
   const when = whenFor(day, today, yesterday);
@@ -50,7 +52,22 @@ export function Today() {
   const dayError = at >= 0 ? days[at].error : undefined;
   /** On a computer the free plan sits under Live now, beside the numbers. */
   const rail = useMedia('(min-width: 1024px)') && !dayError;
-  const needs = range.data ? needsFor(days, day, today, appeals.data ? appeals.data.appeals.length : null) : [];
+  const busy = phones.data?.busy ?? 0;
+  const needs = range.data
+    ? [
+        ...needsFor(days, day, today, appeals.data ? appeals.data.appeals.length : null),
+        ...(busy > 0
+          ? [{
+              id: 'phones',
+              level: 'warn' as const,
+              title: busy === 1 ? 'A phone got its third player in the last day' : `${busy} phones got a third player in the last day`,
+              body: 'It can be one person making players to farm seeds, or a family sharing a phone. Check who they are.',
+              go: 'phones' as const,
+              action: 'See shared phones',
+            }]
+          : []),
+      ]
+    : [];
 
   const send = async () => {
     setSending(true);
@@ -152,7 +169,7 @@ function Needs({ needs }: { needs: Need[] }) {
               <p className="fine">{n.body}</p>
             </div>
             {n.go && (
-              <button type="button" className="mini-btn" onClick={() => go(n.go === 'reviews' ? '/reviews' : `/section/${n.go!.slice(8)}`)}>
+              <button type="button" className="mini-btn" onClick={() => go(n.go === 'reviews' ? '/reviews' : n.go === 'phones' ? '/players/phones?min=3' : `/section/${n.go!.slice(8)}`)}>
                 {n.action}
               </button>
             )}

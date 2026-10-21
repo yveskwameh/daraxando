@@ -184,7 +184,7 @@ test('the dashboard views pass through, read-only', async () => {
   const calls: Call[] = [];
   const e = env({}, calls);
   const cookie = await signedIn(e);
-  for (const path of ['info', 'players/list?tab=today&sort=active&page=1', 'players/counts', 'now', 'traffic?days=30', 'traffic?hours=5', 'retention?weeks=8', 'first-days?days=90']) {
+  for (const path of ['info', 'players/list?tab=today&sort=active&page=1', 'players/counts', 'now', 'traffic?days=30', 'traffic?hours=5', 'phones?min=3', 'retention?weeks=8', 'first-days?days=90']) {
     const res = await call(`/api/live/${path}`, e, { headers: { cookie } });
     assert.equal(res.status, 200, path);
     assert.equal(calls.at(-1)!.url, `https://game/api/admin/${path}`);

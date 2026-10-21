@@ -59,6 +59,7 @@ export function Palette({ open, onClose, onCopy }: { open: boolean; onClose: () 
     { id: 'today', label: 'Today', hint: 'Live now and the 8 am numbers', icon: 'today', run: to('/') },
     { id: 'players', label: 'Players', hint: 'Every player', icon: 'players', run: to('/players') },
     { id: 'banned', label: 'Banned players', icon: 'players', run: to('/players?tab=banned') },
+    { id: 'phones', label: 'Shared phones', hint: 'Phones with more than one player', icon: 'phone', run: to('/players/phones') },
     { id: 'growth', label: 'Growth', hint: 'Traffic, new players and retention', icon: 'growth', run: to('/growth') },
     { id: 'lasthour', label: 'Traffic in the last hour', hint: 'Visits and new players', icon: 'growth', run: to('/growth?w=1h') },
     // An hour ago in Lagos time is the UTC clock now, as Lagos is an hour ahead.

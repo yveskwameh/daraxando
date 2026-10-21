@@ -1,6 +1,6 @@
 // Every call the dashboard makes, to its own Worker (admin/worker/index.ts), which passes it on
 // to the live or test game's admin API.
-import type { AdminAction, Appeal, Copy, Counts, FirstDays, Info, Now, PageSize, PlayerDetail, PlayerPage, PlayerSummary, RangeResult, Retention, Sort, Tab, Traffic } from './types.ts';
+import type { AdminAction, Appeal, Copy, Counts, FirstDays, Info, Now, PageSize, PlayerDetail, PlayerPage, PlayerSummary, RangeResult, Retention, SharedPhones, Sort, Tab, Traffic } from './types.ts';
 
 export class ApiError extends Error {
   constructor(message: string, readonly status: number) {
@@ -62,6 +62,8 @@ export const api = {
   act: (copy: Copy, id: string, act: 'rename' | 'ban' | 'unban' | 'seeds' | 'push', body: Record<string, unknown> = {}) =>
     call<{ player?: PlayerSummary; phones?: number; sent?: number }>(`/api/${copy}/players/${id}/${act}`, { method: 'POST', body }),
 
+  /** Phones with `min` (2, 3 or 5) players or more. */
+  phones: (copy: Copy, min: 2 | 3 | 5) => call<SharedPhones>(`/api/${copy}/phones?min=${min}`),
   appeals: (copy: Copy, status: 'open' | 'all') => call<{ appeals: Appeal[] }>(`/api/${copy}/appeals?status=${status}`),
   answer: (copy: Copy, id: number, verdict: 'lift' | 'keep', note: string) =>
     call<{ player: PlayerSummary | null }>(`/api/${copy}/appeals/${id}/${verdict}`, { method: 'POST', body: { note } }),

@@ -1,7 +1,7 @@
 // The admin dashboard's round 2 (worker/adminViews.ts, timed bans in worker/admin.ts and worker/db.ts).
 import { describe, expect, it, vi } from 'vitest';
 import { BAN_DAYS, TIMED_BANS_ON_REAL_GAME, timedBansOn } from '../worker/admin';
-import { ANALYTICS_HOST, bucketStarts, summary, traffic, trafficWindow } from '../worker/adminViews';
+import { ANALYTICS_HOST, bucketStarts, linkedOf, sharedPhones, summary, traffic, trafficWindow } from '../worker/adminViews';
 import { banActive, toProfile, type PlayerRow } from '../worker/db';
 import type { Env } from '../worker/env';
 
@@ -131,5 +131,40 @@ describe('traffic for any window', () => {
     vi.unstubAllGlobals();
     expect(out.web).toEqual({ problem: "Couldn't read Web Analytics: not authorized for that account" });
     expect(out.players.before).toBe(3);
+  });
+});
+
+describe('phones and players in the admin API', () => {
+  it('says how a linked player is on the phone, made first', () => {
+    const base = { id: 'p2', name: 'Ada', createdAt: 1, saved: 1, cowries: 900, banned: 0, phones: 2, lastAt: 5 };
+    expect(linkedOf({ ...base, howRank: 0 })).toMatchObject({ how: 'made', saved: true, banned: false, phones: 2 });
+    expect(linkedOf({ ...base, howRank: 1 }).how).toBe('signin');
+    expect(linkedOf({ ...base, howRank: 2 }).how).toBe('seen');
+  });
+
+  it('lists phones with their players, by a short part of the hash only', async () => {
+    const phone = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
+    const db = {
+      prepare: (sql: string) => {
+        const st = {
+          sql,
+          args: [] as unknown[],
+          bind(...a: unknown[]) { st.args = a; return st; },
+          async all() {
+            return { results: [{ phone, how: 'made', firstAt: 10, lastAt: 20, id: 'p1', name: 'Kemi', createdAt: 10, cowries: 5000, saved: 0, banned: 0 }] };
+          },
+        };
+        return st;
+      },
+      async batch(list: { sql: string; args: unknown[] }[]) {
+        expect(list[0].args[0]).toBe(3);
+        return [{ results: [{ phone, n: 3, newest: 30, lastAt: 40, made30: 2 }] }, { results: [{ n: 1 }] }, { results: [{ n: 1 }] }];
+      },
+    } as unknown as D1Database;
+    const out = await sharedPhones({ DB: db } as unknown as Env, new URL('https://game/api/admin/phones?min=3'));
+    expect(out).toMatchObject({ min: 3, total: 1, busy: 1 });
+    expect(out.phones[0]).toMatchObject({ id: 'a1b2c3d4', players: 3, made30: 2 });
+    expect(out.phones[0].list[0]).toMatchObject({ name: 'Kemi', how: 'made' });
+    expect(JSON.stringify(out)).not.toContain(phone);
   });
 });

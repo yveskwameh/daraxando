@@ -7,6 +7,7 @@ import { api, whenSignedOut } from './api.ts';
 import { addDays, lagosDay } from './format.ts';
 import { Growth } from './screens/Growth.tsx';
 import { Log } from './screens/Log.tsx';
+import { Phones } from './screens/Phones.tsx';
 import { Player } from './screens/Player.tsx';
 import { Players } from './screens/Players.tsx';
 import { Reviews } from './screens/Reviews.tsx';
@@ -94,6 +95,8 @@ export function App() {
           <Problem text={`The ${copy} game's admin key isn't saved on the dashboard yet. Add ADMIN_KEY_${copy.toUpperCase()} in Cloudflare (admin/README.md).`} />
         ) : section ? (
           <Section id={section} />
+        ) : path === '/players/phones' ? (
+          <Phones />
         ) : playerId ? (
           <Player id={playerId} />
         ) : tab === 'players' ? (
