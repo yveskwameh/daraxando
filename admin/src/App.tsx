@@ -17,6 +17,7 @@ import { Today } from './screens/Today.tsx';
 import type { Copy } from './types.ts';
 import { Palette } from './Palette.tsx';
 import { go, Icon, Loading, Problem, Toasts, useLoad, usePath } from './ui.tsx';
+import { HealthPage } from './screens/Health.tsx';
 
 interface Ctx {
   copy: Copy;
@@ -95,6 +96,8 @@ export function App() {
           <Problem text={`The ${copy} game's admin key isn't saved on the dashboard yet. Add ADMIN_KEY_${copy.toUpperCase()} in Cloudflare (admin/README.md).`} />
         ) : section ? (
           <Section id={section} />
+        ) : path === '/health' ? (
+          <HealthPage />
         ) : path === '/players/phones' ? (
           <Phones />
         ) : playerId ? (
@@ -131,7 +134,9 @@ function Shell({ tab, onCopy, children }: { tab: string; onCopy: (c: Copy) => vo
   const { copy, copies, signOut } = useApp();
   const [palette, setPalette] = useState(false);
   const waiting = useLoad(copies[copy] ? `${copy}:appeals-open:nav` : null, () => api.appeals(copy, 'open'));
-  const open = waiting.data?.appeals.length ?? 0;
+  // Recovery requests (lost codes) wait in Reviews too. Ones already given back aren't waiting on you.
+  const lost = useLoad(copies[copy] ? `${copy}:recoveries-open:nav` : null, () => api.recoveries(copy, 'open'));
+  const open = (waiting.data?.appeals.length ?? 0) + (lost.data?.recoveries.filter((r) => r.state === 'open').length ?? 0);
 
   // Search from anywhere: Cmd+K or Ctrl+K, or / when not typing.
   useEffect(() => {

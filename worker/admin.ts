@@ -21,6 +21,8 @@ import { buildReport, reportDay, reportEmail, reportTo, sendReport } from './rep
 import { firstDays, linkedOf, liveNow, playDays, playerCounts, playerList, retention, sharedPhones, summary, traffic, type LinkedRow } from './adminViews';
 import { phoneLinksOn } from './phones';
 import { dayKey } from '../shared/progression';
+import { codesOn, decideRecovery, recoveryList } from './codes';
+import { health } from './health';
 
 /** Shorter than this and the key is too easy to guess, so the API stays off. */
 const MIN_TOKEN = 32;
@@ -34,7 +36,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
  * (docs/BANS-REVIEW.md), when this turns true and the line goes into src/legal/privacy.md.
  */
 export const BAN_DAYS = [1, 7, 30] as const;
-export const TIMED_BANS_ON_REAL_GAME = false;
+// Approved by the lawyer on 21 October 2026 (docs/BANS-REVIEW.md).
+export const TIMED_BANS_ON_REAL_GAME = true;
 export const timedBansOn = (env: Env) => env.ENVIRONMENT !== 'production' || TIMED_BANS_ON_REAL_GAME;
 const DAY_MS = 86_400_000;
 
@@ -110,7 +113,7 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
 
   /* --- what this copy can do, for the dashboard --- */
   if (path === '/api/admin/info' && method === 'GET') {
-    return send({ copy: env.ENVIRONMENT ?? 'local', timedBans: timedBansOn(env), banDays: BAN_DAYS, phoneLinks: phoneLinksOn(env) });
+    return send({ copy: env.ENVIRONMENT ?? 'local', timedBans: timedBansOn(env), banDays: BAN_DAYS, phoneLinks: phoneLinksOn(env), codes: codesOn(env) });
   }
 
   /* --- the dashboard's views of the whole game (worker/adminViews.ts), all read-only --- */
@@ -121,6 +124,8 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
     }
     if (path === '/api/admin/players/counts') return send(await playerCounts(env));
     if (path === '/api/admin/now') return send(await liveNow(env));
+    // System health (worker/health.ts): everything the game depends on, checked now.
+    if (path === '/api/admin/health') return send(await health(env));
     if (path === '/api/admin/traffic') return send(await traffic(env, url));
     if (path === '/api/admin/phones') return send(await sharedPhones(env, url));
     if (path === '/api/admin/retention') return send(await retention(env, url));
@@ -162,6 +167,14 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
       const r = await sendReport(env, { day, force: true });
       return r.sent === 'sent' || r.sent === 'logged' ? send({ sent: true, day: r.day, to: reportTo(env).length }) : fail(502, `The email didn't go (${r.sent}). Check RESEND_API_KEY.`);
     }
+  }
+
+  /* --- "Lost your code? Ask us to help" (worker/codes.ts): the requests, with each answer checked --- */
+  if (path === '/api/admin/recoveries' && method === 'GET') return send(await recoveryList(env, url));
+  const rec = path.match(/^\/api\/admin\/recoveries\/([A-Za-z0-9_-]{8,24})\/(give|refuse)$/);
+  if (rec && method === 'POST') {
+    const r = await decideRecovery(env, rec[1], rec[2], (await body<{ note: string }>(req)).note, now);
+    return 'error' in r ? fail(r.status, r.error) : send(await recoveryList(env, url));
   }
 
   /* --- ban reviews: banned players asking for their ban to be looked at again --- */

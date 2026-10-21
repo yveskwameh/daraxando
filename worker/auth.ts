@@ -31,21 +31,29 @@ export function fromB64url(s: string): Uint8Array | null {
   }
 }
 
-export async function signToken(id: string, secret: string) {
-  const sig = await crypto.subtle.sign('HMAC', await keyFor(secret), enc.encode(id));
-  return `${id}.${toB64url(sig)}`;
+/**
+ * A login for a player. `v` is the player's sign-in version (players.login_v, worker/codes.ts):
+ * 0 for every login made before player codes, which keep their old shape (`id.sig`); after "Not
+ * me" or a recovery it goes up, the login says so (`id~2.sig`), and older logins stop working.
+ */
+export async function signToken(id: string, secret: string, v = 0) {
+  const payload = v ? `${id}~${v}` : id;
+  const sig = await crypto.subtle.sign('HMAC', await keyFor(secret), enc.encode(payload));
+  return `${payload}.${toB64url(sig)}`;
 }
 
-/** The player id inside a valid token, or null. Uses verify() so the comparison is constant time. */
-export async function verifyToken(token: string | null | undefined, secret: string): Promise<string | null> {
+/** The player id and sign-in version inside a valid token, or null. Uses verify() so the comparison is constant time. */
+export async function verifyToken(token: string | null | undefined, secret: string): Promise<{ id: string; v: number } | null> {
   if (!token || token.length > 200) return null;
   const dot = token.lastIndexOf('.');
   if (dot < 1) return null;
-  const id = token.slice(0, dot);
+  const payload = token.slice(0, dot);
   const sig = fromB64url(token.slice(dot + 1));
   if (!sig) return null;
-  const ok = await crypto.subtle.verify('HMAC', await keyFor(secret), sig, enc.encode(id));
-  return ok ? id : null;
+  const ok = await crypto.subtle.verify('HMAC', await keyFor(secret), sig, enc.encode(payload));
+  if (!ok) return null;
+  const [id, v = '0'] = payload.split('~');
+  return /^\d{1,6}$/.test(v) ? { id, v: Number(v) } : null;
 }
 
 /** A keyed hash, for storing sign-in codes and link secrets without keeping them. */
@@ -63,6 +71,36 @@ export function sameText(a: string, b: string) {
 }
 
 /** Random letters and digits safe for a web address: 16 bytes give 22 characters. */
+/**
+ * Encrypts and decrypts short text (a player's code) with a key made from the server's secret,
+ * so the database holds it but can't show it to anyone reading the database.
+ */
+const boxKeys = new Map<string, Promise<CryptoKey>>();
+function boxKey(secret: string) {
+  let key = boxKeys.get(secret);
+  if (!key) {
+    key = crypto.subtle.digest('SHA-256', enc.encode(`box:${secret}`)).then((raw) => crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']));
+    boxKeys.set(secret, key);
+  }
+  return key;
+}
+export async function seal(secret: string, text: string) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await boxKey(secret), enc.encode(text));
+  return `${toB64url(iv)}.${toB64url(data)}`;
+}
+export async function unseal(secret: string, box: string | null | undefined): Promise<string | null> {
+  const [a, b] = (box ?? '').split('.');
+  const iv = fromB64url(a ?? '');
+  const data = fromB64url(b ?? '');
+  if (!iv || !data) return null;
+  try {
+    return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, await boxKey(secret), data));
+  } catch {
+    return null;
+  }
+}
+
 export const randomToken = (bytes = 16) => toB64url(crypto.getRandomValues(new Uint8Array(bytes)));
 
 /** A 6-digit code, every value equally likely. */

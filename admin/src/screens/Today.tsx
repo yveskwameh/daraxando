@@ -10,6 +10,7 @@ import { change, headline, limitsOf, SECTIONS, whenFor } from '../sections.ts';
 import type { Report } from '../types.ts';
 import { Button, go, Icon, Problem, Skeleton, toast, useLoad, useMedia } from '../ui.tsx';
 import { LiveNow } from './Growth.tsx';
+import { HealthCard, healthNeeds, useHealth } from './Health.tsx';
 
 export function DayBar() {
   const { day, setDay, today } = useApp();
@@ -41,6 +42,11 @@ export function Today() {
   const appeals = useLoad(`${copy}:appeals-open`, () => api.appeals(copy, 'open'));
   // Phones with 3 or more players that gained one in the last day (the game's worker/phones.ts).
   const phones = useLoad(`${copy}:phones:3`, () => api.phones(copy, 3));
+  // Lost-code requests waiting for an answer (the game's worker/codes.ts).
+  const lost = useLoad(`${copy}:recoveries-open`, () => api.recoveries(copy, 'open'));
+  const lostOpen = lost.data?.recoveries.filter((x) => x.state === 'open').length ?? 0;
+  // System health (docs/HEALTH.md): the card under Live now, and anything down on Needs you.
+  const health = useHealth();
   const [sending, setSending] = useState(false);
   const yesterday = addDays(today, -1);
   const when = whenFor(day, today, yesterday);
@@ -56,6 +62,17 @@ export function Today() {
   const needs = range.data
     ? [
         ...needsFor(days, day, today, appeals.data ? appeals.data.appeals.length : null),
+        ...healthNeeds(health),
+        ...(lostOpen > 0
+          ? [{
+              id: 'recovery',
+              level: 'warn' as const,
+              title: lostOpen === 1 ? 'Someone lost their player code' : `${lostOpen} players lost their code`,
+              body: 'They asked for help from a phone. Check their answers in Reviews, then Recovery.',
+              go: 'reviews' as const,
+              action: 'Answer',
+            }]
+          : []),
         ...(busy > 0
           ? [{
               id: 'phones',
@@ -89,6 +106,7 @@ export function Today() {
       </div>
       <div className="today-live">
         <LiveNow />
+        <HealthCard h={health} />
         {rail && r && <PlanCard r={r} />}
       </div>
 
@@ -169,7 +187,7 @@ function Needs({ needs }: { needs: Need[] }) {
               <p className="fine">{n.body}</p>
             </div>
             {n.go && (
-              <button type="button" className="mini-btn" onClick={() => go(n.go === 'reviews' ? '/reviews' : n.go === 'phones' ? '/players/phones?min=3' : `/section/${n.go!.slice(8)}`)}>
+              <button type="button" className="mini-btn" onClick={() => { if (n.id === 'recovery') { try { localStorage.setItem('admin:reviews-tab', 'recovery'); } catch { /* fine */ } } go(n.go === 'reviews' ? '/reviews' : n.go === 'health' ? '/health' : n.go === 'phones' ? '/players/phones?min=3' : `/section/${n.go!.slice(8)}`)}}>
                 {n.action}
               </button>
             )}

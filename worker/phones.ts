@@ -8,15 +8,16 @@
  *
  * A link is a sign, not proof: brothers and sisters share phones. Nothing here bans anyone.
  *
- * Until the lawyer approves the privacy line in docs/PHONES-REVIEW.md, the real game keeps only
- * what it always has (the phone a player was made on) and has no cap. Flip
- * PHONE_LINKS_ON_REAL_GAME, then add the line to src/legal/privacy.md.
+ * The lawyer approved it on 21 October 2026 (docs/PHONES-REVIEW.md), with the privacy lines in
+ * src/legal/privacy.md. PHONE_LINKS_ON_REAL_GAME stays as a quick off switch: off, the real game
+ * keeps only the phone each player was made on and has no cap.
  */
 import type { Env } from './env';
 
 const DAY_MS = 86_400_000;
 
-export const PHONE_LINKS_ON_REAL_GAME = false;
+// Approved by the lawyer on 21 October 2026 (docs/PHONES-REVIEW.md).
+export const PHONE_LINKS_ON_REAL_GAME = true;
 export const phoneLinksOn = (env: Pick<Env, 'ENVIRONMENT'>) => env.ENVIRONMENT !== 'production' || PHONE_LINKS_ON_REAL_GAME;
 
 /** New players a phone can make in 30 days. */

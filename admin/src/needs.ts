@@ -11,7 +11,7 @@ export interface Need {
   title: string;
   body: string;
   /** Where the button goes. */
-  go?: 'reviews' | 'phones' | 'section:plan' | 'section:players' | 'section:first';
+  go?: 'reviews' | 'phones' | 'health' | 'section:plan' | 'section:players' | 'section:first';
   action?: string;
 }
 

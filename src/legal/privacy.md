@@ -1,6 +1,6 @@
 # Privacy notice
 
-Last updated 18 October 2026.
+Last updated 21 October 2026.
 
 > **The short version.** To run the game we keep your player (name, animal, state and progress), your games, and your email or Google account only if you save your progress. We never ask for your real name, phone number or exact location. We don't sell anything about you, show ads or track you around the internet. You can delete your player at any time in Settings.
 
@@ -25,6 +25,8 @@ We need these to run the game you asked to play. On the first screen we suggest 
 
 - **With Google:** Google's id for your account and your email address. We ask Google for nothing else: not your name, photo or contacts.
 - **With email:** your email address. Sign-in codes and the links in our emails are kept only as scrambled copies, and deleted after 2 days.
+- **With a player code:** a scrambled copy of your code, to find your player when it's typed, and the code locked with a key only our server has, so we can show it to you again.
+- **When your code is used:** the time, and the phone's scrambled id, so your other phones can tell you.
 
 We use these only to sign you in on another phone. We never send you anything you didn't ask for, and nobody else sees your email.
 
@@ -38,9 +40,10 @@ We need these to run the game, settle stakes, show your record, and count how th
 
 ### Keeping the game fair and safe
 
-- **A phone id.** When the app first opens, it makes a random number and keeps it on your phone. We keep only a scrambled copy next to each player made on that phone, to stop one person farming Dara Seeds with several players. We never read anything from the phone itself: no phone number, IMEI, model or contacts.
-- **Bans:** if a player is banned, the reason, the date and any request for a review, with our answer.
+- **A phone id.** When the app first opens, it makes a random number and keeps it on your phone. We keep only a scrambled copy with each player made, signed in or played on that phone, so one person can't farm Dara Seeds with several players. We never read anything from the phone itself: no phone number, IMEI, model or contacts.
+- **Bans:** if a player is banned, the reason, when it starts and ends, and any request for a review, with our answer.
 - **Our admin log:** every rename, ban, seed correction and review answer we make.
+- **If you ask us to help with a lost code:** your answers, the asking phone's scrambled id, and our reply, so we can check it's really you.
 
 We do this because we have a legitimate interest in keeping the game fair and safe for everyone.
 
@@ -59,7 +62,7 @@ We count things like how many people played each day, how many came back, and ho
 
 ## On your phone
 
-The game keeps a few things in your browser's storage, all needed for it to work: your login, the phone id, your settings (sound, music, vibration, nudges, notifications), the friend room you're hosting, when we last showed you a pop-up, and how many matches you've finished on this phone, so pop-ups come at the right moment. The game sets no cookies.
+The game keeps a few things in your browser's storage, all needed for it to work: your login, the phone id, your settings (sound, music, vibration, nudges, notifications), the friend room you're hosting, the players that have played on this phone until you remove them, when we last showed you a pop-up, and how many matches you've finished on this phone, so pop-ups come at the right moment. The game sets no cookies.
 
 So you can play Baba Ayo without internet, it also keeps:
 
@@ -97,7 +100,9 @@ These services run outside Nigeria. Our database is stored in Western Europe, an
 
 - **Your player, progress, sign-in details, seeds history and ban reviews:** until you delete your player.
 - **Days you played:** 400 days.
+- **Phones your player was played on:** the phone it was made on, until you delete your player. Other phones, 400 days after they were last used.
 - **Sign-in codes:** 2 days. **Google sign-in steps in progress:** 5 minutes.
+- **Requests for help with a lost code:** 30 days after we answer.
 - **Notification details:** until you turn notifications off, remove the app, or delete your player.
 - **Error reports and server error lines:** 3 days. **Database backups:** 7 days.
 - **On your phone, for playing without internet:** games until they're sent to us, and passes until they're used or 7 days have passed.

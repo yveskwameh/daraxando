@@ -2,7 +2,7 @@
 
 Written 19 October 2026, for Yves to send to the lawyer.
 
-**Status:** waiting for the lawyer. Until they approve, this works on the test copy only. On the real game, `PHONE_LINKS_ON_REAL_GAME` in `worker/phones.ts` is `false`: the game keeps only what it kept before (the phone each player was made on), has no limit on new players a phone, and the same-phone stakes rule works exactly as before.
+**Status:** approved by the lawyer on 21 October 2026, privacy lines only (no change to the terms). The lawyer asked to keep the notice short, so the lines in `src/legal/privacy.md` are shorter than the ones proposed below. On everywhere.
 
 ## Why
 

@@ -17,7 +17,8 @@
  * already has a different player on it.
  */
 import type { Account, AuthResult, AuthVia, Profile } from '../shared/protocol';
-import { fromB64url, hmac, randomToken, sameText, sha256, signToken, sixDigits } from './auth';
+import { fromB64url, hmac, randomToken, sameText, sha256, sixDigits } from './auth';
+import { tokenFor } from './codes';
 import { getPlayer } from './db';
 import { linkPhone } from './phones';
 import { deviceOf } from './safety';
@@ -165,7 +166,7 @@ async function outcome(env: Env, via: AuthVia, target: string, requester: string
   const profile = await getPlayer(env.DB, target);
   if (!profile) return { status: 'error', message: 'That player has been deleted.' };
   if (requester === target) return { status: saved ? 'saved' : 'same', via, profile };
-  return { status: requester ? 'switch' : 'signedin', via, profile, token: await signToken(target, secretOf(env)) };
+  return { status: requester ? 'switch' : 'signedin', via, profile, token: await tokenFor(env, target) };
 }
 
 /** A phone that just signed in to a player is linked to it (worker/phones.ts). */
@@ -190,6 +191,7 @@ export async function deleteAccount(db: D1Database, id: string) {
     db.prepare('DELETE FROM player_days WHERE player_id = ?').bind(id),
     db.prepare('DELETE FROM offline_passes WHERE player_id = ?').bind(id),
     db.prepare('DELETE FROM player_phones WHERE player_id = ?').bind(id),
+    db.prepare('DELETE FROM recoveries WHERE player_id = ?').bind(id),
     db.prepare('DELETE FROM players WHERE id = ?').bind(id),
   ]);
 }

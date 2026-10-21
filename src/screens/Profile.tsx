@@ -26,14 +26,25 @@ import { usePlayer } from '../lib/session';
 import { toast } from '../lib/toast';
 import { InstallSheet } from '../sheets/InstallSheet';
 import { LegalRow } from '../components/LegalLink';
+import { codesOn, firstScreen, phonePlayers } from '../lib/codes';
 
 const TitlesSheet = lazy(() => import('../sheets/TitlesSheet'));
 const SaveSheet = lazy(() => import('../sheets/SaveSheet'));
+// Player codes (src/lib/codes.ts): your code, the players on this phone, and typing a code.
+const CodeSheet = lazy(() => import('../sheets/CodeSheet'));
+const PlayersSheet = lazy(() => import('../sheets/PlayersSheet'));
+const FindSheet = lazy(() => import('../sheets/FindSheet'));
 
 type Tab = 'badges' | 'avatar' | 'piece' | 'print';
 
 export function Profile({ go }: { go: Go }) {
-  const { profile, token, update, signOut } = usePlayer();
+  const { profile, token, update, signOut, forget } = usePlayer();
+  const codes = codesOn();
+  // Your code, the players on this phone, typing a code. Each stays mounted after its first open, so it can slide away.
+  const [codeSheet, setCodeSheet] = useState<'save' | 'settings' | null>(null);
+  const [codeFrom, setCodeFrom] = useState<'save' | 'settings'>('save');
+  const [phoneSheet, setPhoneSheet] = useState<'players' | 'find' | null>(null);
+  const [codeUsed, setCodeUsed] = useState(false);
   const [tab, setTab] = useState<Tab>('badges');
   const [settings, setSettings] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -61,6 +72,11 @@ export function Profile({ go }: { go: Go }) {
     return () => { live = false; };
   }, [settings, token, profile.saved]);
 
+  const openCode = (from: 'save' | 'settings') => {
+    setCodeFrom(from);
+    setCodeUsed(true);
+    setCodeSheet(from);
+  };
   const openSave = (intent: Intent) => {
     setSaveAs(intent);
     setSaveUsed(true);
@@ -108,7 +124,7 @@ export function Profile({ go }: { go: Go }) {
         <div className="toggle-row save-row">
           <span className="save-ic"><Icon id="i-shield" className="" /></span>
           <div><b>Save your progress</b><span>Keep it when you change phones.</span></div>
-          <button type="button" className="mini-btn" onClick={() => openSave('save')}>Save</button>
+          <button type="button" className="mini-btn" onClick={() => (codes ? openCode('save') : openSave('save'))}>Save</button>
         </div>
       )}
 
@@ -183,12 +199,37 @@ export function Profile({ go }: { go: Go }) {
       <Sheet open={settings} onClose={() => setSettings(false)} label="Settings">
         <h2>Settings</h2>
         <div className="scroll">
-          <Settings account={account} onSave={() => openSave('save')} onSignin={() => openSave('signin')} onSignOut={() => ask('out')} onDelete={() => ask('delete')} />
+          <Settings
+            account={account}
+            onSave={() => openSave('save')}
+            onSignin={() => openSave('signin')}
+            onSignOut={() => ask('out')}
+            onDelete={() => ask('delete')}
+            onCode={() => openCode('settings')}
+            onPlayers={() => { setCodeUsed(true); setPhoneSheet('players'); }}
+          />
         </div>
       </Sheet>
 
       <Suspense fallback={null}>
         {saveUsed && <SaveSheet open={save !== null} onClose={() => setSave(null)} intent={saveAs} back="/you" has={saveAs === 'save' ? account : null} />}
+        {codes && codeUsed && (
+          <>
+            <CodeSheet open={codeSheet !== null} onClose={() => setCodeSheet(null)} from={codeFrom === 'settings' ? 'settings' : undefined} />
+            <PlayersSheet
+              open={phoneSheet === 'players'}
+              onClose={() => setPhoneSheet(null)}
+              onFind={() => setPhoneSheet('find')}
+              onNew={() => {
+                setPhoneSheet(null);
+                setSettings(false);
+                firstScreen.fresh = true;
+                leave();
+              }}
+            />
+            <FindSheet open={phoneSheet === 'find'} onClose={() => setPhoneSheet(null)} onOther={() => { setPhoneSheet(null); openSave('signin'); }} />
+          </>
+        )}
       </Suspense>
 
       <Sheet open={confirm !== null} onClose={() => setConfirm(null)} label={confirmAs === 'out' ? 'Sign out' : 'Delete my account'} closeButton={false}>
@@ -223,7 +264,10 @@ export function Profile({ go }: { go: Go }) {
                     await auth.deleteMe(token);
                     setConfirm(null);
                     toast('Your account is deleted.', 4000);
-                    leave();
+                    if (codes) {
+                      go({ name: 'home' }, { replace: true });
+                      forget(profile.id);
+                    } else leave();
                   } catch (err) {
                     toast.error((err as Error).message);
                     setDeleting(false);
@@ -262,6 +306,12 @@ export function Profile({ go }: { go: Go }) {
 }
 
 const open = (list: readonly Item[], level: number) => list.filter((x) => x.lvl <= level).length;
+
+/** "Just Tunde for now." or "Tunde and 2 more." */
+function playersLine(name: string) {
+  const others = phonePlayers.list().filter((p) => p.name !== name).length;
+  return others ? `${name} and ${others} more. Switch, or bring your own with a code.` : `Just ${name} for now. Switch, or bring your own with a code.`;
+}
 
 /** "Google (tunde@gmail.com)", "tunde@gmail.com", or both. */
 function signInWith(a: Account | null) {
@@ -443,13 +493,16 @@ function NotifyRows() {
   );
 }
 
-function Settings({ account, onSave, onSignin, onSignOut, onDelete }: {
+function Settings({ account, onSave, onSignin, onSignOut, onDelete, onCode, onPlayers }: {
   account: Account | null;
   onSave: () => void;
   onSignin: () => void;
   onSignOut: () => void;
   onDelete: () => void;
+  onCode: () => void;
+  onPlayers: () => void;
 }) {
+  const codes = codesOn();
   const p = usePrefs();
   const { profile } = usePlayer();
   const [steps, setSteps] = useState(false);
@@ -463,7 +516,30 @@ function Settings({ account, onSave, onSignin, onSignOut, onDelete }: {
   return (
     <div className="stack">
       <Record wins={profile.wins} draws={profile.draws} losses={profile.losses} best={profile.bestWinStreak} now={profile.winStreak} />
-      {profile.saved ? (
+      {codes ? (
+        <>
+          <div className="toggle-row">
+            <div><b>Your player code</b><span>Type it on any phone to play as {profile.name}. Lost it, or someone saw it? Get a new one there.</span></div>
+            <button type="button" className="mini-btn" onClick={onCode}>Show</button>
+          </div>
+          <div className="toggle-row">
+            <div>
+              <b>Extra backup</b>
+              {!account && <span>Checking</span>}
+              {account && account.google === null && !account.email && <span>If you lose your code and every phone you play on, Google or an email brings {profile.name} back.</span>}
+              {account?.google != null && <span>Google{account.google ? `: ${shortEmail(account.google)}` : ''}</span>}
+              {account?.email && <span>Email: {shortEmail(account.email)}</span>}
+            </div>
+            {account && (account.google === null || account.email === null) && (
+              <button type="button" className="mini-btn ghost" onClick={onSave}>{account.google === null && !account.email ? 'Add' : account.google === null ? 'Add Google' : 'Add email'}</button>
+            )}
+          </div>
+          <div className="toggle-row">
+            <div><b>Players on this phone</b><span>{playersLine(profile.name)}</span></div>
+            <button type="button" className="mini-btn ghost" onClick={onPlayers}>Switch</button>
+          </div>
+        </>
+      ) : profile.saved ? (
         <div className="toggle-row">
           <div>
             <b>Your progress is saved</b>
@@ -481,10 +557,12 @@ function Settings({ account, onSave, onSignin, onSignOut, onDelete }: {
           <button type="button" className="mini-btn" onClick={onSave}>Save</button>
         </div>
       )}
-      <div className="toggle-row">
-        <div><b>Another player</b><span>Sign in to a player you saved on another phone.</span></div>
-        <button type="button" className="mini-btn ghost" onClick={onSignin}>Sign in</button>
-      </div>
+      {!codes && (
+        <div className="toggle-row">
+          <div><b>Another player</b><span>Sign in to a player you saved on another phone.</span></div>
+          <button type="button" className="mini-btn ghost" onClick={onSignin}>Sign in</button>
+        </div>
+      )}
       {rows.map(([k, title, desc]) => (
         <div key={k} className="toggle-row">
           <div><b>{title}</b><span>{desc}</span></div>
@@ -520,7 +598,7 @@ function Settings({ account, onSave, onSignin, onSignOut, onDelete }: {
       </div>
       <LegalRow doc="privacy" title="Privacy notice" line="What the game keeps about you, and your rights." />
       <LegalRow doc="terms" title="Terms of play" line="The rules for playing the game." />
-      {profile.saved && (
+      {profile.saved && !codes && (
         <div className="toggle-row">
           <div><b>Sign out</b><span>Sign back in any time with Google or your email.</span></div>
           <button type="button" className="mini-btn ghost" onClick={onSignOut}>Sign out</button>

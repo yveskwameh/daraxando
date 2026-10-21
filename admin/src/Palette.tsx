@@ -66,6 +66,7 @@ export function Palette({ open, onClose, onCopy }: { open: boolean; onClose: () 
     { id: 'sincelink', label: 'Traffic since a time', hint: 'For a link you just shared', icon: 'growth', run: to(`/growth?since=${new Date().toISOString().slice(0, 16)}`) },
     { id: 'reviews', label: 'Ban reviews', icon: 'reviews', run: to('/reviews') },
     { id: 'log', label: 'Log', hint: 'Every admin change', icon: 'log', run: to('/log') },
+    { id: 'health', label: 'System health', hint: 'Every service the game depends on', icon: 'pulse', run: to('/health') },
     { id: 'plan', label: 'Free plan', icon: 'today', run: to('/section/plan') },
     {
       id: 'copy',
