@@ -7,6 +7,7 @@
  * in a plain line. Waiting on other services doesn't count toward the free plan's 10 ms.
  */
 import { dayKey } from '../shared/progression';
+import { switchOn } from './controls';
 import type { Env } from './env';
 import { pushReady } from './push';
 import { FREE, freePlanUse, GRAPHQL, reportDay, reportTo, usageReady } from './report';
@@ -192,6 +193,7 @@ async function morningEmail(env: Env, now: number): Promise<Check> {
   const base = { id: 'report', label: '8 am email' };
   if (!reportTo(env).length) return { ...base, state: 'off', detail: 'No REPORT_EMAIL on this copy.' };
   if (!env.RESEND_API_KEY) return { ...base, state: 'off', detail: 'Off without RESEND_API_KEY.' };
+  if (!(await switchOn(env, 'report', now).catch(() => true))) return { ...base, state: 'off', detail: 'Turned off in Controls.' };
   const sent = await env.DB.prepare('SELECT 1 AS hit FROM stat_days WHERE day = ? AND name = ?').bind(reportDay(now), STAT.reportSent).first().catch(() => null);
   if (sent) return { ...base, state: 'ok', detail: "This morning's email went out." };
   // 8 am Lagos plus half an hour for Cloudflare's cron and Resend.

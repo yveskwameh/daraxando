@@ -22,7 +22,7 @@ import type { Env } from './env';
 import { PUSH_FROM, STAT, WAIT_BUCKETS, type PushFrom } from './stats';
 import { KEEP_LINKS_MS } from './phones';
 import { tidyRecoveries } from './codes';
-import { tidyBanners } from './controls';
+import { switchOn, tidyBanners } from './controls';
 
 const DAY_MS = 86_400_000;
 /** 8 am Lagos, all year (Lagos doesn't change its clocks). The same line is in wrangler.jsonc. */
@@ -643,6 +643,8 @@ export async function sendReport(env: Env, opts: { day?: string; force?: boolean
     await liftEndedBans(env.DB, now);
   }
   if (!to.length) return { sent: 'off', day };
+  // Turned off in Controls (Yves checks Today instead). "Send now" in the dashboard still sends it.
+  if (!opts.force && !(await switchOn(env, 'report', now))) return { sent: 'off', day };
   if (!opts.force) {
     const first = await env.DB.prepare('INSERT INTO stat_days (day, name, n) VALUES (?, ?, 1) ON CONFLICT (day, name) DO NOTHING').bind(day, STAT.reportSent).run();
     if (!first.meta.changes) return { sent: 'already', day };

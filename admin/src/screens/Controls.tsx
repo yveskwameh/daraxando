@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../App.tsx';
 import { api } from '../api.ts';
-import { BANNER_ACTIONS, BANNER_MAX, lineProblem, NEWS_MAX, NEWS_PER_MONTH } from '../../../shared/controls.ts';
+import { BANNER_ACTIONS, BANNER_MAX, lineProblem, NEWS_MAX, NEWS_PER_MONTH, quietWhenOff } from '../../../shared/controls.ts';
 import { fmt, shortDate, when } from '../format.ts';
 import type { BannerAction, BannerRow, ControlsView, SwitchRow } from '../types.ts';
 import { Button, Empty, Field, Icon, Problem, Sheet, Skeleton, toast, useLoad, type Loaded } from '../ui.tsx';
@@ -71,7 +71,8 @@ function Switches({ view, onView }: { view: ControlsView; onView: (v: ControlsVi
   const [asking, setAsking] = useState<SwitchRow | null>(null);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
-  const off = view.switches.filter((s) => !s.on);
+  // The 8 am email being off is a choice, so it doesn't raise the warning line.
+  const off = view.switches.filter((s) => !s.on && !quietWhenOff(s.id));
   const groups = [...new Set(view.switches.map((s) => s.group))];
 
   const set = async (s: SwitchRow, on: boolean, why?: string) => {
@@ -145,6 +146,8 @@ function Switches({ view, onView }: { view: ControlsView; onView: (v: ControlsVi
             <p className="muted">
               {asking.id === 'reminders'
                 ? 'No 7 pm streak reminders go out until you turn it back on.'
+                : asking.id === 'report'
+                ? 'No 8 am email until you turn it back on. Today shows the same numbers, and Send now still sends one.'
                 : `Matches already playing finish as normal. Players see: "${asking.off}"`}
             </p>
             <Field label="Why (only you see this)" hint="It goes in the Log with the change.">
@@ -396,7 +399,7 @@ function News({ view, onView }: { view: ControlsView; onView: (v: ControlsView) 
 
 /** Switches that are off, for Needs you on Today. */
 export function controlNeeds(c: Loaded<ControlsView>) {
-  const off = c.data?.switches.filter((s) => !s.on) ?? [];
+  const off = c.data?.switches.filter((s) => !s.on && !quietWhenOff(s.id)) ?? [];
   if (!off.length) return [];
   return [{
     id: 'controls',

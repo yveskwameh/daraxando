@@ -44,10 +44,111 @@ svg.ic { width: 22px; height: 22px; flex: none; }
   background: var(--night);
   isolation: isolate;
 }
+/* The game's width, for the few things sized from it. */
+:root { --app-w: min(100vw, 460px); }
 @media (min-width: 640px) and (min-height: 560px) {
   .stage { background: var(--print-stage) #08071f; }
   .app { height: min(880px, calc(100% - 40px)); border-radius: 34px; box-shadow: 0 0 0 1px var(--line); }
 }
+
+/* ---------- Phone frame (computers and tablets) ----------
+   Yves, 21 October 2026, from the approved prototype docs/phone-frame-prototype.html: the game
+   inside a black iPhone 17 in the dead centre of the window. The screen is 402 by 874 at full
+   size, the iPhone 17's own points, and shrinks with the window's height (never below 360 wide).
+   Under 820 tall the status bar and home bar get slimmer; under 640 tall the frame gives way to the
+   plain column above. The markup is src/components/PhoneFrame.tsx (FRAME_QUERY matches this). */
+@media (min-width: 640px) and (min-height: 640px) {
+  :root {
+    --ph-gap: 8px;
+    --ph-bar-t: 36px;
+    --ph-bar-b: 18px;
+    --ph-h: min(874px, calc(100dvh - 2 * (16px + var(--ph-gap))));
+    --ph-w: clamp(360px, calc(var(--ph-h) * 0.46), 402px);
+    --ph-r: calc(var(--ph-w) * 0.139);
+    /* The screen's distance from the top and bottom of the window. */
+    --ph-y: calc((100dvh - var(--ph-h)) / 2);
+    --app-w: var(--ph-w);
+  }
+  .stage { position: relative; }
+  .app {
+    width: var(--ph-w); max-width: none;
+    height: calc(var(--ph-h) - var(--ph-bar-t) - var(--ph-bar-b));
+    margin-top: calc(var(--ph-bar-t) - var(--ph-bar-b));
+    border-radius: 0 0 calc(var(--ph-r) - var(--ph-bar-b)) calc(var(--ph-r) - var(--ph-bar-b));
+    box-shadow: none;
+    /* Full-screen moments and sparks fill the game's area, not the whole window. */
+    contain: layout;
+  }
+  .phone {
+    position: absolute; left: 50%; top: 50%;
+    width: calc(var(--ph-w) + 32px); height: calc(var(--ph-h) + 32px);
+    transform: translate(-50%, -50%);
+    border: 4px solid #2c2c30; border-radius: calc(var(--ph-r) + 16px);
+    background: var(--night);
+    box-shadow: inset 0 0 0 12px #050506, 0 24px 60px rgba(0, 0, 0, .45);
+    pointer-events: none;
+  }
+  .ph-btn { position: absolute; width: 3px; background: #1f1f22; }
+  .ph-btn.l { left: -6px; border-radius: 2px 0 0 2px; }
+  .ph-btn.r { right: -6px; border-radius: 0 2px 2px 0; }
+  .ph-btn.action { top: 16.5%; height: 3.8%; }
+  .ph-btn.up { top: 23.6%; height: 6.8%; }
+  .ph-btn.down { top: 32%; height: 6.8%; }
+  .ph-btn.power { top: 27.6%; height: 11%; }
+  .ph-status {
+    position: absolute; left: 16px; right: 16px; top: 16px; height: var(--ph-bar-t);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px calc(var(--ph-w) * 0.075) 0 calc(var(--ph-w) * 0.11);
+    color: #fff; font: 600 0.9375rem/1 var(--body); letter-spacing: -.01em; font-variant-numeric: tabular-nums;
+  }
+  .ph-icons { display: flex; align-items: center; gap: 6px; }
+  .ph-icons svg { fill: currentColor; }
+  .ph-island {
+    position: absolute; left: 50%; top: calc(16px + var(--ph-bar-t) * 0.2);
+    width: 100px; height: 28px; margin-left: -50px;
+    border-radius: 999px; background: #000;
+  }
+  .ph-home {
+    position: absolute; left: 50%; bottom: calc(16px + var(--ph-bar-b) * 0.3);
+    width: 120px; height: 5px; margin-left: -60px;
+    border-radius: 999px; background: #fff; opacity: .9;
+  }
+
+  /* Sheets open in the browser's top layer, outside the phone, so they're lined up with its screen
+     by hand and clipped at its bottom edge while they slide. */
+  :root dialog.sheet {
+    bottom: var(--ph-y);
+    width: var(--ph-w); max-width: none;
+    max-height: calc(var(--ph-h) * 0.88);
+    border-radius: 28px 28px var(--ph-r) var(--ph-r);
+    clip-path: inset(0 0 var(--dy, 0px) 0 round 28px 28px var(--ph-r) var(--ph-r));
+  }
+  :root dialog.sheet[open] { animation-name: up-in-phone; }
+  :root dialog.sheet.settle { transition: transform 220ms cubic-bezier(.2, .9, .2, 1), clip-path 220ms cubic-bezier(.2, .9, .2, 1); }
+  :root dialog.sheet[open].closing { animation-name: down-in-phone; }
+  /* The message bar outside a sheet (inside one, it sits at the sheet's foot as before). */
+  :root body > .toast {
+    bottom: var(--ph-y);
+    width: var(--ph-w); max-width: none;
+    border-radius: 24px 24px var(--ph-r) var(--ph-r);
+    clip-path: inset(-40px 0 0 0 round 24px 24px var(--ph-r) var(--ph-r));
+    animation-name: toast-up-in-phone;
+  }
+  :root body > .toast.out { animation-name: toast-down-in-phone; }
+}
+@media (min-width: 640px) and (min-height: 820px) {
+  :root { --ph-gap: 24px; --ph-bar-t: 54px; --ph-bar-b: 34px; }
+  .ph-status { font-size: 1.0625rem; }
+  .ph-island { width: 124px; height: 36px; margin-left: -62px; top: 27px; }
+  .ph-home { width: 134px; margin-left: -67px; bottom: 24px; }
+}
+@keyframes up-in-phone { from { transform: translateY(100%); clip-path: inset(0 0 100% 0 round 28px 28px var(--ph-r) var(--ph-r)); } }
+@keyframes down-in-phone {
+  from { transform: translateY(var(--dy, 0px)); clip-path: inset(0 0 var(--dy, 0px) 0 round 28px 28px var(--ph-r) var(--ph-r)); }
+  to { transform: translateY(100%); clip-path: inset(0 0 100% 0 round 28px 28px var(--ph-r) var(--ph-r)); }
+}
+@keyframes toast-up-in-phone { from { transform: translateY(100%); clip-path: inset(-40px 0 100% 0 round 24px 24px var(--ph-r) var(--ph-r)); } }
+@keyframes toast-down-in-phone { to { transform: translateY(100%); clip-path: inset(-40px 0 100% 0 round 24px 24px var(--ph-r) var(--ph-r)); } }
 .screen {
   position: absolute;
   inset: 0;
@@ -254,7 +355,7 @@ svg.ic { width: 22px; height: 22px; flex: none; }
 .gp-pick .chev { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--night); color: var(--cream); }
 .gp-pick .chev svg { width: 18px; height: 18px; }
 .game-pic .rule { font-size: 0.9375rem; color: var(--muted); }
-.game-pic .mb-wrap { flex: 0 1 auto; height: calc(min(100vw, 460px) - var(--gut-l) - var(--gut-r) - 32px); }
+.game-pic .mb-wrap { flex: 0 1 auto; height: calc(var(--app-w) - var(--gut-l) - var(--gut-r) - 32px); }
 .mb-wrap { flex: 1; min-height: 70px; container-type: size; display: grid; place-items: center; }
 .dots { display: flex; justify-content: center; }
 .dots button { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; background: none; }

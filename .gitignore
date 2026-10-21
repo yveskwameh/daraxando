@@ -11,3 +11,4 @@ dist
 # Mac and sync leftovers
 .DS_Store
 _to_delete
+films/

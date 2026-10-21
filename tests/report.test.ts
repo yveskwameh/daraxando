@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Env } from '../worker/env';
-import { freePlanUse, limits, reportEmail, reportTo, type Report } from '../worker/report';
+import { freePlanUse, limits, reportEmail, reportTo, sendReport, type Report } from '../worker/report';
 import { matchStat, waitBucket } from '../worker/stats';
 
 const base: Report = {
@@ -155,5 +155,33 @@ describe('the free plan numbers', () => {
     expect(await freePlanUse({} as Env, '2026-10-10')).toBeNull();
     const u = await freePlanUse({ ...env, CF_ACCOUNT_ID: 'my-account' }, '2026-10-10');
     expect(u?.problems[0]).toMatch(/doesn't look like an account id/);
+  });
+});
+
+describe('turning the 8 am email off in Controls', () => {
+  /** A database that records what it was asked, with the 8 am email switched off. */
+  const fakeDb = () => {
+    const seen: string[] = [];
+    const stmt = (sql: string) => ({
+      sql,
+      bind() { return this; },
+      run: async () => (seen.push(sql), { meta: { changes: 1 } }),
+      first: async () => (seen.push(sql), null),
+      all: async () => (seen.push(sql), { results: [] }),
+    });
+    const db = {
+      prepare: (sql: string) => stmt(sql),
+      batch: async (list: { sql: string }[]) => list.map((x) => (seen.push(x.sql), { results: x.sql.startsWith('SELECT id FROM switches_off') ? [{ id: 'report' }] : [] })),
+    };
+    return { db, seen };
+  };
+
+  it('sends nothing, but still does the morning tidy-up', async () => {
+    const { db, seen } = fakeDb();
+    const env = { DB: db, REPORT_EMAIL: 'yves@example.com', RESEND_API_KEY: 're_test' } as unknown as Env;
+    const r = await sendReport(env, { now: Date.UTC(2026, 9, 22, 7) });
+    expect(r.sent).toBe('off');
+    expect(seen.some((q) => q.startsWith('DELETE FROM player_days'))).toBe(true);
+    expect(seen.some((q) => q.includes('INSERT INTO stat_days'))).toBe(false);
   });
 });
