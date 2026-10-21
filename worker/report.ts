@@ -16,9 +16,11 @@ import { addDays } from '../shared/habits';
 import { MODES, type ModeId } from '../shared/modes';
 import { dayKey } from '../shared/progression';
 import { KEEP_CODES_MS, sendEmail, type Sent } from './accounts';
+import { liftEndedBans } from './db';
 import type { Email } from './email';
 import type { Env } from './env';
 import { PUSH_FROM, STAT, WAIT_BUCKETS, type PushFrom } from './stats';
+import { KEEP_LINKS_MS } from './phones';
 
 const DAY_MS = 86_400_000;
 /** 8 am Lagos, all year (Lagos doesn't change its clocks). The same line is in wrangler.jsonc. */
@@ -246,7 +248,7 @@ function cohort(db: D1Database, joined: string, later: string) {
 
 /* ---------- the free plan, from Cloudflare's GraphQL Analytics API ---------- */
 
-const GRAPHQL = 'https://api.cloudflare.com/client/v4/graphql';
+export const GRAPHQL = 'https://api.cloudflare.com/client/v4/graphql';
 
 export const usageReady = (env: Env) => !!(env.CF_ACCOUNT_ID && env.CF_ANALYTICS_TOKEN);
 
@@ -598,14 +600,18 @@ export async function sendReport(env: Env, opts: { day?: string; force?: boolean
   const now = opts.now ?? Date.now();
   const day = opts.day ?? reportDay(now);
   const to = reportTo(env);
-  // The daily tidy-up (docs/BACKEND.md, privacy): play days past 400 days, sign-in codes past 2 days
-  // and Google sign-in hand-offs past their 5 minutes, even on days nobody asks for a code.
+  // The daily tidy-up (docs/BACKEND.md, privacy): play days past 400 days, sign-in codes past 2 days,
+  // Google sign-in hand-offs past their 5 minutes, even on days nobody asks for a code, and phone
+  // links other than the phone a player was made on, 400 days after the phone last opened it.
   if (!opts.force) {
     await env.DB.batch([
       env.DB.prepare('DELETE FROM player_days WHERE day < ?').bind(addDays(dayKey(now), -KEEP_DAYS)),
       env.DB.prepare('DELETE FROM email_codes WHERE created_at < ?').bind(now - KEEP_CODES_MS),
       env.DB.prepare('DELETE FROM auth_handoffs WHERE expires_at < ?').bind(now),
+      env.DB.prepare("DELETE FROM player_phones WHERE how != 'made' AND last_at < ?").bind(now - KEEP_LINKS_MS),
     ]).catch((err) => console.error('[tidy]', err));
+    // Timed bans that ended for players who haven't opened the game since (migrations/0012_admin.sql).
+    await liftEndedBans(env.DB, now);
   }
   if (!to.length) return { sent: 'off', day };
   if (!opts.force) {

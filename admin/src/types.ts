@@ -77,9 +77,12 @@ export interface PlayerSummary {
   aura: number;
   rating: number;
   saved: boolean;
-  ban: { at: number; reason: string } | null;
+  /** `until`: when a timed ban ends, or null for one that lasts until it's lifted. */
+  ban: { at: number; reason: string; until?: number | null } | null;
   terms: { version: string; at: number | null } | null;
   createdAt: number;
+  lastPlayedDay?: string | null;
+  dayStreak?: number;
 }
 
 export interface Profile {
@@ -99,7 +102,7 @@ export interface Profile {
   lastPlayedDay: string | null;
   createdAt: number;
   saved: boolean;
-  ban: { at: number; reason: string } | null;
+  ban: { at: number; reason: string; until?: number | null } | null;
 }
 
 export interface PlayerDetail {
@@ -119,8 +122,14 @@ export interface PlayerDetail {
     opponent: { id: string; name: string | null };
   }[];
   samePhone: { id: string; name: string }[];
+  /** Everyone who has been on one of this player's phones, and how (since 19 October 2026). */
+  linked?: Linked[];
+  /** This player's phones, by the first 8 characters of their keyed hash. */
+  phones?: { phone: string; how: PhoneHow; firstAt: number; lastAt: number }[];
   appeals: { id: number; message: string; at: number; status: string; note: string | null; decidedAt: number | null }[];
   actions: { id: number; at: number; action: string; detail: Record<string, unknown> | null }[];
+  /** The days they finished a match in the last 12 weeks, and on how many days in all. */
+  days?: { recent: string[]; total: number };
 }
 
 export interface Appeal {
@@ -143,3 +152,50 @@ export interface AdminAction {
   playerId: string | null;
   detail: Record<string, unknown> | null;
 }
+
+/* ---------- the dashboard's views of the whole game (the game's worker/adminViews.ts) ---------- */
+
+/** `phoneLinks`: every phone a player uses is linked, and a phone makes 2 new players in 30 days (the game's worker/phones.ts). */
+export interface Info { copy: string; timedBans: boolean; banDays: number[]; phoneLinks?: boolean }
+
+export type PhoneHow = 'made' | 'signin' | 'seen';
+/** A player linked to another through a phone. */
+export interface Linked { id: string; name: string; createdAt: number; saved: boolean; cowries: number; banned: boolean; how: PhoneHow; phones: number; lastAt: number }
+/** Phones with 2 or more players (the game's worker/adminViews.ts, sharedPhones). */
+export interface SharedPhones {
+  min: number;
+  total: number;
+  /** Phones with 3 or more players that gained one in the last day. */
+  busy: number;
+  phones: {
+    id: string;
+    players: number;
+    newest: number;
+    lastAt: number;
+    made30: number;
+    list: { id: string; name: string; how: PhoneHow; firstAt: number; lastAt: number; createdAt: number; cowries: number; saved: boolean; banned: boolean }[];
+  }[];
+}
+
+export type Tab = 'all' | 'today' | 'new' | 'banned' | 'saved';
+export type Sort = 'new' | 'active' | 'seeds' | 'aura' | 'rating' | 'name';
+export type Counts = Record<Tab, number>;
+export interface PlayerPage { players: PlayerSummary[]; page: number; size?: number; more: boolean; total: number }
+export type PageSize = 25 | 50 | 100;
+
+export interface Now { at: number; home: number | null; looking: number | null; waiting: number | null; playedToday: number }
+
+export type Bucket = 'quarter' | 'hour' | 'day';
+type Visits = { visits: number; views: number };
+/** Traffic for a window (the game's worker/adminViews.ts traffic). */
+export interface Traffic {
+  window: { key: string; from: number; to: number; bucket: Bucket; before: number };
+  players: { joined: number; finished: number; saved: number; before: number; savedAny: number };
+  buckets: { at: number; joined: number; visits: number | null; views: number | null }[];
+  /** Web Analytics, on the live game: the visits, or why there are none. */
+  web: { off?: string; problem?: string; visits?: number; views?: number; before?: Visits; referers?: ({ host: string } & Visits)[]; countries?: ({ name: string } & Visits)[]; devices?: ({ name: string } & Visits)[] };
+}
+
+export interface Retention { today: string; weeks: { start: string; joined: number; played: number[] }[] }
+
+export interface FirstDays { days: number; from: string; to: string; joined: number; finished: number; won: number; returned: number; threeDays: number; saved: number }

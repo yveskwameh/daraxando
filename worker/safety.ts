@@ -8,6 +8,7 @@ import { overPairCap, quickQuit, type StakeBack } from '../shared/stakes';
 import { hmac } from './auth';
 import type { Env } from './env';
 import { secretOf } from './http';
+import { sharedPhoneStatement } from './phones';
 
 const DAY_MS = 86_400_000;
 
@@ -38,8 +39,10 @@ export interface Settle {
  */
 export async function stakeBack(db: D1Database, m: Settle, now: number): Promise<StakeBack | null> {
   if (quickQuit(m.reason, m.loserMoves, m.gamesBefore)) return 'quit';
-  const [devices, flow] = await db.batch<Record<string, unknown>>([
-    db.prepare('SELECT device FROM players WHERE id IN (?, ?) AND device IS NOT NULL').bind(m.winnerId, m.loserId),
+  const [shared, flow] = await db.batch<Record<string, unknown>>([
+    // Ever on the same phone (worker/phones.ts). On the real game, until the lawyer approves the
+    // wider links, that's only the phone each was made on: the rule as it has always been.
+    sharedPhoneStatement(db, m.winnerId, m.loserId),
     // What the winner is already up on this opponent today: stakes won from them, minus stakes lost to them.
     db
       .prepare(
@@ -50,8 +53,7 @@ export async function stakeBack(db: D1Database, m: Settle, now: number): Promise
       )
       .bind(m.winnerId, m.loserId, now - DAY_MS),
   ]);
-  const phones = (devices.results ?? []) as { device: string }[];
-  if (phones.length === 2 && phones[0].device === phones[1].device) return 'phone';
+  if ((shared.results ?? []).length) return 'phone';
   if (overPairCap(Number((flow.results?.[0] as { flow?: number } | undefined)?.flow ?? 0), m.stake)) return 'cap';
   return null;
 }

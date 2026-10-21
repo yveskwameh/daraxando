@@ -32,6 +32,19 @@ export function back(fallback: string) {
   else go(fallback);
 }
 
+/** True while the screen matches `query`, for layouts that change shape (a table on a computer, rows on a phone). */
+export function useMedia(query: string) {
+  const [on, setOn] = useState(() => typeof matchMedia === 'function' && matchMedia(query).matches);
+  useEffect(() => {
+    const m = matchMedia(query);
+    const update = () => setOn(m.matches);
+    update();
+    m.addEventListener('change', update);
+    return () => m.removeEventListener('change', update);
+  }, [query]);
+  return on;
+}
+
 /* ---------- loading data ---------- */
 
 export interface Loaded<T> { data: T | null; error: string | null; loading: boolean; reload: () => void; at: number | null }
@@ -152,6 +165,15 @@ export function Loading({ label = 'Loading' }: { label?: string }) {
   );
 }
 
+/** Grey shapes where the content will be, so the page doesn't jump when it arrives. */
+export function Skeleton({ rows = 6, kind = 'rows', label = 'Loading' }: { rows?: number; kind?: 'rows' | 'cards' | 'table' | 'block'; label?: string }) {
+  return (
+    <div className={`skel ${kind}`} role="status" aria-label={label}>
+      {Array.from({ length: rows }, (_, i) => <i key={i} aria-hidden="true" />)}
+    </div>
+  );
+}
+
 export function Problem({ text, onRetry }: { text: string; onRetry?: () => void }) {
   return (
     <div className="state problem" role="alert">
@@ -180,6 +202,7 @@ const PATHS: Record<string, string> = {
   today: 'M4 19V9M10 19V5M16 19v-7M22 19H2',
   players: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M17 3.5a4 4 0 0 1 0 7.5M19 14a7 7 0 0 1 3 7',
   reviews: 'M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4zM8.5 12l2.5 2.5 4.5-5',
+  growth: 'M3 17l6-6 4 4 8-8M15 7h6v6',
   log: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01',
   search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5',
   copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
@@ -188,6 +211,7 @@ const PATHS: Record<string, string> = {
   open: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
   alert: 'M12 3l10 18H2L12 3zM12 10v5M12 18h.01',
   check: 'M5 12.5l4.5 4.5L19 7',
+  phone: 'M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM11 18h2',
 };
 export function Icon({ name, size = 22 }: { name: keyof typeof PATHS | string; size?: number }) {
   return (

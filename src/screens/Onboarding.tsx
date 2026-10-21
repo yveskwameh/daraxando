@@ -17,7 +17,7 @@ import { Avatar, Icon, Wordmark } from '../components/art';
 import { DemoBoard } from '../components/DemoBoard';
 import { Sheet } from '../components/Sheet';
 import { StatePicker } from '../components/StatePicker';
-import { api, type RoomPeek } from '../lib/api';
+import { api, ApiError, type RoomPeek } from '../lib/api';
 import { buzz } from '../lib/haptics';
 import { NAME_POOL, suggestNames } from '../lib/names';
 import type { Go, Route } from '../lib/router';
@@ -43,6 +43,8 @@ export function Onboarding({ route, go }: { route: Route; go: Go }) {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // This phone has made as many new players as it may this month (worker/phones.ts): sign in instead.
+  const [full, setFull] = useState(false);
   // Someone who saved their progress on another phone. Stays mounted after the first open, so it can slide away.
   const [signin, setSignin] = useState(false);
   const [signinUsed, setSigninUsed] = useState(false);
@@ -75,8 +77,13 @@ export function Onboarding({ route, go }: { route: Route; go: Go }) {
       });
     } catch (err) {
       setError((err as Error).message);
+      if (err instanceof ApiError && err.status === 403) setFull(true);
       setBusy(false);
     }
+  };
+  const openSignin = () => {
+    setSigninUsed(true);
+    setSignin(true);
   };
 
   return (
@@ -84,7 +91,7 @@ export function Onboarding({ route, go }: { route: Route; go: Go }) {
       <div className="onb-head">
         <div className="onb-top">
           <Wordmark />
-          <button type="button" className="mini-btn ghost" onClick={() => { setSigninUsed(true); setSignin(true); }}>Sign in</button>
+          <button type="button" className="mini-btn ghost" onClick={openSignin}>Sign in</button>
         </div>
         <p>
           {room
@@ -108,13 +115,21 @@ export function Onboarding({ route, go }: { route: Route; go: Go }) {
       </div>
 
       {error && <p className="form-error" role="alert">{error}</p>}
-      <button type="button" className="btn primary block lg" disabled={!clean || busy} onClick={play}>
-        {busy ? 'Setting up the board' : room ? 'Join the game' : 'Play now'}
-      </button>
-      <p className="fine age">
-        By tapping {room ? 'Join the game' : 'Play now'}, you agree to the <LegalLink doc="terms">Terms of play</LegalLink>, confirm
-        you're 13 or older, and have read the <LegalLink doc="privacy">Privacy notice</LegalLink>.
-      </p>
+      {full ? (
+        <button type="button" className="btn primary block lg" onClick={openSignin}>Sign in to your player</button>
+      ) : (
+        <button type="button" className="btn primary block lg" disabled={!clean || busy} onClick={play}>
+          {busy ? 'Setting up the board' : room ? 'Join the game' : 'Play now'}
+        </button>
+      )}
+      {full ? (
+        <p className="fine age">Saved your progress before? Sign in with Google or your email to play as that player.</p>
+      ) : (
+        <p className="fine age">
+          By tapping {room ? 'Join the game' : 'Play now'}, you agree to the <LegalLink doc="terms">Terms of play</LegalLink>, confirm
+          you're 13 or older, and have read the <LegalLink doc="privacy">Privacy notice</LegalLink>.
+        </p>
+      )}
 
       <Suspense fallback={null}>
         {signinUsed && <SaveSheet open={signin} onClose={() => setSignin(false)} intent="signin" back={room ? `/play/${room}` : '/'} />}

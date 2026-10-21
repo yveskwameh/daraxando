@@ -8,7 +8,8 @@ import { addDays, dayName, fmt, longDay, shortDay } from '../format.ts';
 import { needsFor, type Need } from '../needs.ts';
 import { change, headline, limitsOf, SECTIONS, whenFor } from '../sections.ts';
 import type { Report } from '../types.ts';
-import { Button, go, Icon, Loading, Problem, toast, useLoad } from '../ui.tsx';
+import { Button, go, Icon, Problem, Skeleton, toast, useLoad, useMedia } from '../ui.tsx';
+import { LiveNow } from './Growth.tsx';
 
 export function DayBar() {
   const { day, setDay, today } = useApp();
@@ -38,6 +39,8 @@ export function Today() {
   const { copy, day, today } = useApp();
   const range = useRange(14);
   const appeals = useLoad(`${copy}:appeals-open`, () => api.appeals(copy, 'open'));
+  // Phones with 3 or more players that gained one in the last day (the game's worker/phones.ts).
+  const phones = useLoad(`${copy}:phones:3`, () => api.phones(copy, 3));
   const [sending, setSending] = useState(false);
   const yesterday = addDays(today, -1);
   const when = whenFor(day, today, yesterday);
@@ -47,7 +50,24 @@ export function Today() {
   const r = at >= 0 ? days[at].report : undefined;
   const before = at > 0 ? days[at - 1].report : undefined;
   const dayError = at >= 0 ? days[at].error : undefined;
-  const needs = range.data ? needsFor(days, day, today, appeals.data ? appeals.data.appeals.length : null) : [];
+  /** On a computer the free plan sits under Live now, beside the numbers. */
+  const rail = useMedia('(min-width: 1024px)') && !dayError;
+  const busy = phones.data?.busy ?? 0;
+  const needs = range.data
+    ? [
+        ...needsFor(days, day, today, appeals.data ? appeals.data.appeals.length : null),
+        ...(busy > 0
+          ? [{
+              id: 'phones',
+              level: 'warn' as const,
+              title: busy === 1 ? 'A phone got its third player in the last day' : `${busy} phones got a third player in the last day`,
+              body: 'It can be one person making players to farm seeds, or a family sharing a phone. Check who they are.',
+              go: 'phones' as const,
+              action: 'See shared phones',
+            }]
+          : []),
+      ]
+    : [];
 
   const send = async () => {
     setSending(true);
@@ -62,22 +82,32 @@ export function Today() {
   };
 
   return (
-    <div className="stack-group">
-      <DayBar />
+    <div className="today">
+      <div className="today-day">
+        <h1 className="wide-only">Today</h1>
+        <DayBar />
+      </div>
+      <div className="today-live">
+        <LiveNow />
+        {rail && r && <PlanCard r={r} />}
+      </div>
 
       {range.error ? (
-        <Problem text={range.error} onRetry={range.reload} />
+        <div className="today-main"><Problem text={range.error} onRetry={range.reload} /></div>
       ) : !range.data ? (
-        <Loading label="Getting the numbers" />
+        <>
+          <div className="today-main"><Skeleton kind="block" rows={1} label="Getting the numbers" /></div>
+          <div className="today-cards"><Skeleton kind="cards" rows={6} label="Getting the numbers" /></div>
+        </>
       ) : dayError || !r ? (
-        <Problem text={dayError ?? 'No numbers for this day.'} onRetry={range.reload} />
+        <div className="today-main"><Problem text={dayError ?? 'No numbers for this day.'} onRetry={range.reload} /></div>
       ) : (
         <>
-          <Needs needs={needs} />
+          <div className="today-needs"><Needs needs={needs} /></div>
 
-          <section className="card lead" aria-labelledby="headline">
+          <section className="card lead today-lead" aria-labelledby="headline">
             <div className="lead-head">
-              <h1 id="headline" className="kicker">{day === today ? 'So far today' : day === yesterday ? "Yesterday's numbers" : `Numbers for ${dayName(day, today)}`}</h1>
+              <h2 id="headline" className="kicker">{day === today ? 'So far today' : day === yesterday ? "Yesterday's numbers" : `Numbers for ${dayName(day, today)}`}</h2>
               <button type="button" className="icon-btn sm" aria-label="Refresh" onClick={() => { range.reload(); appeals.reload(); }}>
                 {range.loading ? <span className="spin" aria-hidden="true" /> : <Icon name="refresh" size={18} />}
               </button>
@@ -98,10 +128,10 @@ export function Today() {
             </div>
           </section>
 
-          <div className="cards">
-            {SECTIONS.map((s) => (s.id === 'plan' ? <PlanCard key={s.id} r={r} /> : <SectionCard key={s.id} id={s.id} days={days} r={r} before={before} />))}
+          <div className="cards today-cards">
+            {SECTIONS.map((s) => (s.id === 'plan' ? (rail ? null : <PlanCard key={s.id} r={r} />) : <SectionCard key={s.id} id={s.id} days={days} r={r} before={before} />))}
           </div>
-          <p className="fine center">"Played" means finished a match, on Lagos days. A best-of series counts as one match.</p>
+          <p className="fine center today-foot">"Played" means finished a match, on Lagos days. A best-of series counts as one match.</p>
         </>
       )}
     </div>
@@ -139,7 +169,7 @@ function Needs({ needs }: { needs: Need[] }) {
               <p className="fine">{n.body}</p>
             </div>
             {n.go && (
-              <button type="button" className="mini-btn" onClick={() => go(n.go === 'reviews' ? '/reviews' : `/section/${n.go!.slice(8)}`)}>
+              <button type="button" className="mini-btn" onClick={() => go(n.go === 'reviews' ? '/reviews' : n.go === 'phones' ? '/players/phones?min=3' : `/section/${n.go!.slice(8)}`)}>
                 {n.action}
               </button>
             )}

@@ -1,7 +1,7 @@
 // The dashboard's charts, drawn as plain SVG. One series per chart, in --chart (indigo glow),
 // thin bars with rounded tops on the baseline, a tooltip on hover or tap, and today drawn as an
 // outline because it isn't over yet. Every chart's numbers are also on screen as text.
-import { useId, useState } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { dayName, fmt, pct } from './format.ts';
 import type { Unit } from './sections.ts';
 import { ALARM, WARN } from './sections.ts';
@@ -50,24 +50,55 @@ export function Spark({ points, today, unit }: { points: Point[]; today: string;
   );
 }
 
+/** The width the chart has on screen, so its text stays the same size on a phone and on a computer. */
+function useWidth(fallback: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [w, setW] = useState(fallback);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([e]) => setW(Math.max(240, Math.round(e.contentRect.width))));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, w] as const;
+}
+
 /** The big chart on a section page: one bar a day, a value axis, a tooltip on hover or tap. */
-export function Bars({ points, today, unit, label, onPick, pickedDay }: { points: Point[]; today: string; unit: Unit; label: string; onPick?: (day: string) => void; pickedDay?: string }) {
+export function Bars({ points, today, unit, label, onPick, pickedDay, axis, tip, openNote }: {
+  points: Point[];
+  /** The key of the bar that isn't over yet (today, or this hour), drawn as an outline. */
+  today: string;
+  unit: Unit;
+  label: string;
+  onPick?: (day: string) => void;
+  pickedDay?: string;
+  /** How a bar's key reads under the chart and in its tooltip, for bars that aren't days. */
+  axis?: (key: string) => string;
+  tip?: (key: string) => string;
+  /** The note under the chart about the bar that isn't over yet. */
+  openNote?: string;
+}) {
   const [active, setActive] = useState<number | null>(null);
   const id = useId();
-  const W = 340;
-  const H = 180;
+  const [box, W] = useWidth(340);
+  const H = W >= 560 ? 220 : 180;
   const L = 34; // room for the axis numbers
   const B = 22; // room for the dates
   const plotW = W - L - 4;
   const plotH = H - B - 8;
   const max = niceMax(Math.max(0, ...points.map((p) => p.value ?? 0)), unit);
   const slot = plotW / points.length;
-  const w = Math.min(18, Math.max(3, slot - 2));
+  const w = Math.min(W >= 560 ? 24 : 18, Math.max(3, slot - 2));
   const y = (v: number) => 8 + plotH - (v / max) * plotH;
-  const ticks = [0, max / 2, max];
+  // A count's middle line only where it's a whole number (no 12.5 players).
+  const ticks = unit === 'count' && (max / 2) % 1 ? [0, max] : [0, max / 2, max];
   const tickText = (v: number) => (unit === 'share' ? `${Math.round(v * 100)}%` : unit === 'secs' ? `${Math.round(v)}s` : v >= 10_000 ? `${Math.round(v / 1000)}k` : fmt(Math.round(v * 10) / 10));
-  const dateIdx = [0, Math.floor((points.length - 1) / 2), points.length - 1];
-  const shortDate = (day: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  // Dates under the bars, evenly spaced back from the last day: up to 5 on a wide chart, 3 on a phone.
+  const step = Math.max(1, Math.ceil((points.length - 1) / ((W >= 560 ? 5 : 3) - 1)));
+  const dateIdx: number[] = [];
+  for (let i = points.length - 1; i >= 0; i -= step) dateIdx.unshift(i);
+  const shortDate = axis ?? ((day: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }));
   const a = active === null ? null : points[active];
   const hasToday = points.some((p) => p.day === today);
   const limitLines = unit === 'share' && label.toLowerCase().includes('of the free plan');
@@ -77,6 +108,7 @@ export function Bars({ points, today, unit, label, onPick, pickedDay }: { points
   return (
     <figure className="chart">
       <div
+        ref={box}
         className="chart-box"
         tabIndex={0}
         role="group"
@@ -90,7 +122,7 @@ export function Bars({ points, today, unit, label, onPick, pickedDay }: { points
         }}
         onBlur={() => setActive(null)}
       >
-        <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="presentation" onPointerLeave={(e) => e.pointerType === 'mouse' && setActive(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="presentation" onPointerLeave={(e) => e.pointerType === 'mouse' && setActive(null)}>
           {ticks.map((t) => (
             <g key={t}>
               <line x1={L} x2={W - 4} y1={y(t)} y2={y(t)} className={t === 0 ? 'axis' : 'grid'} />
@@ -125,14 +157,14 @@ export function Bars({ points, today, unit, label, onPick, pickedDay }: { points
             );
           })}
           {dateIdx.map((i, n) => (
-            <text key={n} x={L + i * slot + slot / 2} y={H - 6} className="tick" textAnchor={n === 0 ? 'start' : n === 2 ? 'end' : 'middle'}>{shortDate(points[i].day)}</text>
+            <text key={n} x={L + i * slot + slot / 2} y={H - 6} className="tick" textAnchor={i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'}>{shortDate(points[i].day)}</text>
           ))}
         </svg>
         <div id={`${id}-tip`} className="tip" aria-live="polite" hidden={!a} style={a ? { left: `${Math.min(80, Math.max(20, ((L + (active! + 0.5) * slot) / W) * 100))}%` } : undefined}>
           {a && (
             <>
               <b>{valueText(a.value, unit)}</b>
-              <span>{dayName(a.day, today)}{a.day === today ? ', so far' : ''}</span>
+              <span>{tip ? tip(a.day) : dayName(a.day, today)}{a.day === today ? ', so far' : ''}</span>
               {a.of && <span>{a.of}</span>}
               {onPick && a.day !== pickedDay && <span className="tip-go">Tap again to open it</span>}
             </>
@@ -142,7 +174,7 @@ export function Bars({ points, today, unit, label, onPick, pickedDay }: { points
       {(hasToday || limitLines) && (
         <figcaption className="fine">
           {limitLines ? 'The dashed lines are half and 80% of the daily limit. ' : ''}
-          {hasToday ? "The outlined bar is today, which isn't over yet." : ''}
+          {hasToday ? openNote ?? "The outlined bar is today, which isn't over yet." : ''}
         </figcaption>
       )}
     </figure>

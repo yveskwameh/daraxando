@@ -1,7 +1,9 @@
 /**
  * The admin API (docs/ADMIN-API.md): find a player, see their history, rename them, ban and
- * unban them, and add or take Dara Seeds. It's the back end for Yves's admin dashboard, which
- * comes after launch. There is no admin screen in the game.
+ * unban them, and add or take Dara Seeds. It's the back end for Yves's admin dashboard (the
+ * admin folder, its own Worker). There is no admin screen in the game. The dashboard's views of
+ * the whole game (every player, Live now, where players come from, first days) are in
+ * worker/adminViews.ts.
  *
  * Every call needs the ADMIN_TOKEN secret as a bearer token. While that secret isn't set, the
  * whole API is switched off and answers 404, so a copy of the game without it has no admin at
@@ -16,6 +18,8 @@ import { body } from './http';
 import { isNameClash, NAME_PROBLEM_MESSAGE, nameKey, nameProblem, takenNames } from './names';
 import { dropSubs, sendPush, type PushSub } from './push';
 import { buildReport, reportDay, reportEmail, reportTo, sendReport } from './report';
+import { firstDays, linkedOf, liveNow, playDays, playerCounts, playerList, retention, sharedPhones, summary, traffic, type LinkedRow } from './adminViews';
+import { phoneLinksOn } from './phones';
 import { dayKey } from '../shared/progression';
 
 /** Shorter than this and the key is too easy to guess, so the API stays off. */
@@ -23,6 +27,16 @@ const MIN_TOKEN = 32;
 /** The most seeds one adjustment can add or take. */
 export const MAX_ADJUST = 1_000_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/**
+ * Timed bans (Yves, 19 October 2026): a ban can end by itself after one of these many days.
+ * On the test copy now; on the real game once the lawyer approves the privacy notice line
+ * (docs/BANS-REVIEW.md), when this turns true and the line goes into src/legal/privacy.md.
+ */
+export const BAN_DAYS = [1, 7, 30] as const;
+export const TIMED_BANS_ON_REAL_GAME = false;
+export const timedBansOn = (env: Env) => env.ENVIRONMENT !== 'production' || TIMED_BANS_ON_REAL_GAME;
+const DAY_MS = 86_400_000;
 
 /** Cross-origin headers for the dashboard, only for the addresses listed in ADMIN_ORIGIN. */
 function corsFor(req: Request, env: Env): Record<string, string> {
@@ -39,20 +53,6 @@ function text(raw: unknown, min: number, max: number) {
   return t.length >= min && t.length <= max ? t : null;
 }
 
-const summary = (r: PlayerRow) => ({
-  id: r.id,
-  name: r.name,
-  avatar: r.avatar,
-  state: r.state,
-  cowries: r.cowries,
-  aura: r.aura,
-  rating: r.rating,
-  saved: r.saved === 1,
-  ban: r.banned_at ? { at: r.banned_at, reason: r.ban_reason ?? '' } : null,
-  /** Which terms they accepted, and when (shared/legal.ts). */
-  terms: r.terms_version ? { version: r.terms_version, at: r.terms_at ?? null } : null,
-  createdAt: r.created_at,
-});
 
 export async function adminRoute(req: Request, env: Env, url: URL): Promise<Response> {
   const cors = corsFor(req, env);
@@ -106,6 +106,25 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
       ).results;
     }
     return send({ players: rows.map(summary) });
+  }
+
+  /* --- what this copy can do, for the dashboard --- */
+  if (path === '/api/admin/info' && method === 'GET') {
+    return send({ copy: env.ENVIRONMENT ?? 'local', timedBans: timedBansOn(env), banDays: BAN_DAYS, phoneLinks: phoneLinksOn(env) });
+  }
+
+  /* --- the dashboard's views of the whole game (worker/adminViews.ts), all read-only --- */
+  if (method === 'GET') {
+    if (path === '/api/admin/players/list') {
+      const out = await playerList(env, url);
+      return 'error' in out ? fail(400, out.error!) : send(out);
+    }
+    if (path === '/api/admin/players/counts') return send(await playerCounts(env));
+    if (path === '/api/admin/now') return send(await liveNow(env));
+    if (path === '/api/admin/traffic') return send(await traffic(env, url));
+    if (path === '/api/admin/phones') return send(await sharedPhones(env, url));
+    if (path === '/api/admin/retention') return send(await retention(env, url));
+    if (path === '/api/admin/first-days') return send(await firstDays(env, url));
   }
 
   /* --- every change made through this API, newest first --- */
@@ -184,7 +203,7 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
       const note = text(b.note, 0, 300) || null;
       await db.batch([
         db.prepare("UPDATE appeals SET status = 'lifted', note = ?, decided_at = ? WHERE id = ?").bind(note, now, appeal.id),
-        db.prepare('UPDATE players SET banned_at = NULL, ban_reason = NULL, updated_at = ? WHERE id = ?').bind(now, appeal.playerId),
+        db.prepare('UPDATE players SET banned_at = NULL, ban_reason = NULL, ban_until = NULL, updated_at = ? WHERE id = ?').bind(now, appeal.playerId),
         log('appeal-lift', { appeal: appeal.id, note, was: appeal.bannedAt ? { at: appeal.bannedAt, reason: appeal.banReason } : null }),
       ]);
     }
@@ -199,9 +218,9 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
   const row = await db.prepare('SELECT * FROM players WHERE id = ?').bind(id).first<PlayerRow>();
   if (!row) return fail(404, 'No player with that id.');
 
-  /* --- one player: profile, sign-in methods, seeds history, matches, same phone, admin changes --- */
+  /* --- one player: profile, sign-in methods, seeds history, matches, linked players and phones, admin changes --- */
   if (!act && method === 'GET') {
-    const [identities, ledger, matches, samePhone, actions, appeals] = await db.batch<Record<string, unknown>>([
+    const [identities, ledger, matches, linkedRows, phoneRows, actions, appeals, recentDays, allDays] = await db.batch<Record<string, unknown>>([
       db.prepare('SELECT provider, email, created_at AS createdAt FROM identities WHERE player_id = ? ORDER BY created_at').bind(id),
       db.prepare('SELECT delta, reason, match_id AS matchId, created_at AS at FROM ledger WHERE player_id = ? ORDER BY id DESC LIMIT 50').bind(id),
       db
@@ -212,11 +231,23 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
            WHERE m.x_id = ?1 OR m.o_id = ?1 ORDER BY m.created_at DESC LIMIT 20`,
         )
         .bind(id),
-      row.device
-        ? db.prepare('SELECT id, name FROM players WHERE device = ? AND id != ? LIMIT 20').bind(row.device, id)
-        : db.prepare('SELECT id, name FROM players WHERE 0'),
+      // Every player who has been on one of this player's phones (worker/phones.ts), and how.
+      db
+        .prepare(
+          `SELECT p.id, p.name, p.created_at AS createdAt, p.saved, p.cowries,
+                  (p.banned_at IS NOT NULL AND (p.ban_until IS NULL OR p.ban_until > ?2)) AS banned,
+                  MIN(CASE y.how WHEN 'made' THEN 0 WHEN 'signin' THEN 1 ELSE 2 END) AS howRank,
+                  COUNT(*) AS phones, MAX(y.last_at) AS lastAt
+           FROM player_phones x
+           JOIN player_phones y ON y.phone = x.phone AND y.player_id != x.player_id
+           JOIN players p ON p.id = y.player_id
+           WHERE x.player_id = ?1 GROUP BY p.id ORDER BY lastAt DESC LIMIT 30`,
+        )
+        .bind(id, Date.now()),
+      db.prepare('SELECT phone, how, first_at AS firstAt, last_at AS lastAt FROM player_phones WHERE player_id = ? ORDER BY first_at').bind(id),
       db.prepare('SELECT id, at, action, detail FROM admin_actions WHERE player_id = ? ORDER BY id DESC LIMIT 50').bind(id),
       db.prepare('SELECT id, message, created_at AS at, status, note, decided_at AS decidedAt FROM appeals WHERE player_id = ? ORDER BY id DESC LIMIT 20').bind(id),
+      ...playDays(db, id),
     ]);
     type M = { id: string; mode: string; kind: string; stake: number; winner: string | null; reason: string; score: string; paid: number; at: number; xId: string; oId: string; xName: string | null; oName: string | null };
     return send({
@@ -238,9 +269,14 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
           opponent: mark === 'X' ? { id: m.oId, name: m.oName } : { id: m.xId, name: m.xName },
         };
       }),
-      samePhone: samePhone.results,
+      linked: (linkedRows.results as LinkedRow[]).map(linkedOf),
+      // The admin page before 19 October 2026 reads this.
+      samePhone: (linkedRows.results as LinkedRow[]).map((r) => ({ id: r.id, name: r.name })),
+      phones: (phoneRows.results as { phone: string; how: string; firstAt: number; lastAt: number }[]).map((r) => ({ ...r, phone: r.phone.slice(0, 8) })),
       appeals: appeals.results,
       actions: (actions.results as { detail: string | null }[]).map((a) => ({ ...a, detail: a.detail ? JSON.parse(a.detail) : null })),
+      /** The days they played in the last 12 weeks, and on how many days in all. */
+      days: { recent: (recentDays.results as { day: string }[]).map((d) => d.day), total: Number((allDays.results?.[0] as { n?: number })?.n ?? 0) },
     });
   }
 
@@ -273,9 +309,14 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
   if (act === 'ban') {
     const reason = text(b.reason, 3, 200);
     if (!reason) return fail(400, 'Add a reason of 3 to 200 characters. The player sees it, so write it to them.');
+    // No days: until it's lifted. Otherwise it ends by itself (timed bans, BAN_DAYS).
+    const days = (b as { days?: unknown }).days ?? null;
+    if (days !== null && !(BAN_DAYS as readonly unknown[]).includes(days)) return fail(400, `A ban lasts ${BAN_DAYS.join(', ')} days, or until it's lifted.`);
+    if (days !== null && !timedBansOn(env)) return fail(409, 'Timed bans are off on the live game until the lawyer approves the privacy line.');
+    const until = days === null ? null : now + (days as number) * DAY_MS;
     await db.batch([
-      db.prepare('UPDATE players SET banned_at = ?, ban_reason = ?, updated_at = ? WHERE id = ?').bind(now, reason, now, id),
-      log('ban', { reason, before: row.banned_at ? { at: row.banned_at, reason: row.ban_reason } : null }),
+      db.prepare('UPDATE players SET banned_at = ?, ban_reason = ?, ban_until = ?, updated_at = ? WHERE id = ?').bind(now, reason, until, now, id),
+      log('ban', { reason, ...(until ? { days, until } : {}), before: row.banned_at ? { at: row.banned_at, reason: row.ban_reason } : null }),
     ]);
     return send({ player: summary((await fresh())!) });
   }
@@ -283,7 +324,7 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
   if (act === 'unban') {
     if (!row.banned_at) return fail(409, "That player isn't banned.");
     await db.batch([
-      db.prepare('UPDATE players SET banned_at = NULL, ban_reason = NULL, updated_at = ? WHERE id = ?').bind(now, id),
+      db.prepare('UPDATE players SET banned_at = NULL, ban_reason = NULL, ban_until = NULL, updated_at = ? WHERE id = ?').bind(now, id),
       // An open review request is answered by the ban being lifted.
       db.prepare("UPDATE appeals SET status = 'lifted', decided_at = ? WHERE player_id = ? AND status = 'open'").bind(now, id),
       log('unban', { was: { at: row.banned_at, reason: row.ban_reason } }),

@@ -19,6 +19,8 @@
 import type { Account, AuthResult, AuthVia, Profile } from '../shared/protocol';
 import { fromB64url, hmac, randomToken, sameText, sha256, signToken, sixDigits } from './auth';
 import { getPlayer } from './db';
+import { linkPhone } from './phones';
+import { deviceOf } from './safety';
 import { codeEmail, type Email } from './email';
 import type { Env } from './env';
 import { body, fail, json, phoneKey, secretOf } from './http';
@@ -166,6 +168,11 @@ async function outcome(env: Env, via: AuthVia, target: string, requester: string
   return { status: requester ? 'switch' : 'signedin', via, profile, token: await signToken(target, secretOf(env)) };
 }
 
+/** A phone that just signed in to a player is linked to it (worker/phones.ts). */
+async function linkSignin(req: Request, env: Env, result: AuthResult, now: number) {
+  if ((result.status === 'switch' || result.status === 'signedin') && result.profile) await linkPhone(env, result.profile.id, await deviceOf(req, env), 'signin', now);
+}
+
 /** A save that started from the ask on Home, for the 8 am email. Never stops the save itself. */
 const countAskSave = (db: D1Database, now: number) =>
   bump(db, dayKey(now), STAT.savedFromAsk).run().then(() => undefined, (err) => console.error('[stats]', err));
@@ -182,6 +189,7 @@ export async function deleteAccount(db: D1Database, id: string) {
     db.prepare('DELETE FROM push_subs WHERE player_id = ?').bind(id),
     db.prepare('DELETE FROM player_days WHERE player_id = ?').bind(id),
     db.prepare('DELETE FROM offline_passes WHERE player_id = ?').bind(id),
+    db.prepare('DELETE FROM player_phones WHERE player_id = ?').bind(id),
     db.prepare('DELETE FROM players WHERE id = ?').bind(id),
   ]);
 }
@@ -263,6 +271,7 @@ export async function authRoute(req: Request, env: Env, url: URL, me: Profile | 
     }
     const result = await outcome(env, 'google', d.t, me?.id ?? null, d.saved);
     if (result.status === 'saved' && b.from === 'ask') await countAskSave(db, now);
+    await linkSignin(req, env, result, now);
     return json(result);
   }
 
@@ -369,6 +378,7 @@ export async function authRoute(req: Request, env: Env, url: URL, me: Profile | 
     const result = await useCode(env, row, me, now);
     if (result.status !== 'error') await db.prepare('UPDATE email_codes SET result = ? WHERE id = ?').bind(result.status, row.id).run();
     if (result.status === 'saved' && b.from === 'ask') await countAskSave(db, now);
+    await linkSignin(req, env, result, now);
     return json(result);
   }
 

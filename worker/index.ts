@@ -27,6 +27,7 @@ import { freeNames, isNameClash, NAME_PROBLEM_MESSAGE, NAME_TAKEN_MESSAGE, nameK
 import { appealOf, askReview, BANNED_MESSAGE, deviceOf, isBanned } from './safety';
 import { bump, isPushFrom, STAT } from './stats';
 import { REPORT_CRON, sendReport } from './report';
+import { linkPhone, phoneFull, PHONE_FULL } from './phones';
 
 export { Match } from './match';
 export { Matchmaker } from './matchmaker';
@@ -105,6 +106,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     // Per device first: most players share an IP with their whole mobile network.
     const device = (req.headers.get('x-device') ?? '').slice(0, 64) || 'none';
     const ip = req.headers.get('cf-connecting-ip') ?? 'local';
+    const phone = await deviceOf(req, env);
     if (env.DEVICE_LIMITER && !(await env.DEVICE_LIMITER.limit({ key: `d:${device}` })).success) {
       return fail(429, 'Too many new players from this phone. Wait a minute.');
     }
@@ -113,6 +115,8 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     }
     const b = await body<{ name: string; avatar: string; state: string; age: boolean; terms: string; auto: boolean }>(req);
     if (b.age !== true) return fail(400, 'Dara X&O is for players aged 13 and up.');
+    // Two new players a phone in 30 days (worker/phones.ts). The first screen offers Sign in instead.
+    if (await phoneFull(env, phone, Date.now())) return fail(403, PHONE_FULL);
     // Tapping Play now accepts the terms on screen, and that version is kept as the record.
     if (b.terms !== TERMS_VERSION) return fail(409, 'The terms have changed. Close the app, open it again, then tap Play now.');
     const checked = checkPatch(null, { name: b.name, avatar: b.avatar, state: b.state });
@@ -123,7 +127,6 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     // match; a name they typed is theirs, unless it had to get a number, and then Home asks too.
     let name = checked.name;
     let nameSet: 0 | 1 | 2 = b.auto === true ? 0 : 1;
-    const phone = await deviceOf(req, env);
     for (let tries = 0; ; tries++) {
       if ((await takenNames(env.DB, [name])).size) {
         name = (await freeNames(env.DB, 1, { wanted: checked.name }))[0] ?? name;
@@ -206,7 +209,11 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   }
 
   /* --- your profile --- */
-  if (path === '/api/me' && method === 'GET') return json({ profile: me });
+  if (path === '/api/me' && method === 'GET') {
+    // The app asks for this when it opens: link the player to this phone (worker/phones.ts).
+    await linkPhone(env, me.id, await deviceOf(req, env), 'seen', now);
+    return json({ profile: me });
+  }
 
   /* --- accepting new terms (shared/legal.ts): the version on screen, and when, as the record --- */
   if (path === '/api/terms' && method === 'POST') {

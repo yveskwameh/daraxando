@@ -5,7 +5,7 @@ import { useApp } from '../App.tsx';
 import { api } from '../api.ts';
 import { fmt, shortDay, when } from '../format.ts';
 import type { AdminAction } from '../types.ts';
-import { Button, Empty, go, Loading, Problem, useLoad } from '../ui.tsx';
+import { Button, Empty, go, Problem, Skeleton, useLoad, useMedia } from '../ui.tsx';
 
 /** How a logged change reads: a title and a line of detail. */
 export function actionText(action: string, d: Record<string, unknown> | null): { title: string; detail: string } {
@@ -14,8 +14,12 @@ export function actionText(action: string, d: Record<string, unknown> | null): {
   switch (action) {
     case 'rename':
       return { title: 'Renamed', detail: `${s('from')} to ${s('to')}` };
-    case 'ban':
-      return { title: 'Banned', detail: s('reason') };
+    case 'ban': {
+      const until = n('until');
+      return { title: until ? `Banned until ${new Date(until).toLocaleString('en-GB', { timeZone: 'Africa/Lagos', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : 'Banned', detail: s('reason') };
+    }
+    case 'ban-ended':
+      return { title: 'A timed ban ended by itself', detail: s('reason') };
     case 'unban': {
       const was = d && typeof d.was === 'object' && d.was ? (d.was as { reason?: unknown }).reason : null;
       return { title: 'Lifted a ban', detail: typeof was === 'string' && was ? `The ban was for: ${was}` : '' };
@@ -42,6 +46,7 @@ export function Log() {
   const first = useLoad(`${copy}:actions`, () => api.actions(copy));
   const streak = useLoad(`${copy}:streak`, () => api.streak(copy));
   const all = [...(first.data?.actions ?? []), ...pages.flat()];
+  const table = useMedia('(min-width: 760px)');
 
   const loadMore = async () => {
     const last = all[all.length - 1];
@@ -63,56 +68,97 @@ export function Log() {
         <p className="muted">Every change made through the admin API, newest first.</p>
       </div>
 
-      {first.error ? (
-        <Problem text={first.error} onRetry={first.reload} />
-      ) : !first.data ? (
-        <Loading />
-      ) : all.length === 0 ? (
-        <Empty title="No changes yet." text="Renames, bans, seeds and ban reviews show here." />
-      ) : (
-        <section className="card">
-          <ul className="rows">
-            {all.map((a) => {
-              const t = actionText(a.action, a.detail);
-              return (
-                <li key={a.id}>
-                  <div>
-                    <span>{t.title}</span>
-                    {t.detail && <small className="fine">{t.detail}</small>}
-                    {a.playerId && (
-                      <button type="button" className="link-in" onClick={() => go(`/players/${a.playerId}`)}>Open the player</button>
-                    )}
-                  </div>
-                  <small className="fine">{when(a.at)}</small>
-                </li>
-              );
-            })}
-          </ul>
-          {more.error && <p className="field-error" role="alert">{more.error}</p>}
-          {!more.done && (first.data.actions.length >= 50 || pages.length > 0) && (
-            <Button kind="ghost" size="sm" busy={more.busy} onClick={loadMore}>Show older changes</Button>
+      <div className="log-grid">
+        <div className="log-main">
+          {first.error ? (
+            <Problem text={first.error} onRetry={first.reload} />
+          ) : !first.data ? (
+            <Skeleton kind={table ? 'table' : 'rows'} rows={6} />
+          ) : all.length === 0 ? (
+            <Empty title="No changes yet." text="Renames, bans, seeds and ban reviews show here." />
+          ) : (
+            <>
+              {table ? (
+                <div className="table-card">
+                  <table className="ptable log-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">When</th>
+                        <th scope="col">Change</th>
+                        <th scope="col">Player</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {all.map((a) => {
+                        const t = actionText(a.action, a.detail);
+                        return (
+                          <tr key={a.id}>
+                            <td className="muted nowrap">{when(a.at)}</td>
+                            <td>
+                              <span className="cell-title">{t.title}</span>
+                              {t.detail && <small className="fine cell-sub">{t.detail}</small>}
+                            </td>
+                            <td>
+                              {a.playerId ? (
+                                <a className="link-in" href={`/players/${a.playerId}`} onClick={(e) => { e.preventDefault(); go(`/players/${a.playerId}`); }}>Open the player</a>
+                              ) : <span className="muted">None</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <section className="card">
+                  <ul className="rows">
+                    {all.map((a) => {
+                      const t = actionText(a.action, a.detail);
+                      return (
+                        <li key={a.id}>
+                          <div>
+                            <span>{t.title}</span>
+                            {t.detail && <small className="fine">{t.detail}</small>}
+                            {a.playerId && (
+                              <button type="button" className="link-in" onClick={() => go(`/players/${a.playerId}`)}>Open the player</button>
+                            )}
+                          </div>
+                          <small className="fine">{when(a.at)}</small>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              )}
+              {more.error && <p className="field-error" role="alert">{more.error}</p>}
+              {!more.done && (first.data.actions.length >= 50 || pages.length > 0) && (
+                <Button kind="ghost" size="sm" busy={more.busy} onClick={loadMore}>Show older changes</Button>
+              )}
+            </>
           )}
-        </section>
-      )}
+        </div>
 
-      <section className="card" aria-labelledby="streak-title">
-        <h2 id="streak-title" className="kicker">7 pm streak reminders</h2>
-        {streak.error ? (
-          <p className="fine">{streak.error}</p>
-        ) : !streak.data ? (
-          <p className="fine">Loading</p>
-        ) : streak.data.day ? (
-          <p>Last run {shortDay(streak.data.day)}: {fmt(streak.data.sent ?? 0)} sent.</p>
-        ) : (
-          <p className="fine">No run yet on this copy.</p>
-        )}
-      </section>
+        <div className="log-side">
+          <section className="card" aria-labelledby="streak-title">
+            <h2 id="streak-title" className="kicker">7 pm streak reminders</h2>
+            {streak.error ? (
+              <p className="fine">{streak.error}</p>
+            ) : !streak.data ? (
+              <p className="fine">Loading</p>
+            ) : streak.data.day ? (
+              <p>Last run {shortDay(streak.data.day)}: {fmt(streak.data.sent ?? 0)} sent.</p>
+            ) : (
+              <p className="fine">No run yet on this copy.</p>
+            )}
+          </section>
 
-      <section className="card" aria-labelledby="you-title">
-        <h2 id="you-title" className="kicker">This device</h2>
-        <p className="fine">You stay signed in here for 14 days. Changing the live admin key in Cloudflare signs out every device.</p>
-        <Button kind="ghost" size="sm" onClick={signOut}>Sign out</Button>
-      </section>
+          <section className="card" aria-labelledby="you-title">
+            <h2 id="you-title" className="kicker">This device</h2>
+            <p className="fine">You stay signed in here for 14 days. Changing the live admin key in Cloudflare signs out every device.</p>
+            <Button kind="ghost" size="sm" onClick={signOut}>Sign out</Button>
+          </section>
+        </div>
+      </div>
     </div>
   );
 }

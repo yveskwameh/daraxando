@@ -59,7 +59,24 @@ Answers are JSON. Errors look like `{ "error": "No player with that id." }`, wit
 }
 ```
 
-`ban` is `null`, or `{ "at": <time>, "reason": "..." }`. Times are milliseconds since 1 January 1970 (JavaScript's `Date.now()`).
+`ban` is `null`, or `{ "at": <time>, "reason": "...", "until": <time or null> }` (`until` is when a timed ban ends, or `null` for one that lasts until it's lifted). Players also carry `lastPlayedDay` and `dayStreak`. Times are milliseconds since 1 January 1970 (JavaScript's `Date.now()`).
+
+### Every player, and the dashboard's views
+
+Added 19 October 2026 for the admin dashboard (`worker/adminViews.ts`, `admin/README.md`). Reading only.
+
+| Request | What you get |
+| --- | --- |
+| `GET /api/admin/info` | `{ "copy": "production", "timedBans": false, "banDays": [1, 7, 30] }`: which copy this is and whether bans can end by themselves here |
+| `GET /api/admin/players/counts` | How many players each tab has: `all`, `today` (finished a match today), `new` (joined in the last 7 days), `banned`, `saved` |
+| `GET /api/admin/players/list?tab=all&sort=new&page=0&size=50` | 25, 50 (the default) or 100 players a page (`size`), as in Find players, with `total` (how many match), `page`, `size` and `more`. `tab` is `all`, `today`, `new`, `banned` or `saved`. `sort` is `new` (joined), `active` (last played), `seeds`, `aura`, `rating` or `name`. Optional filters: `state` (a state code like `LA`), `account` (`saved` or `guest`) and `q` (as in Find players) |
+| `GET /api/admin/now` | Right now, from the matchmaker: `home` (players with Home open), `looking` (with the Quick match sheet open), `waiting` (waiting in a game of their own), plus `playedToday`. Players in the middle of a match aren't on Home, so they aren't counted until they're back |
+| `GET /api/admin/traffic?hours=5` | Traffic for a window: `hours` (1, 5, 12, 24, 48 or 72), `since` (a time in ms, up to 30 days back, for tracking a link from when it was shared) or `days` (7 or 30 UTC days, the default 7). `window` says which (`from`, `to`, `bucket`: quarter hours up to 6 hours, hours up to 4 days, then days, and `before`, the start of the same length of time just before). `players`: new players in the window (`joined`, how many of them `finished` their first match and `saved`), `before` (new players in the window before) and `savedAny` (players who saved their progress in the window). `buckets`: `at`, `joined`, and on the live game `visits` and `views`. `web`: on the live game `visits`, `views`, `before`, `referers` (the site that sent them, `host` empty for none), `countries` and `devices` from Cloudflare Web Analytics; otherwise `off` or `problem` says why. Needs `CF_ACCOUNT_ID` and `CF_ANALYTICS_TOKEN` for visits |
+| `GET /api/admin/phones?min=2` | Phones with `min` (2, 3 or 5) players or more (`worker/phones.ts`), newest link first, up to 60: `id` (the first 8 characters of the phone's keyed hash), `players`, `newest`, `lastAt`, `made30` (players made on it in 30 days) and `list` (each player with `how`: `made`, `signin` or `seen`). Also `total` and `busy` (phones with 3 or more players that gained one in the last day) |
+| `GET /api/admin/retention?weeks=8` | For each of the last 4 to 12 weeks (Monday to Sunday, Lagos days): `start`, `joined`, and `played`, how many of them finished a match in that week and in each week after |
+| `GET /api/admin/first-days?days=30` | Players who joined in the last 7, 30 or 90 days: `joined`, `finished` (their first match), `won` (it), `returned` (played on another day), `threeDays` (played on 3 days or more), `saved` |
+
+One player (below) also has `days`: `recent`, the days they finished a match in the last 12 weeks, and `total`, on how many days in all.
 
 ### One player
 
@@ -74,6 +91,7 @@ Answers are JSON. Errors look like `{ "error": "No player with that id." }`, wit
 | `samePhone` | Other players made on the same phone: `id`, `name` |
 | `appeals` | Their ban review requests, newest first: `id`, `message`, `at`, `status`, `note`, `decidedAt` |
 | `actions` | Admin changes made to this player, newest first |
+| `days` | `recent`: the days they finished a match in the last 12 weeks; `total`: on how many days in all |
 
 `paid` is `false` when a farming rule sent both stakes back (`docs/SAFETY-REVIEW.md`). Ledger reasons: `start`, `daily`, `sapa`, `stake`, `pot`, `refund`, `freeze`, `repair`, `streak-stake`, `streak-win`, `admin`.
 
@@ -87,7 +105,7 @@ Banned players' requests for a review, the oldest open one first (`status` is `o
 
 `GET /api/admin/actions?limit=50&before=<id>`
 
-Every change made through this API, newest first: `id`, `at`, `action` (`rename`, `ban`, `unban`, `seeds`, `appeal-lift`, `appeal-keep`), `playerId`, `detail`. For older pages, pass the last `id` you got as `before`. `limit` is 1 to 100.
+Every change made through this API, newest first: `id`, `at`, `action` (`rename`, `ban`, `unban`, `seeds`, `appeal-lift`, `appeal-keep`, and `ban-ended` when a timed ban ends by itself), `playerId`, `detail`. For older pages, pass the last `id` you got as `before`. `limit` is 1 to 100.
 
 ## Changing
 
@@ -96,7 +114,7 @@ Each of these answers with the player's summary after the change (`{ "player": {
 | Request | Body | What it does |
 | --- | --- | --- |
 | `POST /api/admin/players/<id>/rename` | `{ "name": "Player 4021" }` | Renames them. The same rules as in the game: 3 to 16 letters or numbers, no rude or reserved names, and not a name another player has (409 "Another player has that name"). The player isn't asked to pick again afterwards. |
-| `POST /api/admin/players/<id>/ban` | `{ "reason": "Rude names, reported three times." }` | Bans them: no play against people, off Ranks and leagues, Baba Ayo still works. The player sees the reason, so write it to them (3 to 200 characters). Banning again replaces the reason |
+| `POST /api/admin/players/<id>/ban` | `{ "reason": "Rude names, reported three times.", "days": 7 }` | Bans them: no play against people, off Ranks and leagues, Baba Ayo still works. The player sees the reason, so write it to them (3 to 200 characters). `days` (1, 7 or 30) makes the ban end by itself; leave it out for a ban that lasts until it's lifted. Timed bans are off on the live game until the lawyer approves the privacy line (`docs/BANS-REVIEW.md`), so there `days` gets a 409. Banning again replaces the reason and the end |
 | `POST /api/admin/players/<id>/unban` | none | Lifts the ban, and answers any open review request as lifted. 409 if they aren't banned |
 | `POST /api/admin/players/<id>/seeds` | `{ "amount": 1000, "reason": "Stake lost to a server fault" }` | Adds seeds, or takes them with a negative amount. A whole number up to 1,000,000 either way, never 0, with a reason. 409 if it would take them below 0. Written to the ledger as `admin` |
 

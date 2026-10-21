@@ -13,6 +13,7 @@ import type { LeaderRow, Profile, PublicPlayer } from '../shared/protocol';
 import { COOL_LOSSES, COOL_MS, DAILY_COWRIES, HIGH_TABLE, SAPA_BELOW, SAPA_EVERY_MS, SAPA_TO, START_COWRIES } from '../shared/stakes';
 import { tidyHabits } from './habits';
 import { nameKey } from './names';
+import { linkStatement } from './phones';
 import { bump, matchStat } from './stats';
 
 export interface PlayerRow {
@@ -43,6 +44,8 @@ export interface PlayerRow {
   device: string | null;
   banned_at: number | null;
   ban_reason: string | null;
+  /** When a timed ban ends by itself (migrations/0012_admin.sql). Null: until it's lifted. */
+  ban_until?: number | null;
   /** 0 the game picked the name, 1 the player chose it, 2 the game added a number (migrations/0010_names.sql). */
   name_set?: number;
   first_result?: string | null;
@@ -77,7 +80,7 @@ export const toProfile = (r: PlayerRow): Profile => ({
   createdAt: r.created_at,
   habits: tidyHabits(parseHabits(r.habits), dayKey(Date.now())),
   saved: r.saved === 1,
-  ban: r.banned_at ? { at: r.banned_at, reason: r.ban_reason ?? '' } : null,
+  ban: banActive(r) ? { at: r.banned_at!, reason: r.ban_reason ?? '', until: r.ban_until ?? null } : null,
   nameAsk: r.name_set === 2 ? 'taken' : r.name_set === 0 && r.first_result ? 'new' : null,
   termsDue: (r.terms_version ?? null) !== TERMS_VERSION,
 });
@@ -95,7 +98,40 @@ export const toPublic = (p: Profile): PublicPlayer => ({
 
 export async function getPlayer(db: D1Database, id: string): Promise<Profile | null> {
   const row = await db.prepare('SELECT * FROM players WHERE id = ?').bind(id).first<PlayerRow>();
+  if (row && banEnded(row)) await liftEndedBans(db, Date.now(), id);
   return row ? toProfile(row) : null;
+}
+
+/** A ban that's on now: set, and not a timed ban that has ended. */
+export const banActive = (r: Pick<PlayerRow, 'banned_at' | 'ban_until'>, now = Date.now()) =>
+  !!r.banned_at && !(r.ban_until && r.ban_until <= now);
+/** A timed ban whose end has passed but that is still in the database. */
+const banEnded = (r: Pick<PlayerRow, 'banned_at' | 'ban_until'>, now = Date.now()) => !!r.banned_at && !!r.ban_until && r.ban_until <= now;
+
+/**
+ * Lifts timed bans that have ended: one player's, when they open the game, or everyone's, from
+ * the 8 am run. An open ban review is answered as lifted, and the admin log says the ban ended.
+ */
+export function liftEndedBans(db: D1Database, now: number, playerId?: string) {
+  const who = playerId ? ' AND id = ?2' : '';
+  const whoA = playerId ? ' AND player_id = ?2' : '';
+  const ended = `banned_at IS NOT NULL AND ban_until IS NOT NULL AND ban_until <= ?1${who}`;
+  const bind = (s: D1PreparedStatement) => (playerId ? s.bind(now, playerId) : s.bind(now));
+  return db
+    .batch([
+      bind(
+        db.prepare(
+          `INSERT INTO admin_actions (at, action, player_id, detail)
+           SELECT ?1, 'ban-ended', id, json_object('reason', ban_reason, 'at', banned_at, 'until', ban_until) FROM players WHERE ${ended}`,
+        ),
+      ),
+      bind(db.prepare(`UPDATE appeals SET status = 'lifted', decided_at = ?1 WHERE status = 'open'${whoA} AND player_id IN (SELECT id FROM players WHERE ${ended})`)),
+      bind(db.prepare(`UPDATE players SET banned_at = NULL, ban_reason = NULL, ban_until = NULL, updated_at = ?1 WHERE ${ended}`)),
+    ])
+    .then(
+      () => undefined,
+      (err) => console.error('[bans]', err),
+    );
 }
 
 /** `device` is the keyed hash of the phone's random id (worker/safety.ts), or null if the app didn't send one. */
@@ -110,6 +146,8 @@ export async function createPlayer(db: D1Database, p: { name: string; nameSet: 0
         'INSERT INTO players (id, name, name_key, name_set, avatar, state, rating, cowries, device, terms_version, terms_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
       )
       .bind(id, p.name, nameKey(p.name), p.nameSet, p.avatar, p.state, START_RATING, START_COWRIES, p.device, p.terms, now, now, now),
+    // The phone it was made on, as a link too (worker/phones.ts): the same hash as players.device.
+    ...(p.device ? [linkStatement(db, id, p.device, 'made', now)] : []),
   ]);
   const row = created.results?.[0];
   if (!row) throw new Error('Could not create player');

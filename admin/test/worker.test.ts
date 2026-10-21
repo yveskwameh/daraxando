@@ -2,7 +2,7 @@
 // Run with `npm test` (Node's own test runner, no extra packages).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import worker, { daysTo, keepFor, type Env } from '../worker/index.ts';
+import worker, { daysTo, keepFor, keepTraffic, type Env } from '../worker/index.ts';
 import { cleanKey, sameText, signSession, validSession } from '../worker/session.ts';
 
 const LIVE_KEY = 'a'.repeat(24) + '0123456789abcdef';
@@ -174,4 +174,25 @@ test('days that can still change are kept a short time, or not at all', () => {
   assert.equal(keepFor('2026-10-10', today, { usage: { problems: ['the database numbers.'] } }), 600);
   assert.equal(keepFor('2026-10-10', today, { usage: null }), 600);
   assert.deepEqual(daysTo('2026-03-02', 3), ['2026-02-28', '2026-03-01', '2026-03-02']);
+  // Traffic: a minute for the last hours or since a time, 10 minutes for whole days.
+  assert.equal(keepTraffic('?hours=1'), 60);
+  assert.equal(keepTraffic('?since=1792440000000'), 60);
+  assert.equal(keepTraffic('?days=30'), 600);
+});
+
+test('the dashboard views pass through, read-only', async () => {
+  const calls: Call[] = [];
+  const e = env({}, calls);
+  const cookie = await signedIn(e);
+  for (const path of ['info', 'players/list?tab=today&sort=active&page=1', 'players/counts', 'now', 'traffic?days=30', 'traffic?hours=5', 'phones?min=3', 'retention?weeks=8', 'first-days?days=90']) {
+    const res = await call(`/api/live/${path}`, e, { headers: { cookie } });
+    assert.equal(res.status, 200, path);
+    assert.equal(calls.at(-1)!.url, `https://game/api/admin/${path}`);
+    assert.equal(calls.at(-1)!.method, 'GET');
+  }
+  for (const path of ['players/everyone', 'now/1', 'traffic/raw', 'sources']) {
+    assert.equal((await call(`/api/live/${path}`, e, { headers: { cookie } })).status, 404, path);
+  }
+  const post = await call('/api/live/players/list', e, { method: 'POST', headers: { cookie, 'x-dara-admin': '1' }, body: '{}' });
+  assert.equal(post.status, 404);
 });
