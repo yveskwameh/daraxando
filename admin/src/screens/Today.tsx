@@ -157,8 +157,14 @@ export function Today() {
                 </div>
               </section>
 
-              <div className="cards today-cards">
-                {SECTIONS.map((s) => (s.id === 'plan' ? (rail ? null : <PlanCard key={s.id} r={r} />) : <SectionCard key={s.id} id={s.id} days={days} r={r} before={before} />))}
+              <div className="today-cards">
+                <section className="card sec-list" aria-labelledby="sec-title">
+                  <h2 id="sec-title" className="kicker">The day in detail</h2>
+                  <ul>
+                    {SECTIONS.filter((s) => s.id !== 'plan').map((s) => <SectionRow key={s.id} id={s.id} days={days} r={r} before={before} />)}
+                  </ul>
+                </section>
+                {!rail && <PlanCard r={r} />}
               </div>
               <p className="fine center today-foot">"Played" means finished a match, on Lagos days. A best-of series counts as one match.</p>
             </>
@@ -266,35 +272,33 @@ export function pointsFor(days: { day: string; report?: Report }[], get: (r: Rep
   return days.map((d) => ({ day: d.day, value: d.report ? get(d.report) : null, of: d.report && of ? of(d.report) : undefined }));
 }
 
-function SectionCard({ id, days, r, before }: { id: string; days: { day: string; report?: Report }[]; r: Report; before?: Report }) {
+/**
+ * One section of the email as a row: its name and what's counted, the number and how it changed,
+ * the last 14 days, and a page of its own. Rows line up in one card, so nothing wraps into a tower.
+ */
+function SectionRow({ id, days, r, before }: { id: string; days: { day: string; report?: Report }[]; r: Report; before?: Report }) {
   const { today } = useApp();
   const s = SECTIONS.find((x) => x.id === id)!;
   const m = s.metrics[0];
   const now = m.get(r);
   const prev = before ? m.get(before) : null;
-  const sub = m.unit === 'count' && now !== null && prev !== null ? change(now, prev) : m.of ? m.of(r) : '';
+  let sub = m.unit === 'count' && now !== null && prev !== null ? change(now, prev).replace(/ on the day before$/, '').replace('same as the day before', 'same') : m.of ? m.of(r) : '';
+  // Also: the 7 pm reminders (off on a copy without the notification keys) and ban reviews waiting.
+  const off = id === 'also' && now === null;
+  if (id === 'also') sub = r.extra.appealsOpen ? `${fmt(r.extra.appealsOpen)} ban ${r.extra.appealsOpen === 1 ? 'review' : 'reviews'} waiting` : 'No ban reviews waiting';
+  const dir = /^up /.test(sub) ? 'up' : /^down /.test(sub) ? 'down' : '';
   return (
-    <a className="card section-card" href={`/section/${id}`} onClick={(e) => { e.preventDefault(); go(`/section/${id}`); }}>
-      <div className="section-top">
-        <h2 className="kicker">{s.title}</h2>
+    <li>
+      <a className="sec-row" href={`/section/${id}`} onClick={(e) => { e.preventDefault(); go(`/section/${id}`); }}>
+        <span className="sec-name"><b>{s.title}</b><span>{m.label}</span></span>
+        <span className="sec-val">
+          <b className={now === null ? 'none' : ''}>{off ? 'Off' : now === null ? 'None yet' : valueText(now, m.unit)}</b>
+          {sub && <small className={dir}>{sub.charAt(0).toUpperCase() + sub.slice(1)}</small>}
+        </span>
+        <span className="sec-spark"><Spark points={pointsFor(days, m.get)} today={today} unit={m.unit} /></span>
         <Icon name="right" size={18} />
-      </div>
-      <div className="section-body">
-        <div>
-          <b className="num">{valueText(now, m.unit)}</b>
-          <span className="num-label">{m.label}</span>
-          {sub && <small className="fine">{sub.charAt(0).toUpperCase() + sub.slice(1)}</small>}
-        </div>
-        <Spark points={pointsFor(days, m.get)} today={today} unit={m.unit} />
-      </div>
-      {id === 'also' && (
-        <ul className="mini-rows">
-          {s.rows(r, '').map((row) => (
-            <li key={row.label}><span>{row.label}</span><b>{row.value}</b></li>
-          ))}
-        </ul>
-      )}
-    </a>
+      </a>
+    </li>
   );
 }
 
