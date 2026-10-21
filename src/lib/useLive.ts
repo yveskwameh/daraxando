@@ -88,8 +88,10 @@ function sync(token: string) {
 }
 
 /** The live games and how many others are looking. Mount it wherever they show. */
-export function useLive(token: string): LiveSnap {
+export function useLive(token: string, on = true): LiveSnap {
   useEffect(() => {
+    // Quick match turned off in Controls (src/lib/controls.ts): nothing to watch.
+    if (!on) return;
     users++;
     sync(token);
     const onVis = () => sync(token);
@@ -100,7 +102,7 @@ export function useLive(token: string): LiveSnap {
       // Leaving Home for a match closes it; the next screen opens it again if it needs it.
       setTimeout(() => sync(token), 0);
     };
-  }, [token]);
+  }, [token, on]);
   return useSyncExternalStore(
     (f) => {
       subs.add(f);

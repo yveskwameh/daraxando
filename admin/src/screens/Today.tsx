@@ -11,6 +11,7 @@ import type { Report } from '../types.ts';
 import { Button, go, Icon, Problem, Skeleton, toast, useLoad, useMedia } from '../ui.tsx';
 import { LiveNow } from './Growth.tsx';
 import { HealthCard, healthNeeds, useHealth } from './Health.tsx';
+import { controlNeeds, useControls } from './Controls.tsx';
 
 export function DayBar() {
   const { day, setDay, today } = useApp();
@@ -47,6 +48,8 @@ export function Today() {
   const lostOpen = lost.data?.recoveries.filter((x) => x.state === 'open').length ?? 0;
   // System health (docs/HEALTH.md): the card under Live now, and anything down on Needs you.
   const health = useHealth();
+  // Switches turned off in Controls stay on Needs you until they're back on.
+  const controls = useControls();
   const [sending, setSending] = useState(false);
   const yesterday = addDays(today, -1);
   const when = whenFor(day, today, yesterday);
@@ -63,6 +66,7 @@ export function Today() {
     ? [
         ...needsFor(days, day, today, appeals.data ? appeals.data.appeals.length : null),
         ...healthNeeds(health),
+        ...controlNeeds(controls),
         ...(lostOpen > 0
           ? [{
               id: 'recovery',
@@ -187,7 +191,7 @@ function Needs({ needs }: { needs: Need[] }) {
               <p className="fine">{n.body}</p>
             </div>
             {n.go && (
-              <button type="button" className="mini-btn" onClick={() => { if (n.id === 'recovery') { try { localStorage.setItem('admin:reviews-tab', 'recovery'); } catch { /* fine */ } } go(n.go === 'reviews' ? '/reviews' : n.go === 'health' ? '/health' : n.go === 'phones' ? '/players/phones?min=3' : `/section/${n.go!.slice(8)}`)}}>
+              <button type="button" className="mini-btn" onClick={() => { if (n.id === 'recovery') { try { localStorage.setItem('admin:reviews-tab', 'recovery'); } catch { /* fine */ } } go(n.go === 'reviews' ? '/reviews' : n.go === 'health' ? '/health' : n.go === 'controls' ? '/controls' : n.go === 'phones' ? '/players/phones?min=3' : `/section/${n.go!.slice(8)}`)}}>
                 {n.action}
               </button>
             )}

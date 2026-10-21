@@ -61,6 +61,8 @@ export interface Report {
     appealsOpen: number;
     savedFromAsk: number;
     pushOn: Record<PushFrom, number>;
+    /** The new-player walkthrough. Missing from games older than 22 October 2026. */
+    tour?: { shown: number; done: number; skipped: number; find: number; replay: number };
   };
   usage: Usage | null;
 }
@@ -224,3 +226,14 @@ export interface Traffic {
 export interface Retention { today: string; weeks: { start: string; joined: number; played: number[] }[] }
 
 export interface FirstDays { days: number; from: string; to: string; joined: number; finished: number; won: number; returned: number; threeDays: number; saved: number }
+
+/* ---------- game controls (the game's worker/controls.ts, shared/controls.ts) ---------- */
+export type BannerAction = 'quick' | 'friend' | 'baba' | 'mode' | 'ranks';
+export interface SwitchRow { id: string; group: string; name: string; line: string; off: string; on: boolean; since: number | null; reason: string | null }
+export interface BannerRow { id: number; text: string; action: BannerAction | null; startsAt: number; endsAt: number; stoppedAt: number | null; state: 'scheduled' | 'live' | 'past' | 'stopped' }
+export interface NewsRow { id: number; text: string; at: number; phones: number; sent: number; doneAt: number | null }
+export interface ControlsView {
+  switches: SwitchRow[];
+  banners: BannerRow[];
+  news: { phones: number; left: number; nextAt: number | null; sent: NewsRow[] };
+}

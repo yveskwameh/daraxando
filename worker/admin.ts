@@ -23,6 +23,7 @@ import { phoneLinksOn } from './phones';
 import { dayKey } from '../shared/progression';
 import { codesOn, decideRecovery, recoveryList } from './codes';
 import { health } from './health';
+import { controlsView, saveBanner, sendNews, setSwitch, stopBanner } from './controls';
 
 /** Shorter than this and the key is too easy to guess, so the API stays off. */
 const MIN_TOKEN = 32;
@@ -167,6 +168,20 @@ export async function adminRoute(req: Request, env: Env, url: URL): Promise<Resp
       const r = await sendReport(env, { day, force: true });
       return r.sent === 'sent' || r.sent === 'logged' ? send({ sent: true, day: r.day, to: reportTo(env).length }) : fail(502, `The email didn't go (${r.sent}). Check RESEND_API_KEY.`);
     }
+  }
+
+  /* --- game controls (worker/controls.ts): switches, the announcement on Home, news notifications --- */
+  if (path === '/api/admin/controls' && method === 'GET') return send(await controlsView(env, now));
+  if (method === 'POST' && (path === '/api/admin/controls/switch' || path === '/api/admin/controls/banner' || path === '/api/admin/controls/news')) {
+    const b = await body<Record<string, unknown>>(req);
+    const err = path.endsWith('switch')
+      ? await setSwitch(env, b.id, b.on, b.reason, now)
+      : path.endsWith('news')
+        ? await sendNews(env, b.text, now)
+        : b.stop === true && typeof b.id === 'number'
+          ? await stopBanner(env, b.id, now)
+          : await saveBanner(env, b, now);
+    return err ? fail(err.status, err.error) : send(await controlsView(env, now));
   }
 
   /* --- "Lost your code? Ask us to help" (worker/codes.ts): the requests, with each answer checked --- */

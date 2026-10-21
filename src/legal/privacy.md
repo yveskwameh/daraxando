@@ -51,6 +51,8 @@ We do this because we have a legitimate interest in keeping the game fair and sa
 
 Only if you turn them on: the address your phone's push service gives us, the keys that let only your phone read our messages, and which notifications you want. We use them for the 7 pm streak reminder and "friend joined your room". This is your choice, and you can turn them off any time in Settings.
 
+- **News from Dara X&O:** only if you turn it on in Settings, a few notifications a month about new games and events.
+
 ### How the game is doing
 
 We count things like how many people played each day, how many came back, and how long Quick match took. The daily counts don't name anyone. To count returns, we use the days each player played (see "Your games"). Once the game launches, we also count visits with Cloudflare Web Analytics, which uses no cookies and doesn't follow you to other sites. We do this because we have a legitimate interest in improving the game.

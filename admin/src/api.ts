@@ -1,6 +1,6 @@
 // Every call the dashboard makes, to its own Worker (admin/worker/index.ts), which passes it on
 // to the live or test game's admin API.
-import type { AdminAction, Appeal, Health, Recovery, Copy, Counts, FirstDays, Info, Now, PageSize, PlayerDetail, PlayerPage, PlayerSummary, RangeResult, Retention, SharedPhones, Sort, Tab, Traffic } from './types.ts';
+import type { AdminAction, Appeal, ControlsView, Health, Recovery, Copy, Counts, FirstDays, Info, Now, PageSize, PlayerDetail, PlayerPage, PlayerSummary, RangeResult, Retention, SharedPhones, Sort, Tab, Traffic } from './types.ts';
 
 export class ApiError extends Error {
   constructor(message: string, readonly status: number) {
@@ -73,5 +73,10 @@ export const api = {
     call<{ player: PlayerSummary | null }>(`/api/${copy}/appeals/${id}/${verdict}`, { method: 'POST', body: { note } }),
 
   actions: (copy: Copy, before?: number) => call<{ actions: AdminAction[] }>(`/api/${copy}/actions?limit=50${before ? `&before=${before}` : ''}`),
+  controls: (copy: Copy) => call<ControlsView>(`/api/${copy}/controls`),
+  setSwitch: (copy: Copy, id: string, on: boolean, reason?: string) => call<ControlsView>(`/api/${copy}/controls/switch`, { method: 'POST', body: { id, on, reason } }),
+  saveBanner: (copy: Copy, b: { id?: number; text: string; action: string | null; startsAt: number; endsAt: number }) => call<ControlsView>(`/api/${copy}/controls/banner`, { method: 'POST', body: b }),
+  stopBanner: (copy: Copy, id: number) => call<ControlsView>(`/api/${copy}/controls/banner`, { method: 'POST', body: { id, stop: true } }),
+  sendNews: (copy: Copy, text: string) => call<ControlsView>(`/api/${copy}/controls/news`, { method: 'POST', body: { text } }),
   streak: (copy: Copy) => call<{ day?: string; sent?: number }>(`/api/${copy}/push/streak`),
 };

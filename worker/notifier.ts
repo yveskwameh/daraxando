@@ -10,6 +10,7 @@ import { parseHabits, streakNow } from '../shared/habits';
 import { dayKey } from '../shared/progression';
 import type { Env } from './env';
 import { dropSubs, pushReady, sendPush, streakNote, type PushSub } from './push';
+import { switchOn } from './controls';
 
 /** Phones per alarm: about 5 ms of encryption, well inside the 10 ms limit. */
 const BATCH = 5;
@@ -25,6 +26,8 @@ export class Notifier extends DurableObject<Env> {
    */
   async start(day = dayKey(Date.now()), again = false) {
     if (!pushReady(this.env)) return { started: false, reason: 'no keys' };
+    // Turned off in the dashboard's Controls (worker/controls.ts).
+    if (!(await switchOn(this.env, 'reminders'))) return { started: false, reason: 'turned off in Controls' };
     if (again) await this.env.DB.prepare('UPDATE push_subs SET reminded_day = NULL WHERE reminded_day = ?').bind(day).run();
     else if ((await this.ctx.storage.get<string>('day')) === day) return { started: false, reason: 'already running or done today' };
     await this.ctx.storage.put({ day, sent: 0 });
@@ -32,7 +35,48 @@ export class Notifier extends DurableObject<Env> {
     return { started: true };
   }
 
+  /**
+   * News from Dara X&O (worker/controls.ts): one news line to every phone that turned news on, a
+   * few at a time. This object is the one named 'news', so it never mixes with the reminders.
+   */
+  async news(id: number) {
+    if (!pushReady(this.env)) {
+      await this.env.DB.prepare('UPDATE news SET done_at = ? WHERE id = ?').bind(Date.now(), id).run();
+      return { started: false, reason: 'no keys' };
+    }
+    await this.ctx.storage.put({ kind: 'news', news: id });
+    await this.ctx.storage.setAlarm(Date.now());
+    return { started: true };
+  }
+
+  private async newsBatch(id: number) {
+    const db = this.env.DB;
+    const now = Date.now();
+    const item = await db.prepare('SELECT text, done_at FROM news WHERE id = ?').bind(id).first<{ text: string; done_at: number | null }>();
+    if (!item || item.done_at) return;
+    const { results } = await db
+      .prepare('SELECT endpoint, p256dh, auth FROM push_subs WHERE news = 1 AND (news_id IS NULL OR news_id < ?1) LIMIT ?2')
+      .bind(id, BATCH)
+      .all<PushSub>();
+    if (!results.length) {
+      await db.prepare('UPDATE news SET done_at = ? WHERE id = ?').bind(now, id).run();
+      return;
+    }
+    // Marked first, so a retry can't send twice.
+    await db.batch(results.map((r) => db.prepare('UPDATE push_subs SET news_id = ? WHERE endpoint = ?').bind(id, r.endpoint)));
+    const note = { title: 'News from Dara X&O', body: item.text, url: '/', tag: `news-${id}` };
+    const sent = await Promise.all(results.map(async (r) => [r.endpoint, await sendPush(this.env, r, note, 2 * 86_400, now)] as const));
+    await dropSubs(db, sent.filter(([, r]) => r === 'gone').map(([e]) => e));
+    await db.prepare('UPDATE news SET sent = sent + ? WHERE id = ?').bind(sent.filter(([, r]) => r === 'ok').length, id).run();
+    await this.ctx.storage.setAlarm(Date.now() + 250);
+  }
+
   async alarm() {
+    if ((await this.ctx.storage.get<string>('kind')) === 'news') {
+      const id = await this.ctx.storage.get<number>('news');
+      if (id) await this.newsBatch(id);
+      return;
+    }
     const day = await this.ctx.storage.get<string>('day');
     const now = Date.now();
     if (!day || day !== dayKey(now) || new Date(now).getUTCHours() >= LAST_HOUR_UTC) return;

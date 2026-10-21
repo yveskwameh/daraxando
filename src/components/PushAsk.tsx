@@ -7,6 +7,7 @@ import { TopPop } from './TopPop';
 const DONE: Record<PushKind, string> = {
   streak: 'Streak reminders are on.',
   friends: "Done. We'll tell you when your friend joins.",
+  news: 'News from Dara X&O is on.',
 };
 
 /**

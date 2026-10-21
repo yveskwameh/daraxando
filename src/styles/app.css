@@ -1438,3 +1438,49 @@ textarea.text-in { min-height: 76px; resize: none; line-height: 1.4; padding-blo
   .qr { width: 116px; height: 116px; padding: 8px; }
   .code-card { padding: var(--space-item); gap: var(--space-pair); }
 }
+
+/* ---------- the announcement on Home (src/lib/controls.ts): the top pop-up, a Danfo icon ---------- */
+.ann-pop { grid-template-columns: 40px minmax(0, 1fr) auto; align-items: start; padding: 12px 6px 18px 12px; }
+.ann-pop > div { display: grid; gap: var(--space-pair); justify-items: start; align-self: center; }
+.ann-pop > div > b { font: 800 0.9375rem/1.3 var(--head); }
+.ann-pop .mini-btn { min-height: 40px; padding: 0 18px; }
+.ann-pop .x-btn { width: 44px; height: 44px; margin-top: -4px; }
+.ann-ic { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--raise); color: var(--danfo); }
+.ann-ic svg { width: 22px; height: 22px; }
+/* A part of the game that's resting (src/lib/controls.ts): the button still says what it is. */
+.stake-pill.resting { background: var(--night); color: var(--muted); }
+.btn.is-resting { opacity: .7; }
+
+/* ---------- the new-player walkthrough (src/components/Tour.tsx) ---------- */
+.tour { position: absolute; inset: 0; z-index: 95; }
+.tour-dim { position: absolute; inset: 0; background: rgba(5, 4, 22, .78); }
+.tour-spot {
+  position: absolute; border-radius: 999px; pointer-events: none;
+  box-shadow: 0 0 0 3px var(--cream), 0 0 0 200vmax rgba(5, 4, 22, .78);
+  transition: transform 260ms var(--ease-out), opacity 200ms ease-out;
+  animation: fade-in 220ms ease-out;
+}
+.tour-spot.round { border-radius: 50%; }
+.tour-coach {
+  position: absolute; left: var(--gut-l); right: var(--gut-r);
+  display: grid; gap: var(--space-item);
+  padding: var(--space-block);
+  border-radius: 22px;
+  background: var(--cream); color: var(--night);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .5);
+  animation: tour-up 240ms var(--ease-out);
+}
+@keyframes tour-up { from { transform: translateY(12px); opacity: 0; } }
+.tour-who { display: flex; align-items: center; gap: 10px; }
+.tour-step { font: 800 0.75rem/1 var(--body); letter-spacing: .1em; text-transform: uppercase; color: #5a3fd0; }
+.tour-coach > b { font: 800 1.1875rem/1.2 var(--head); text-wrap: balance; }
+.tour-coach > p { margin: calc(-1 * var(--space-pair)) 0 0; font-size: 0.9375rem; line-height: 1.45; color: #2d2a5c; }
+.tour-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tour-skip { min-height: 44px; padding: 0 6px; border: 0; background: none; color: #4b4880; font: 700 0.9375rem/1 var(--body); }
+.tour-go { min-height: 46px; padding: 0 22px; border: 0; border-radius: 999px; background: var(--fuchsia); color: #fff; box-shadow: 0 0 0 3px var(--night); font: 800 1rem/1 var(--head); white-space: nowrap; }
+.tour-go:active { transform: scale(.96); }
+.tour-dots { display: flex; gap: 6px; }
+.tour-dots i { width: 8px; height: 8px; border-radius: 4px; background: #c9c2e8; }
+.tour-dots i.on { width: 22px; background: #5a3fd0; }
+.tour-coach :focus-visible { outline: 3px solid var(--indigo); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .tour-spot, .tour-coach { animation: none; transition: none; } }

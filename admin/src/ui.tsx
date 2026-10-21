@@ -214,6 +214,7 @@ const PATHS: Record<string, string> = {
   minus: 'M6 12h12',
   help: 'M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01',
   pulse: 'M3 12h4l3-8 4 16 3-8h4',
+  controls: 'M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4',
   phone: 'M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM11 18h2',
 };
 export function Icon({ name, size = 22 }: { name: keyof typeof PATHS | string; size?: number }) {

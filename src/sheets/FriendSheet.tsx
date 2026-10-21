@@ -11,6 +11,7 @@ import { MODES, seriesLabel, type ModeId } from '../../shared/modes';
 import { stateName } from '../../shared/places';
 import { CODE_ALPHABET, CODE_LENGTH } from '../../shared/protocol';
 import { FRIEND_TABLES, fmt, prize } from '../../shared/stakes';
+import { isOff, restingLine, useControls } from '../lib/controls';
 import { Avatar, Icon } from '../components/art';
 import { Sheet } from '../components/Sheet';
 import { api, type RoomPeek } from '../lib/api';
@@ -113,9 +114,11 @@ function Invite({ mode, go, onClose }: { mode: ModeId; go: Go; onClose: () => vo
   const [roomMode, setRoomMode] = useState<ModeId>(mode);
   const { token, profile } = usePlayer();
   const [code, setCode] = useState<string | null>(null);
+  // Stakes turned off in Controls: rooms are free (src/lib/controls.ts).
+  const resting = useControls().off.includes('stakes');
   const [stake, setStake] = useState(() => {
     const last = prefs.get().friendStake;
-    return last <= profile.cowries ? last : 0;
+    return last <= profile.cowries && !isOff('stakes') ? last : 0;
   });
   const [error, setError] = useState('');
   const made = useRef(false);
@@ -176,6 +179,11 @@ function Invite({ mode, go, onClose }: { mode: ModeId; go: Go; onClose: () => vo
   }, [token, mode, stake, code]);
 
   const pickStake = async (n: number) => {
+    if (n > 0 && resting) {
+      buzz('invalid');
+      toast(restingLine('stakes'));
+      return;
+    }
     if (n > profile.cowries) {
       buzz('invalid');
       toast.error(`You need ${fmt(n)} Dara Seeds for that stake.`);
@@ -213,7 +221,7 @@ function Invite({ mode, go, onClose }: { mode: ModeId; go: Go; onClose: () => vo
             </button>
           ))}
         </div>
-        <p className="fine invite-mode">{m.name} · {seriesLabel(m.bo)}{stake ? ` · Winner takes ${fmt(prize(stake))}` : ''}</p>
+        <p className="fine invite-mode">{resting ? restingLine('stakes') : <>{m.name} · {seriesLabel(m.bo)}{stake ? ` · Winner takes ${fmt(prize(stake))}` : ''}</>}</p>
       </div>
       )}
       {guest && code ? (

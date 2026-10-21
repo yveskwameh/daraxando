@@ -178,3 +178,16 @@ curl -X POST -H "Authorization: Bearer KEY" -H "Content-Type: application/json" 
 ## Adding to it
 
 New admin actions go in `worker/admin.ts`, log themselves with `log(action, detail)`, and get a row here. Anything that changes how seeds work goes to the lawyer before it's built.
+
+## Game controls (worker/controls.ts)
+
+Switches, the announcement on Home and news notifications (`shared/controls.ts`). Every change goes in `admin_actions`.
+
+| Call | Body | What it does |
+|---|---|---|
+| `GET /api/admin/controls` | | The nine switches (on, since, reason), announcements from the last 30 days, and news: phones with news on, how many can still go in 30 days, and what was sent |
+| `POST /api/admin/controls/switch` | `{ "id": "quick", "on": false, "reason": "Matchmaker errors" }` | Turns a switch off (a reason of 3 to 200 characters) or back on (`"on": true`). Reaches players within a minute |
+| `POST /api/admin/controls/banner` | `{ "text": "...", "action": "quick", "startsAt": 0, "endsAt": 0 }` | Schedules an announcement (up to 90 characters, the game's writing rules, 10 minutes to 14 days, never two at once). Add `"id"` to change one, or `{ "id": 3, "stop": true }` to stop it |
+| `POST /api/admin/controls/news` | `{ "text": "..." }` | Sends News from Dara X&O (up to 120 characters) to every phone with news on, a few at a time. At most 4 in 30 days |
+
+Buttons for an announcement: `quick`, `friend`, `baba`, `mode`, `ranks`, or `null`.

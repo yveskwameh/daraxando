@@ -5,6 +5,9 @@ import { useApp } from '../App.tsx';
 import { api } from '../api.ts';
 import { fmt, shortDay, when } from '../format.ts';
 import type { AdminAction } from '../types.ts';
+import { SWITCHES } from '../../../shared/controls.ts';
+
+const switchName = (id: string) => SWITCHES.find((x) => x.id === id)?.name ?? id;
 import { Button, Empty, go, Problem, Skeleton, useLoad, useMedia } from '../ui.tsx';
 
 /** How a logged change reads: a title and a line of detail. */
@@ -40,6 +43,18 @@ export function actionText(action: string, d: Record<string, unknown> | null): {
       return { title: 'Refused a lost-code request', detail: s('note') };
     case 'recovery-stopped':
       return { title: 'The player stopped a lost-code request', detail: 'They tapped Stop on their phone, so they stay where they are.' };
+    case 'switch-off':
+      return { title: `Turned off ${switchName(s('id'))}`, detail: s('reason') };
+    case 'switch-on':
+      return { title: `Turned ${switchName(s('id'))} back on`, detail: n('offSince') ? `It was off since ${when(n('offSince'))}.` : '' };
+    case 'banner-new':
+      return { title: 'Scheduled an announcement', detail: `${s('text')} ${n('startsAt') ? `${when(n('startsAt'))} to ${when(n('endsAt'))}.` : ''}`.trim() };
+    case 'banner-change':
+      return { title: 'Changed an announcement', detail: s('text') };
+    case 'banner-stop':
+      return { title: 'Stopped an announcement', detail: s('text') };
+    case 'news-send':
+      return { title: `Sent news to ${fmt(n('phones'))} ${n('phones') === 1 ? 'phone' : 'phones'}`, detail: s('text') };
     default:
       return { title: action, detail: d ? JSON.stringify(d) : '' };
   }

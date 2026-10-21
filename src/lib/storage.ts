@@ -53,4 +53,8 @@ export const KEYS = {
   localMatch: 'dara:offline-match',
   /** Ranks as last seen, for opening it without internet (src/screens/Ranks.tsx). */
   ranks: 'dara:ranks',
+  /** Announcements this phone already showed (src/lib/controls.ts), so each shows once. */
+  banners: 'dara:banners',
+  /** The new-player walkthrough was shown on this phone (src/components/Tour.tsx). */
+  tour: 'dara:tour',
 } as const;

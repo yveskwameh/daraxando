@@ -21,6 +21,7 @@ import { MODES, seriesLabel } from '../../shared/modes';
 import { stateName } from '../../shared/places';
 import type { LiveGame } from '../../shared/protocol';
 import { fmt, prize } from '../../shared/stakes';
+import { useControls } from '../lib/controls';
 import { Avatar, Cowries, Icon } from '../components/art';
 import { Sheet } from '../components/Sheet';
 import { buzz } from '../lib/haptics';
@@ -54,7 +55,9 @@ export default function LiveSheet(props: Props) {
 
 function Body({ go, onStartOwn, onChange, onBaba }: Props) {
   const { token } = usePlayer();
-  const { mode, stake } = usePrefs();
+  const { mode, stake: picked } = usePrefs();
+  // Stakes turned off in Controls: your own game is free (src/lib/controls.ts).
+  const stake = useControls().off.includes('stakes') ? 0 : picked;
   // The server pushes the games down one socket as they change (src/lib/useLive.ts), and
   // knows this sheet is open so other people's sheets can say someone else is looking.
   const live = useLive(token);
