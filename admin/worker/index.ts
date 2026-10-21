@@ -29,6 +29,7 @@ const ROUTES: [string, RegExp][] = [
   ['GET', /^info$/],
   ['GET', /^players\/(list|counts)$/],
   ['GET', /^now$/],
+  ['GET', /^health$/],
   ['GET', /^(traffic|retention|first-days|phones)$/],
   ['GET', /^stats$/],
   ['GET', /^report$/],
@@ -38,6 +39,8 @@ const ROUTES: [string, RegExp][] = [
   ['POST', /^players\/[0-9a-f-]{36}\/(rename|ban|unban|seeds|push)$/],
   ['GET', /^appeals$/],
   ['POST', /^appeals\/\d+\/(lift|keep)$/],
+  ['GET', /^recoveries$/],
+  ['POST', /^recoveries\/[A-Za-z0-9_-]{8,24}\/(give|refuse)$/],
   ['GET', /^actions$/],
   ['GET', /^push\/streak$/],
   ['POST', /^push\/streak$/],
@@ -87,7 +90,7 @@ export function keepFor(day: string, today: string, report: { usage?: { problems
  * Views that change slowly are kept in Cloudflare's cache for a few minutes (seconds here), so
  * opening the dashboard again doesn't read every player again. Live now is never kept.
  */
-const KEEP: Record<string, number> = { 'players/counts': 60, retention: 600, 'first-days': 600, phones: 300 };
+const KEEP: Record<string, number> = { health: 30, 'players/counts': 60, retention: 600, 'first-days': 600, phones: 300 };
 /**
  * How long a traffic view is kept: a minute for the last hours or since a time, so a link just
  * shared shows up quickly, and 10 minutes for whole days.

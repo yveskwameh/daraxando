@@ -33,9 +33,9 @@ describe('timed bans', () => {
     expect(summary(row({ banned_at: NOW, ban_reason: 'x' })).ban).toEqual({ at: NOW, reason: 'x', until: null });
   });
 
-  it('are off on the real game until the lawyer approves, and on the test copy', () => {
-    expect(TIMED_BANS_ON_REAL_GAME).toBe(false);
-    expect(timedBansOn({ ENVIRONMENT: 'production' } as Env)).toBe(false);
+  it('are on everywhere since the lawyer approved them', () => {
+    expect(TIMED_BANS_ON_REAL_GAME).toBe(true);
+    expect(timedBansOn({ ENVIRONMENT: 'production' } as Env)).toBe(true);
     expect(timedBansOn({ ENVIRONMENT: 'staging' } as Env)).toBe(true);
     expect([...BAN_DAYS]).toEqual([1, 7, 30]);
   });

@@ -23,8 +23,12 @@ import { NAME_POOL, suggestNames } from '../lib/names';
 import type { Go, Route } from '../lib/router';
 import { useSession } from '../lib/session';
 import { LegalLink } from '../components/LegalLink';
+import { codesOn, firstScreen, phonePlayers, takeLinkedCode } from '../lib/codes';
 
 const SaveSheet = lazy(() => import('../sheets/SaveSheet'));
+// Player codes (src/lib/codes.ts): type a code, and "Welcome back" on a phone that remembers players.
+const FindSheet = lazy(() => import('../sheets/FindSheet'));
+const WelcomeBack = lazy(() => import('../components/AccountPops').then((x) => ({ default: x.WelcomeBack })));
 
 const OPEN = AVATARS.filter((a) => a.lvl === 1);
 /** The first game: the default game (Fading) against Baba Ayo at his easiest. Instant, and winnable. */
@@ -48,6 +52,17 @@ export function Onboarding({ route, go }: { route: Route; go: Go }) {
   // Someone who saved their progress on another phone. Stays mounted after the first open, so it can slide away.
   const [signin, setSignin] = useState(false);
   const [signinUsed, setSigninUsed] = useState(false);
+  // With player codes: the code sheet first, Google or email from there. A code from a shared link opens it filled in.
+  const codes = codesOn();
+  const [linked] = useState(() => (codes ? takeLinkedCode() : null));
+  const [find, setFind] = useState(!!linked);
+  const [findUsed, setFindUsed] = useState(!!linked);
+  // A phone that remembers players opens on "Welcome back" instead of making a new one.
+  const [welcome, setWelcome] = useState(() => {
+    const fresh = firstScreen.fresh;
+    firstScreen.fresh = false;
+    return codes && !fresh && !linked && !room && phonePlayers.own().length > 0;
+  });
 
   // A best guess from the network, only to fill in the card. The player sees it and can change it.
   useEffect(() => {
@@ -82,9 +97,21 @@ export function Onboarding({ route, go }: { route: Route; go: Go }) {
     }
   };
   const openSignin = () => {
+    if (codes) {
+      setFindUsed(true);
+      setFind(true);
+      return;
+    }
     setSigninUsed(true);
     setSignin(true);
   };
+  const openOther = () => {
+    setFind(false);
+    setSigninUsed(true);
+    setSignin(true);
+  };
+
+  if (welcome) return <Suspense fallback={null}><WelcomeBack onNew={() => setWelcome(false)} /></Suspense>;
 
   return (
     <main className="screen onb welcome" aria-label="Welcome">
@@ -123,7 +150,7 @@ export function Onboarding({ route, go }: { route: Route; go: Go }) {
         </button>
       )}
       {full ? (
-        <p className="fine age">Saved your progress before? Sign in with Google or your email to play as that player.</p>
+        <p className="fine age">{codes ? 'Made a player before? Use your player code, Google or email to play as that player.' : 'Saved your progress before? Sign in with Google or your email to play as that player.'}</p>
       ) : (
         <p className="fine age">
           By tapping {room ? 'Join the game' : 'Play now'}, you agree to the <LegalLink doc="terms">Terms of play</LegalLink>, confirm
@@ -133,6 +160,7 @@ export function Onboarding({ route, go }: { route: Route; go: Go }) {
 
       <Suspense fallback={null}>
         {signinUsed && <SaveSheet open={signin} onClose={() => setSignin(false)} intent="signin" back={room ? `/play/${room}` : '/'} />}
+        {findUsed && <FindSheet open={find} onClose={() => setFind(false)} initial={linked} onOther={openOther} />}
       </Suspense>
 
       <Sheet open={editing} onClose={() => setEditing(false)} label="Make it yours" closeButton={false}>

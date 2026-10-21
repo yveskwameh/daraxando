@@ -34,6 +34,12 @@ export function actionText(action: string, d: Record<string, unknown> | null): {
       return { title: 'Lifted a ban after a review', detail: s('note') };
     case 'appeal-keep':
       return { title: 'Kept a ban after a review', detail: s('note') };
+    case 'recovery-give':
+      return { title: 'Gave a player back after a lost code', detail: s('note') || 'They move to the asking phone after 24 hours, unless they tap Stop.' };
+    case 'recovery-refuse':
+      return { title: 'Refused a lost-code request', detail: s('note') };
+    case 'recovery-stopped':
+      return { title: 'The player stopped a lost-code request', detail: 'They tapped Stop on their phone, so they stay where they are.' };
     default:
       return { title: action, detail: d ? JSON.stringify(d) : '' };
   }

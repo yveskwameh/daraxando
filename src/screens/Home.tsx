@@ -34,6 +34,7 @@ import { usePlayer } from '../lib/session';
 import { toast } from '../lib/toast';
 import { StakeSheet } from '../sheets/StakeSheet';
 import { WalletSheet } from '../sheets/WalletSheet';
+import { codesOn } from '../lib/codes';
 
 /** Without internet, only Baba Ayo can be played, where offline play is on (src/lib/offline.ts). */
 const noNet = () => (offlineOn() ? 'No internet. You can still play Baba Ayo.' : 'No internet. Check your connection.');
@@ -51,6 +52,9 @@ const LiveSheet = lazy(() => import('../sheets/LiveSheet'));
 const BanSheet = lazy(() => import('../sheets/BanSheet'));
 // Only when a guest taps Save on the save ask.
 const SaveSheet = lazy(() => import('../sheets/SaveSheet'));
+// Player codes (src/lib/codes.ts): the save ask shows your code, and the pop-ups about it.
+const CodeSheet = lazy(() => import('../sheets/CodeSheet'));
+const AccountPops = lazy(() => import('../components/AccountPops').then((x) => ({ default: x.AccountPops })));
 const ModeSheet = lazy(() => import('../sheets/ModeSheet'));
 // Only for players who still need to pick their name.
 const NameSheet = lazy(() => import('../sheets/NameSheet'));
@@ -174,6 +178,8 @@ export function Home({ go }: { go: Go }) {
         onSeeds={() => setSheet('wallet')}
         onRanks={() => go({ name: 'ranks' })}
       />
+
+      {codesOn() && <Suspense fallback={null}><AccountPops /></Suspense>}
 
       <section className="game-pic" style={{ '--band': printBg(m.band) } as CSSProperties} aria-label={`Your game: ${m.name}. ${m.rule} ${seriesLabel(m.bo)}.`}>
         <div className="gp-head">
@@ -327,7 +333,9 @@ export function Home({ go }: { go: Go }) {
           <LiveSheet open={sheet === 'live'} onClose={close} go={go} onStartOwn={startOwn} onChange={() => setSheet('stake')} onBaba={() => open('baba')} />
         )}
         {ban && opened.has('ban') && <BanSheet open={sheet === 'ban'} ban={ban} onClose={close} onBaba={() => open('baba')} />}
-        {opened.has('save') && <SaveSheet open={sheet === 'save'} onClose={close} intent="save" back="/" from="ask" />}
+        {opened.has('save') && (codesOn()
+          ? <CodeSheet open={sheet === 'save'} onClose={close} from="ask" />
+          : <SaveSheet open={sheet === 'save'} onClose={close} intent="save" back="/" from="ask" />)}
         {opened.has('mode') && (
           <ModeSheet
             open={sheet === 'mode'}

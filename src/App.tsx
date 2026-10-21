@@ -6,6 +6,7 @@ import { Toast } from './components/Toast';
 import { backAt } from './lib/api';
 import { useRoute } from './lib/router';
 import { SessionProvider, useSession } from './lib/session';
+import { codesOn, myRecovery } from './lib/codes';
 import { Home } from './screens/Home';
 import { Onboarding } from './screens/Onboarding';
 
@@ -27,6 +28,8 @@ const AccountReturn = lazy(() => import('./screens/Account').then((x) => ({ defa
 const LegalPage = lazy(() => import('./legal/Legal').then((x) => ({ default: x.LegalPage })));
 // Only when the terms change and an existing player hasn't accepted the new version yet.
 const TermsUpdate = lazy(() => import('./screens/TermsUpdate').then((x) => ({ default: x.TermsUpdate })));
+// Only on a phone that asked for help with a lost code (src/lib/codes.ts).
+const RecoveryWatch = lazy(() => import('./components/AccountPops').then((x) => ({ default: x.RecoveryWatch })));
 
 function Loading() {
   return (
@@ -44,6 +47,7 @@ export function App() {
         <div className="app" id="app">
           <Shell />
           <InstallPop />
+          {codesOn() && myRecovery.get() && <Suspense fallback={null}><RecoveryWatch /></Suspense>}
         </div>
       </div>
       <Toast />

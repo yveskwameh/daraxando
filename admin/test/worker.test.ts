@@ -110,7 +110,12 @@ test('changes need the dashboard header, and only the admin API routes pass', as
   assert.equal((await post(`/api/live/players/${ID}/ban`)).status, 200);
   assert.deepEqual(calls.at(-1), { url: `https://game/api/admin/players/${ID}/ban`, method: 'POST', auth: `Bearer ${LIVE_KEY}`, body: '{"reason":"Rude name"}' });
 
-  for (const path of [`/api/live/players/${ID}/delete`, '/api/live/stats', '/api/live/players%2F..%2Freport', '/api/live/players/not-an-id/ban', '/api/live/appeals/1/forget']) {
+  // Recovery requests: give it back or refuse, and nothing else.
+  assert.equal((await post('/api/live/recoveries/2_zesd35rZhf/give')).status, 200);
+  assert.equal(calls.at(-1)!.url, 'https://game/api/admin/recoveries/2_zesd35rZhf/give');
+  assert.equal((await call('/api/live/recoveries?status=open', e, { headers: { cookie } })).status, 200);
+
+  for (const path of [`/api/live/players/${ID}/delete`, '/api/live/stats', '/api/live/players%2F..%2Freport', '/api/live/players/not-an-id/ban', '/api/live/appeals/1/forget', '/api/live/recoveries/2_zesd35rZhf/stop', '/api/live/recoveries/x/give']) {
     const before = calls.length;
     assert.equal((await post(path)).status, 404, path);
     assert.equal(calls.length, before, path);

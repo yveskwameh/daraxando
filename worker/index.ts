@@ -28,6 +28,7 @@ import { appealOf, askReview, BANNED_MESSAGE, deviceOf, isBanned } from './safet
 import { bump, isPushFrom, STAT } from './stats';
 import { REPORT_CRON, sendReport } from './report';
 import { linkPhone, phoneFull, PHONE_FULL } from './phones';
+import { alertsFor, codeRoute } from './codes';
 
 export { Match } from './match';
 export { Matchmaker } from './matchmaker';
@@ -39,8 +40,8 @@ const roomCode = () => {
 };
 
 async function playerFrom(req: Request, url: URL, env: Env) {
-  const id = await verifyToken(tokenFrom(req, url), secretOf(env));
-  return id ? getPlayer(env.DB, id) : null;
+  const login = await verifyToken(tokenFrom(req, url), secretOf(env));
+  return login ? getPlayer(env.DB, login.id, login.v) : null;
 }
 
 /** A websocket that says why it is closing, then closes. Plain HTTP errors look like a dropped line to a browser. */
@@ -197,6 +198,11 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   /* --- save your progress and sign in (worker/accounts.ts). The phone may not have a player yet. --- */
   if (path.startsWith('/api/auth/')) return authRoute(req, env, url, tokenFrom(req, url) ? await playerFrom(req, url, env) : null);
 
+  /* --- player codes and "Lost your code?" (worker/codes.ts). The phone may not have a player yet. --- */
+  if (path === '/api/code' || path.startsWith('/api/code/') || path === '/api/recovery' || path.startsWith('/api/recovery/')) {
+    return codeRoute(req, env, url, tokenFrom(req, url) ? await playerFrom(req, url, env) : null);
+  }
+
   /* --- the public notification key: not secret, so no login needed (phones ask for it before subscribing) --- */
   if (path === '/api/push' && method === 'GET') return json({ key: pushReady(env) ? env.VAPID_PUBLIC_KEY : null });
 
@@ -211,8 +217,11 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   /* --- your profile --- */
   if (path === '/api/me' && method === 'GET') {
     // The app asks for this when it opens: link the player to this phone (worker/phones.ts).
-    await linkPhone(env, me.id, await deviceOf(req, env), 'seen', now);
-    return json({ profile: me });
+    const phone = await deviceOf(req, env);
+    await linkPhone(env, me.id, phone, 'seen', now);
+    // Their code opened them on another phone, or a recovery is waiting (worker/codes.ts).
+    const alerts = await alertsFor(env, me, phone);
+    return json(alerts ? { profile: me, alerts } : { profile: me });
   }
 
   /* --- accepting new terms (shared/legal.ts): the version on screen, and when, as the record --- */

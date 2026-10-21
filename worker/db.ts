@@ -52,6 +52,13 @@ export interface PlayerRow {
   /** The terms they accepted (shared/legal.ts) and when. Null for players made before 16 October 2026. */
   terms_version?: string | null;
   terms_at?: number | null;
+  /** Player codes (migrations/0014_codes.sql, worker/codes.ts). */
+  code_hash?: string | null;
+  code_box?: string | null;
+  code_at?: number | null;
+  code_used_at?: number | null;
+  code_used_phone?: string | null;
+  login_v?: number;
 }
 
 export const toProfile = (r: PlayerRow): Profile => ({
@@ -96,8 +103,13 @@ export const toPublic = (p: Profile): PublicPlayer => ({
   level: p.level,
 });
 
-export async function getPlayer(db: D1Database, id: string): Promise<Profile | null> {
+/**
+ * A player's profile. With `loginV`, only if the login's sign-in version is the player's current
+ * one (worker/codes.ts): a login from before "Not me" or a recovery gets nothing.
+ */
+export async function getPlayer(db: D1Database, id: string, loginV?: number): Promise<Profile | null> {
   const row = await db.prepare('SELECT * FROM players WHERE id = ?').bind(id).first<PlayerRow>();
+  if (row && loginV !== undefined && (row.login_v ?? 0) !== loginV) return null;
   if (row && banEnded(row)) await liftEndedBans(db, Date.now(), id);
   return row ? toProfile(row) : null;
 }

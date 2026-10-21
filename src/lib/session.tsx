@@ -11,6 +11,7 @@ import { hosted } from './room';
 import { KEYS, store } from './storage';
 import { toast } from './toast';
 import { TERMS_VERSION } from '../../shared/legal';
+import { borrowOver, codesOn, noteAway, phonePlayers, type Alerts } from './codes';
 
 type Status = 'loading' | 'guest' | 'ready' | 'offline' | 'resting';
 
@@ -36,7 +37,7 @@ interface SessionValue {
   reset: () => void;
   retry: () => void;
   /** Becomes another player: signed in with Google or an email code, or switched to. */
-  signIn: (token: string, profile: Profile) => void;
+  signIn: (token: string, profile: Profile, opts?: { borrow?: boolean }) => void;
   /** Leaves this phone with no player. Only offered to saved players, who can sign back in. */
   signOut: () => void;
   /**
@@ -45,6 +46,15 @@ interface SessionValue {
    */
   returning: string | null;
   returned: () => void;
+  /** What the server said about this player for its phones: their code was used elsewhere, or a recovery is waiting (src/lib/codes.ts). */
+  alerts: Alerts | null;
+  setAlerts: (a: Alerts | null) => void;
+  /** Plays as another player this phone remembers. */
+  switchTo: (id: string) => void;
+  /** Takes a player off this phone. Nothing is deleted: their code still brings them back. */
+  forget: (id: string) => void;
+  /** Gives a borrowed phone back to its own player. */
+  endBorrow: () => void;
 }
 
 /** Read once as the app loads, and removed from the address so a reload doesn't try it again. */
@@ -76,6 +86,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // plan every request counts (docs/BACKEND.md).
   const fetchedAt = useRef(0);
   const [online, setOnline] = useState(() => navigator.onLine);
+  const [alerts, setAlerts] = useState<Alerts | null>(null);
 
   useEffect(() => {
     if (!token || fresh.current === token) return;
@@ -83,9 +94,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setStatus('loading');
     fetchedAt.current = Date.now();
     api.me(token).then(
-      ({ profile }) => {
+      ({ profile, alerts: a }) => {
         if (live) {
           setProfile(profile);
+          setAlerts(a ?? null);
           setOnline(true);
           setStatus('ready');
         }
@@ -94,6 +106,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (!live) return;
         if (err.status === 401) {
           store.remove(KEYS.token);
+          // Signed out from another phone ("Not me", or a recovery): the phone forgets that login.
+          const gone = phonePlayers.list().find((p) => p.token === token);
+          if (gone) {
+            phonePlayers.remove(gone.id);
+            toast(`${gone.name} was signed out on this phone. Use the player code to come back.`, 5000);
+          }
           setToken(null);
           setStatus('guest');
         } else if (err.status === 0 && offlineOn() && saved(token)) {
@@ -126,7 +144,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (!token || Date.now() - fetchedAt.current < 4_000) return;
     fetchedAt.current = Date.now();
     try {
-      setProfile((await api.me(token)).profile);
+      const r = await api.me(token);
+      setProfile(r.profile);
+      setAlerts(r.alerts ?? null);
       setOnline(true);
     } catch (err) {
       // Keep what we have.
@@ -230,6 +250,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [token, profile],
   );
 
+  // The players this phone remembers (src/lib/codes.ts): whoever is playing, kept fresh.
+  const remember = profile && token && status === 'ready' && online && codesOn() ? `${profile.id}|${profile.name}|${profile.avatar}|${profile.print}` : '';
+  useEffect(() => {
+    if (remember && profile && token) phonePlayers.put(token, profile);
+    // Only when who it is or how they look changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remember]);
+
   const reset = useCallback(() => {
     store.remove(KEYS.token);
     // The copies kept for playing without internet belong to the player leaving.
@@ -237,12 +265,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     store.remove(KEYS.ranks);
     setToken(null);
     setProfile(null);
+    setAlerts(null);
     setStatus('guest');
   }, []);
 
-  const signIn = useCallback((next: string, p: Profile) => {
+  const signIn = useCallback((next: string, p: Profile, opts: { borrow?: boolean } = {}) => {
     // A friend room belongs to the player who made it.
     hosted.clear();
+    if (codesOn()) {
+      const cur = store.get(KEYS.token);
+      const back = phonePlayers.list().find((x) => x.token === cur && !x.borrowed)?.id ?? null;
+      phonePlayers.put(next, p, opts.borrow ? { borrowed: { since: Date.now(), back } } : { borrowed: undefined });
+    }
+    setAlerts(null);
     store.set(KEYS.token, next);
     fresh.current = next;
     fetchedAt.current = Date.now();
@@ -256,6 +291,52 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     reset();
   }, [reset]);
 
+  const switchTo = useCallback((id: string) => {
+    const p = phonePlayers.get(id);
+    if (!p) return;
+    hosted.clear();
+    store.remove(KEYS.me);
+    store.remove(KEYS.ranks);
+    store.set(KEYS.token, p.token);
+    fresh.current = null;
+    setProfile(null);
+    setAlerts(null);
+    setToken(p.token);
+    setStatus('loading');
+  }, []);
+
+  const forget = useCallback((id: string) => {
+    const p = phonePlayers.get(id);
+    phonePlayers.remove(id);
+    if (p && p.token === store.get(KEYS.token)) reset();
+  }, [reset]);
+
+  const endBorrow = useCallback(() => {
+    const cur = phonePlayers.list().find((x) => x.token === store.get(KEYS.token));
+    if (!cur?.borrowed) return;
+    phonePlayers.remove(cur.id);
+    const back = cur.borrowed.back && phonePlayers.get(cur.borrowed.back);
+    if (back) switchTo(back.id);
+    else reset();
+  }, [switchTo, reset]);
+
+  // A borrowed phone goes back to its own player after an hour away, or the next day (src/lib/codes.ts).
+  useEffect(() => {
+    if (!codesOn()) return;
+    const look = () => {
+      if (document.hidden) return noteAway();
+      const cur = phonePlayers.list().find((x) => x.token === store.get(KEYS.token));
+      if (cur && borrowOver(cur)) {
+        const back = cur.borrowed?.back ? phonePlayers.get(cur.borrowed.back) : null;
+        toast(back ? `This phone is back to ${back.name}.` : `${cur.name} left this phone.`, 4000);
+        endBorrow();
+      }
+    };
+    look();
+    document.addEventListener('visibilitychange', look);
+    return () => document.removeEventListener('visibilitychange', look);
+  }, [endBorrow]);
+
   const returned = useCallback(() => {
     setReturning(null);
     setStatus((s) => (s === 'loading' && !store.get(KEYS.token) ? 'guest' : s));
@@ -264,9 +345,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SessionValue>(
     () => ({
       status, online, token, profile, start, refresh, setProfile, update, reset, signIn, signOut, returning, returned,
+      alerts, setAlerts, switchTo, forget, endBorrow,
       retry: () => { fresh.current = null; setAttempt((n) => n + 1); },
     }),
-    [status, online, token, profile, start, refresh, update, reset, signIn, signOut, returning, returned],
+    [status, online, token, profile, start, refresh, update, reset, signIn, signOut, returning, returned, alerts, switchTo, forget, endBorrow],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

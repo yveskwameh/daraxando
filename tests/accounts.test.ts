@@ -69,7 +69,12 @@ describe('codes and tokens', () => {
   });
   it('signs in on a new phone with the same kind of token a guest gets', async () => {
     const t = await signToken('player-1', 'secret');
-    expect(await verifyToken(t, 'secret')).toBe('player-1');
+    expect(await verifyToken(t, 'secret')).toEqual({ id: 'player-1', v: 0 });
+    const t2 = await signToken('player-1', 'secret', 3);
+    expect(t2.startsWith('player-1~3.')).toBe(true);
+    expect(await verifyToken(t2, 'secret')).toEqual({ id: 'player-1', v: 3 });
+    // The version is signed too: changing it breaks the login.
+    expect(await verifyToken(t2.replace('~3.', '~4.'), 'secret')).toBeNull();
     expect(await verifyToken(t, 'other')).toBeNull();
   });
 });

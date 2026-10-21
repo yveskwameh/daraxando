@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Player code prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@600;700;800;900&family=Onest:wght@400;500;600;700&display=swap">
+<style>
+/*
+ * Dara X&O: the player code and "Players on this phone", as a clickable prototype for Yves
+ * (21 October 2026). Plan: the report "Anonymous player accounts and recovery". Nothing here is
+ * the game: names, codes and the QR are made up. Same colours, fonts and spacing as the game.
+ */
+:root {
+  color-scheme: dark;
+  --night: #0b0a2a; --deep: #17164a; --raise: #24226a; --line: #34318a;
+  --indigo: #3d27db; --indigo-glow: #9b8fff; --fuchsia: #dc0fa1; --fuchsia-glow: #ff4fb8;
+  --danfo: #ffc921; --cream: #fff4e0; --teal: #35d6c0; --text: #fff; --muted: #b8b4e8;
+  --google-fill: #131314; --google-ring: #8e918f; --google-text: #e3e3e3;
+  --head: 'Gabarito', 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --body: 'Onest', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --space-pair: 8px; --space-item: 12px; --space-block: 16px; --space-group: 24px;
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #06051c; color: var(--text); font: 400 1rem/1.5 var(--body); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-family: var(--head); line-height: 1.15; text-wrap: balance; }
+:focus-visible { outline: 3px solid var(--danfo); outline-offset: 2px; }
+
+/* ---------- the page: a list of screens and a phone ---------- */
+.wrap { display: grid; grid-template-columns: minmax(0, 320px) auto; gap: 40px; justify-content: center; align-items: start; padding: 32px max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left)); }
+.guide { position: sticky; top: 24px; display: grid; gap: var(--space-block); }
+.guide h1 { font-size: 1.5rem; }
+.guide .lede { color: var(--muted); font-size: 0.9375rem; }
+.flows { display: grid; gap: var(--space-block); margin: 0; padding: 0; list-style: none; }
+.flow h2 { font: 800 0.75rem/1.2 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--indigo-glow); margin-bottom: 6px; }
+.flow ol { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.flow button { width: 100%; text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: 10px; color: var(--muted); font-size: 0.9rem; line-height: 1.35; }
+.flow button:hover { background: var(--deep); color: var(--text); }
+.flow button[aria-current="true"] { background: var(--cream); color: var(--night); font-weight: 600; }
+.note { padding: 12px 14px; border-radius: 14px; background: var(--deep); color: var(--muted); font-size: 0.8125rem; line-height: 1.5; }
+.note b { color: var(--text); }
+.phone-col { display: grid; gap: 12px; justify-items: center; }
+.phone { position: relative; width: 390px; height: 800px; border-radius: 44px; background: var(--night); box-shadow: 0 0 0 10px #1c1a3f, 0 0 0 11px #3a3770, 0 30px 80px rgba(0,0,0,.6); overflow: hidden; }
+.why { max-width: 390px; color: var(--muted); font-size: 0.875rem; text-align: center; min-height: 3em; }
+.nav-row { display: flex; gap: 10px; }
+.nav-row button { min-height: 40px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--deep); color: var(--muted); font-weight: 600; }
+.nav-row button:hover { color: var(--text); }
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-top: 20px; }
+  .guide { position: static; order: 2; }
+  .phone-col { order: 1; }
+  .phone { width: min(100%, 390px); height: 760px; border-radius: 32px; box-shadow: 0 0 0 1px #3a3770; }
+}
+
+/* ---------- inside the phone: the game's own pieces ---------- */
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; gap: var(--space-group); padding: 52px 16px 28px; overflow: hidden; }
+.screen[hidden] { display: none; }
+.kicker { font: 800 0.75rem/1.2 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--indigo-glow); }
+.fine { font-size: 0.8125rem; line-height: 1.5; color: var(--muted); }
+.muted { color: var(--muted); }
+.titled { display: grid; gap: var(--space-pair); }
+.titled h2 { font-size: 1.5rem; }
+.titled.center { text-align: center; justify-items: center; }
+.grow { flex: 1; }
+.stack { display: grid; gap: var(--space-item); }
+.actions { display: grid; gap: var(--space-item); }
+.more { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-item); }
+
+.btn {
+  position: relative; isolation: isolate; overflow: hidden;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 56px; padding: 0 20px; border: 0; border-radius: 999px;
+  background: var(--fuchsia); color: #fff; box-shadow: 0 0 0 3px var(--cream);
+  font: 800 1.125rem/1.1 var(--head); width: 100%;
+  transition: transform 160ms var(--ease-out);
+}
+/* A stand-in for the Ankara print the game draws on every big button. */
+.btn::before { content: ""; position: absolute; inset: 0; z-index: -1; opacity: .22; background: radial-gradient(circle at 8px 8px, rgba(255,255,255,.55) 2px, transparent 3px) 0 0 / 16px 16px; }
+.btn:active { transform: scale(.96); }
+.btn.ghost { background: var(--raise); box-shadow: inset 0 0 0 2px var(--line); }
+.btn.ghost::before { opacity: .08; }
+.btn.sm { min-height: 46px; font-size: 0.9375rem; padding: 8px 14px; }
+.btn.danger { background: var(--raise); color: var(--fuchsia-glow); box-shadow: inset 0 0 0 2px var(--fuchsia-glow); }
+.btn.danger::before { display: none; }
+.btn.google { background: var(--google-fill); color: var(--google-text); box-shadow: inset 0 0 0 1px var(--google-ring); font: 500 1rem/1 var(--body); }
+.btn.google::before { display: none; }
+.mini-btn { min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--cream); color: var(--night); font: 800 0.875rem/1 var(--head); white-space: nowrap; }
+.mini-btn.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 2px var(--line); }
+.x-btn { position: absolute; top: 14px; right: 14px; width: 44px; height: 44px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); display: grid; place-items: center; }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.wordmark { display: inline-flex; align-items: center; font: 900 1.625rem/1 var(--head); letter-spacing: -.02em; }
+.wordmark i { font-style: normal; display: inline-grid; place-items: center; margin-left: 3px; padding: 2px 9px 4px; border-radius: 999px; background: var(--fuchsia); box-shadow: 0 0 0 2px var(--cream); font-size: 1rem; transform: rotate(-4deg); }
+
+.avatar { flex: none; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--indigo); box-shadow: 0 0 0 3px var(--deep), 0 0 0 5px var(--indigo-glow); font: 900 1.25rem/1 var(--head); color: var(--cream); }
+.avatar.lg { width: 84px; height: 84px; font-size: 2.125rem; }
+.avatar.teal { background: #0f7e72; }
+.avatar.flame { background: #b8540f; }
+.me-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 22px; background: var(--deep); }
+.me-card b { display: block; font: 800 1.1875rem/1.2 var(--head); }
+.me-card span { font-size: 0.8125rem; color: var(--muted); }
+.board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; aspect-ratio: 1; max-width: 300px; width: 100%; margin: 0 auto; }
+.board i { border-radius: 14px; background: var(--raise); }
+
+.code-box { min-width: 0; display: grid; gap: var(--space-item); justify-items: center; padding: 20px 16px; border-radius: 22px; background: var(--deep); }
+.code { font: 800 1.3125rem/1 var(--head); letter-spacing: .04em; font-variant-numeric: tabular-nums; color: var(--cream); white-space: nowrap; }
+.code.hidden { letter-spacing: .2em; color: var(--muted); }
+.qr { width: 132px; height: 132px; padding: 10px; border-radius: 14px; background: var(--cream); display: grid; grid-template-columns: repeat(21, 1fr); }
+.qr i { display: block; }
+.qr i.on { background: var(--night); }
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-item); width: 100%; }
+
+.code-in { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.code-in input { width: 100%; min-height: 56px; border: 0; border-radius: 14px; background: var(--deep); box-shadow: inset 0 0 0 2px var(--line); color: var(--cream); text-align: center; font: 800 1.25rem/1 var(--head); letter-spacing: .06em; text-transform: uppercase; }
+.code-in input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--danfo); }
+.code-in.bad input { box-shadow: inset 0 0 0 2px var(--fuchsia-glow); }
+.form-error { color: var(--fuchsia-glow); font-weight: 600; font-size: 0.875rem; }
+
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border-radius: 18px; background: var(--deep); }
+.switch-row b { display: block; font: 700 0.9375rem/1.3 var(--body); }
+.toggle { flex: none; position: relative; width: 52px; height: 32px; border: 0; border-radius: 999px; background: var(--line); }
+.toggle::after { content: ""; position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; background: var(--muted); transition: transform 180ms var(--ease-out); }
+.toggle[aria-checked="true"] { background: var(--teal); }
+.toggle[aria-checked="true"]::after { transform: translateX(20px); background: var(--night); }
+
+.players { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.prow { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 68px; padding: 10px 14px; border: 0; border-radius: 18px; background: var(--deep); text-align: left; }
+.prow b { display: block; font: 800 1.0625rem/1.25 var(--head); }
+.prow small { font-size: 0.8125rem; color: var(--muted); }
+.prow .avatar { width: 42px; height: 42px; font-size: 1.0625rem; }
+.prow.now { box-shadow: inset 0 0 0 2px var(--indigo-glow); }
+.tag { display: inline-flex; align-items: center; padding: 4px 9px; border-radius: 999px; background: var(--raise); color: var(--muted); font: 800 0.6875rem/1 var(--body); }
+.tag.now { background: var(--indigo); color: var(--cream); }
+
+/* Sheets slide up over a dimmed screen, like every sheet in the game. */
+.dim { position: absolute; inset: 0; background: rgba(5, 4, 22, .72); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; display: grid; gap: var(--space-group); padding: 16px 20px 28px; border-radius: 28px 28px 0 0; background: var(--deep); animation: up 260ms var(--ease-out); }
+.sheet .grab { justify-self: center; width: 40px; height: 5px; border-radius: 3px; background: var(--line); }
+@keyframes up { from { transform: translateY(40px); opacity: 0; } }
+
+/* A pop-up that slides down from the top (TopPop in the game). */
+.toppop { position: absolute; top: 44px; left: 12px; right: 12px; display: grid; gap: var(--space-item); padding: 16px; border-radius: 22px; background: var(--cream); color: var(--night); box-shadow: 0 16px 40px rgba(0,0,0,.45); animation: down 260ms var(--ease-out); z-index: 5; }
+.toppop .fine { color: #4b4880; }
+.toppop b { font: 800 1.0625rem/1.25 var(--head); }
+@keyframes down { from { transform: translateY(-30px); opacity: 0; } }
+.toppop .btn { min-height: 46px; font-size: 0.9375rem; box-shadow: none; }
+.toppop .btn.ghost { background: transparent; color: var(--night); box-shadow: inset 0 0 0 2px #c9c2e8; }
+
+/* Home, cut down to what this flow touches. */
+.home-top { display: flex; align-items: center; justify-content: space-between; }
+.counters { display: flex; gap: 6px; padding: 6px 10px; border-radius: 999px; background: var(--deep); font: 800 0.875rem/1 var(--head); }
+.borrow-pill { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 8px 8px 16px; border-radius: 999px; background: var(--danfo); color: var(--night); font: 700 0.875rem/1.2 var(--body); }
+.borrow-pill .mini-btn { background: var(--night); color: var(--cream); }
+.game-pic { flex: 1; display: grid; place-items: center; border-radius: 26px; background: var(--deep); }
+.game-pic .board { max-width: 220px; }
+.toast { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 16px 26px; background: var(--teal); color: var(--night); font: 700 0.9375rem/1.4 var(--body); text-align: center; animation: up 220ms var(--ease-out); }
+.settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 18px; background: var(--deep); }
+.settings-row b { font-weight: 700; }
+.section-title { font: 800 0.75rem/1.2 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.scroll { overflow-y: auto; display: grid; gap: var(--space-block); align-content: start; }
+.img-card { width: 100%; display: grid; gap: 12px; justify-items: center; padding: 22px 18px; border-radius: 22px; background: var(--indigo); box-shadow: 0 0 0 3px var(--cream); text-align: center; }
+.img-card .wordmark { font-size: 1.25rem; }
+.img-card .wordmark i { font-size: 0.8125rem; }
+.img-card .who { display: flex; align-items: center; gap: 10px; font: 800 1.125rem/1 var(--head); }
+.img-card .who .avatar { width: 36px; height: 36px; font-size: 1rem; box-shadow: none; background: var(--night); }
+.img-card .code { color: #fff; }
+.img-card .fine { color: #e3e0ff; }
+.saved-note { display: flex; align-items: center; gap: 8px; justify-content: center; color: var(--teal); font-weight: 700; font-size: 0.9375rem; }
+.field { display: grid; gap: 8px; }
+.field span { font-weight: 700; font-size: 0.9375rem; }
+.input { width: 100%; min-height: 54px; padding: 12px 14px; border: 0; border-radius: 16px; background: var(--deep); color: var(--text); box-shadow: inset 0 0 0 2px var(--line); font: 500 1rem/1.4 var(--body); }
+.input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--danfo); }
+textarea.input { min-height: 84px; resize: none; }
+.six { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.six input { min-height: 56px; text-align: center; font: 800 1.375rem/1 var(--head); padding: 0; }
+.dash { background: #0b0a2a; }
+.dash-top { display: flex; align-items: center; justify-content: space-between; }
+.dash-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--deep); }
+.dash-tabs span { flex: 1; text-align: center; padding: 9px 0; border-radius: 999px; font: 800 0.875rem/1 var(--head); color: var(--muted); }
+.dash-tabs span.on { background: var(--cream); color: var(--night); }
+.req { display: grid; gap: 12px; padding: 16px; border-radius: 20px; background: var(--deep); }
+.req-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.req-head b { font: 800 1.0625rem/1.2 var(--head); }
+.checks { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 0.875rem; }
+.checks li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 8px 10px; border-radius: 12px; background: var(--night); }
+.checks li small { display: block; color: var(--muted); font-size: 0.75rem; }
+.ok { color: var(--teal); font-weight: 800; }
+.no { color: var(--fuchsia-glow); font-weight: 800; }
+.verdict { padding: 10px 12px; border-radius: 12px; background: rgba(53, 214, 192, .14); color: var(--teal); font: 700 0.875rem/1.4 var(--body); }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <aside class="guide" aria-label="Screens">
+    <div class="titled">
+      <h1>Player code prototype</h1>
+      <p class="lede">The player code and "Players on this phone", for your approval before any of it is built. Tap the buttons on the phone, or pick a screen here. Names and codes are made up.</p>
+    </div>
+    <ul class="flows" id="flows"></ul>
+    <p class="note"><b>Not in the game yet.</b> Proposed wording, for you to change. Big buttons wear the Ankara prints in the game; here they get a plain dot pattern.</p>
+  </aside>
+  <div class="phone-col">
+    <div class="phone" id="phone"></div>
+    <p class="why" id="why"></p>
+    <div class="nav-row"><button type="button" id="prev">Back a screen</button><button type="button" id="next">Next screen</button></div>
+  </div>
+</div>
+
+<script>
+/* The screens, in flow order. Each is HTML for the phone; data-go on a button opens another screen. */
+const CODE = 'KM7Q-3XRP-9DWT-H2FN';
+const qr = (() => {
+  // A made-up pattern with the three corner squares a real QR code has.
+  let s = 7, out = '';
+  const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+  for (let y = 0; y < 21; y++) for (let x = 0; x < 21; x++) {
+    const corner = (cx, cy) => x >= cx && x < cx + 7 && y >= cy && y < cy + 7 && (x === cx || x === cx + 6 || y === cy || y === cy + 6 || (x >= cx + 2 && x <= cx + 4 && y >= cy + 2 && y <= cy + 4));
+    const inCorner = (cx, cy) => x >= cx - 1 && x < cx + 8 && y >= cy - 1 && y < cy + 8;
+    const on = corner(0, 0) || corner(14, 0) || corner(0, 14) || (!inCorner(0, 0) && !inCorner(14, 0) && !inCorner(0, 14) && rnd() > 0.52);
+    out += `<i class="${on ? 'on' : ''}"></i>`;
+  }
+  return `<div class="qr" role="img" aria-label="QR code (sample)">${out}</div>`;
+})();
+const card = `<div class="img-card" role="img" aria-label="The saved picture">
+  <span class="wordmark">Dara<i>X&amp;O</i></span>
+  <span class="who"><span class="avatar">T</span>Tunde</span>
+  ${qr}
+  <span class="code">${CODE}</span>
+  <span class="fine">Your player code. Keep this private: anyone with this code can play as you.</span>
+</div>`;
+const home = (pill = '') => `
+  <div class="home-top"><span class="avatar" aria-hidden="true">T</span><span class="counters">4-day streak · 2/3 · 6,120 seeds</span></div>
+  ${pill}
+  <div class="game-pic"><div class="board" aria-hidden="true">${'<i></i>'.repeat(9)}</div></div>
+  <div class="actions"><button class="btn" type="button">Quick match</button><div class="more"><button class="btn ghost sm" type="button">Play a friend</button><button class="btn ghost sm" type="button">Play Baba Ayo</button></div></div>`;
+
+const FLOWS = [
+  { title: 'A new phone', screens: [
+    { id: 'new', label: 'First screen', why: 'Play now stays one tap. Under it, a returning player now has a clear way back, so they never make a second player by accident.', html: `
+      <div class="top"><span class="wordmark">Dara<i>X&amp;O</i></span></div>
+      <p class="muted">Three in a row. Warm up against Baba Ayo, then play people across Nigeria.</p>
+      <div class="board grow" aria-hidden="true">${'<i></i>'.repeat(9)}</div>
+      <div class="me-card"><span class="avatar">D</span><div><span class="kicker">You play as</span><b>Durbar Queen</b><span>Lagos</span></div><button class="mini-btn" type="button">Change</button></div>
+      <div class="actions">
+        <button class="btn" type="button" data-go="saveask">Play now</button>
+        <button class="btn ghost sm" type="button" data-go="typecode">I already have a player</button>
+      </div>` },
+  ]},
+  { title: 'Saving your player', screens: [
+    { id: 'saveask', label: 'The save ask, after the 3rd match', why: 'The save ask the game already shows after the third match, now leading with the code: no email, no Google.', html: `
+      ${home()}
+      <div class="dim"></div>
+      <div class="sheet" role="dialog" aria-label="Save your player">
+        <span class="grab"></span>
+        <div class="titled center"><h2>Keep Tunde on any phone</h2><p class="muted">This is your player code. Type it on any phone to play as Tunde again.</p></div>
+        <div class="code-box">${qr}<span class="code">${CODE}</span><span class="fine">Keep it to yourself: anyone with it can play as you.</span></div>
+        <div class="actions">
+          <button class="btn" type="button" data-go="imgSaved">Save image</button>
+          <div class="more"><button class="btn ghost sm" type="button" data-go="copied">Copy</button><button class="btn ghost sm" type="button" data-go="shared">Share to myself</button></div>
+          <button class="btn ghost" type="button" data-go="saved">I saved it</button>
+        </div>
+      </div>` },
+    { id: 'saved', label: 'Saved', why: 'One line to confirm, then back to Home.', html: `${home()}<p class="toast">Saved. Your code is in Settings if you need it again.</p>` },
+    { id: 'imgSaved', label: 'Save image: the picture', why: 'The phone draws this picture itself, so nothing goes to us. Android opens the share menu (Gallery, WhatsApp); iPhone offers Save Image to Photos. With no share menu, it downloads.', html: `
+      <div class="top"><button class="mini-btn ghost" type="button" data-go="saveask">Back</button><span></span></div>
+      ${card}
+      <p class="saved-note">Saved to your phone's pictures</p>
+      <div class="grow"></div>
+      <button class="btn" type="button" data-go="saved">Done</button>` },
+    { id: 'copied', label: 'Copy', why: 'Copies the code with its dashes, ready to paste into notes or a chat.', html: `${home()}<p class="toast">Code copied. Paste it somewhere only you can see.</p>` },
+    { id: 'shared', label: 'Share to myself', why: "The phone's own share menu, with the code and a link that opens the game with it filled in. Most players send it to their own WhatsApp chat.", html: `
+      ${home()}
+      <div class="dim"></div>
+      <div class="sheet" role="dialog" aria-label="Share">
+        <span class="grab"></span>
+        <div class="titled"><h2 style="font-size:1.125rem">Share with</h2><p class="fine">My Dara X&amp;O player code: ${CODE}. Keep it private.</p></div>
+        <div class="row-2"><button class="btn ghost sm" type="button" data-go="saved">WhatsApp</button><button class="btn ghost sm" type="button" data-go="saved">Notes</button></div>
+        <p class="fine">This is the phone's own menu. It looks different on every phone.</p>
+      </div>` },
+    { id: 'settings', label: 'Settings: your player code', why: 'The code is always here on a phone signed in as you, hidden until tapped. Google and email stay, as an extra backup.', html: `
+      <div class="top"><button class="mini-btn ghost" type="button" data-go="saved">Back</button><h2 style="font-size:1.25rem">Settings</h2><span style="width:56px"></span></div>
+      <div class="scroll grow">
+        <div class="stack">
+          <span class="section-title">Your player code</span>
+          <div class="code-box"><span class="code hidden">•••• •••• •••• ••••</span><div class="row-2"><button class="btn ghost sm" type="button" data-go="settingsShown">Show</button><button class="btn ghost sm" type="button" data-go="imgSaved">Save image</button></div><div class="row-2"><button class="btn ghost sm" type="button" data-go="copied">Copy</button><button class="btn ghost sm" type="button" data-go="shared">Share to myself</button></div></div>
+          <p class="fine">Type it on any phone to play as Tunde. Lost it, or someone else saw it? Get a new one: the old code stops working.</p>
+          <button class="btn danger sm" type="button" data-go="newcode">Get a new code</button>
+        </div>
+        <div class="stack">
+          <span class="section-title">Extra backup</span>
+          <button class="btn google" type="button">Continue with Google</button>
+          <button class="btn ghost sm" type="button">Use an email address</button>
+          <p class="fine">If you lose your code and every phone you play on, Google or an email brings Tunde back.</p>
+        </div>
+        <div class="stack">
+          <span class="section-title">This phone</span>
+          <button class="settings-row" type="button" data-go="list"><b>Switch player</b><span class="muted">2 players</span></button>
+        </div>
+      </div>` },
+    { id: 'settingsShown', label: 'Settings: code shown', why: 'Show reveals it with the QR, for scanning from another phone.', html: `
+      <div class="top"><button class="mini-btn ghost" type="button" data-go="settings">Back</button><h2 style="font-size:1.25rem">Your player code</h2><span style="width:56px"></span></div>
+      <div class="code-box">${qr}<span class="code">${CODE}</span><span class="fine">Scan it from your new phone's camera, or type it.</span></div>
+      <div class="grow"></div>
+      <div class="actions"><button class="btn" type="button" data-go="imgSaved">Save image</button><div class="more"><button class="btn ghost sm" type="button" data-go="copied">Copy</button><button class="btn ghost sm" type="button" data-go="shared">Share to myself</button></div></div>` },
+    { id: 'newcode', label: 'Get a new code', why: 'Asks first, because the old code stops working at once, on paper and in screenshots.', html: `
+      <div class="top"><button class="mini-btn ghost" type="button" data-go="settings">Back</button><h2 style="font-size:1.25rem">Settings</h2><span style="width:56px"></span></div>
+      <div class="grow"></div>
+      <div class="dim"></div>
+      <div class="sheet" role="dialog" aria-label="Get a new code">
+        <span class="grab"></span>
+        <div class="titled"><h2>Get a new code?</h2><p class="muted">Your old code stops working straight away. Other phones signed in as Tunde stay signed in.</p></div>
+        <div class="actions"><button class="btn" type="button" data-go="settingsShown">Get a new code</button><button class="btn ghost" type="button" data-go="settings">Keep my code</button></div>
+      </div>` },
+  ]},
+  { title: 'Your player on another phone', screens: [
+    { id: 'typecode', label: 'Type your player code', why: 'Four boxes of four. Capitals or not, and look-alike letters are fixed for you. A wrong code always gets the same plain answer.', html: `
+      <div class="top"><button class="mini-btn ghost" type="button" data-go="new">Back</button><span></span></div>
+      <div class="titled"><h2>Type your player code</h2><p class="muted">The 16 letters and numbers from when you saved your player.</p></div>
+      <div class="code-in" id="codeIn"><input aria-label="Part 1" maxlength="4" value="KM7Q"><input aria-label="Part 2" maxlength="4" value="3XRP"><input aria-label="Part 3" maxlength="4" value="9DWT"><input aria-label="Part 4" maxlength="4" value="H2FN"></div>
+      <div class="grow"></div>
+      <div class="actions">
+        <button class="btn" type="button" data-go="confirm">Find my player</button>
+        <div class="more"><button class="btn ghost sm" type="button" data-go="badcode">Try a wrong code</button><button class="btn ghost sm" type="button">Use Google or email</button></div>
+        <button class="btn ghost sm" type="button" data-go="lost">Lost your code? Ask us to help</button>
+      </div>` },
+    { id: 'badcode', label: 'A wrong code', why: 'The same reply for every wrong code, and only a few tries a minute on any phone, so nobody can guess their way in.', html: `
+      <div class="top"><button class="mini-btn ghost" type="button" data-go="new">Back</button><span></span></div>
+      <div class="titled"><h2>Type your player code</h2><p class="muted">The 16 letters and numbers from when you saved your player.</p></div>
+      <div class="code-in bad"><input aria-label="Part 1" maxlength="4" value="KM7Q"><input aria-label="Part 2" maxlength="4" value="3XRP"><input aria-label="Part 3" maxlength="4" value="9DWT"><input aria-label="Part 4" maxlength="4" value="H2FM"></div>
+      <p class="form-error" role="alert">That code doesn't match a player. Check it and try again.</p>
+      <div class="grow"></div>
+      <div class="actions"><button class="btn" type="button" data-go="typecode">Try again</button><div class="more"><button class="btn ghost sm" type="button">Use Google or email</button><button class="btn ghost sm" type="button" data-go="lost">Lost your code?</button></div></div>` },
+    { id: 'confirm', label: 'Play as Tunde?', why: 'The same check the game shows today before switching players. On a phone with nobody on it, "Keep me on this phone" starts on.', html: `
+      <div class="top"><button class="mini-btn ghost" type="button" data-go="typecode">Back</button><span></span></div>
+      <div class="titled center" style="margin-top:20px"><span class="avatar lg">T</span><h2>Play as Tunde?</h2><p class="muted">Sharp-sharp · Rivers · 6,120 seeds · 4-day streak</p></div>
+      <div class="grow"></div>
+      <div class="switch-row"><div><b>Keep me on this phone</b><span class="fine">This is my phone. Next time it opens as Tunde.</span></div><button class="toggle" type="button" role="switch" aria-checked="true" aria-label="Keep me on this phone"></button></div>
+      <div class="actions"><button class="btn" type="button" data-go="homeTunde">Play as Tunde</button><button class="btn ghost sm" type="button" data-go="typecode">That's not me</button></div>` },
+    { id: 'homeTunde', label: 'Home, as Tunde', why: 'Everything came with him: seeds, title, streak, friends, history.', html: `${home()}<p class="toast">Welcome back, Tunde.</p>` },
+    { id: 'otherphone', label: 'His old phone, next time it opens', why: 'If someone else got hold of his code, this is how he finds out, and Not me shuts them out.', html: `
+      ${home()}
+      <div class="toppop" role="dialog" aria-label="Opened on another phone">
+        <b>Tunde was opened on another phone</b>
+        <p class="fine">Today at 15:42, with your player code. Was that you?</p>
+        <div class="more"><button class="btn" type="button" data-go="saved">That was me</button><button class="btn ghost" type="button" data-go="locked">Not me</button></div>
+      </div>` },
+    { id: 'locked', label: 'Not me', why: 'Signs out every other phone and makes a new code, in one tap.', html: `
+      ${home()}
+      <div class="dim"></div>
+      <div class="sheet" role="dialog" aria-label="Your player is safe">
+        <span class="grab"></span>
+        <div class="titled center"><h2>Tunde is safe again</h2><p class="muted">Every other phone is signed out, and here is your new code. The old one no longer works.</p></div>
+        <div class="code-box">${qr}<span class="code">P4VZ-8KQW-2HNE-T6RC</span><span class="fine">Save this one somewhere only you can see.</span></div>
+        <button class="btn" type="button" data-go="saved">I saved it</button>
+      </div>` },
+  ]},
+  { title: "A friend's phone", screens: [
+    { id: 'kemi', label: "Kemi's phone, as Kemi", why: "Tunde borrows Kemi's phone. Her player is on it. He opens You, then Settings.", html: `
+      <div class="top"><button class="mini-btn ghost" type="button">Back</button><h2 style="font-size:1.25rem">Settings</h2><span style="width:56px"></span></div>
+      <div class="scroll grow">
+        <div class="stack"><span class="section-title">Playing as</span><div class="me-card"><span class="avatar teal">K</span><div><b>Kemi</b><span>Saved · Lagos</span></div><span></span></div></div>
+        <div class="stack"><span class="section-title">This phone</span><button class="settings-row" type="button" data-go="list"><b>Switch player</b><span class="muted">1 player</span></button></div>
+      </div>` },
+    { id: 'list', label: 'Players on this phone', why: 'Sign out becomes Switch player. The phone remembers its players instead of forgetting them, so nobody comes back as a new player.', html: `
+      <div class="top"><button class="mini-btn ghost" type="button" data-go="kemi">Back</button><span></span></div>
+      <div class="titled"><h2>Players on this phone</h2><p class="muted">Tap a player to play as them.</p></div>
+      <ul class="players">
+        <li><button class="prow now" type="button"><span class="avatar teal">K</span><span><b>Kemi</b><small>Saved · Lagos</small></span><span class="tag now">Playing</span></button></li>
+      </ul>
+      <div class="grow"></div>
+      <div class="actions">
+        <button class="btn" type="button" data-go="typecodeBorrow">Use my own player</button>
+        <div class="more"><button class="btn ghost sm" type="button" data-go="phonefull">New player</button><button class="btn ghost sm" type="button" data-go="remove">Remove Kemi</button></div>
+      </div>` },
+    { id: 'typecodeBorrow', label: 'Type your player code', why: 'The same code screen. Kemi\'s code never shows anywhere in this flow.', html: `
+      <div class="top"><button class="mini-btn ghost" type="button" data-go="list">Back</button><span></span></div>
+      <div class="titled"><h2>Type your player code</h2><p class="muted">The 16 letters and numbers from when you saved your player.</p></div>
+      <div class="code-in"><input aria-label="Part 1" maxlength="4" value="KM7Q"><input aria-label="Part 2" maxlength="4" value="3XRP"><input aria-label="Part 3" maxlength="4" value="9DWT"><input aria-label="Part 4" maxlength="4" value="H2FN"></div>
+      <div class="grow"></div>
+      <div class="actions"><button class="btn" type="button" data-go="confirmBorrow">Find my player</button><button class="btn ghost sm" type="button">Use Google or email</button></div>` },
+    { id: 'confirmBorrow', label: 'Play as Tunde? on a borrowed phone', why: '"Keep me on this phone" starts off because the phone already has a player: it\'s a borrow. Kemi stays.', html: `
+      <div class="top"><button class="mini-btn ghost" type="button" data-go="typecodeBorrow">Back</button><span></span></div>
+      <div class="titled center" style="margin-top:20px"><span class="avatar lg">T</span><h2>Play as Tunde?</h2><p class="muted">Sharp-sharp · Rivers · 6,120 seeds · 4-day streak</p></div>
+      <p class="fine" style="text-align:center">Kemi stays on this phone and comes back with one tap.</p>
+      <div class="grow"></div>
+      <div class="switch-row"><div><b>Keep me on this phone</b><span class="fine">Off: you're borrowing it. You leave when you give it back.</span></div><button class="toggle" type="button" role="switch" aria-checked="false" aria-label="Keep me on this phone"></button></div>
+      <div class="actions"><button class="btn" type="button" data-go="borrowHome">Play as Tunde</button><button class="btn ghost sm" type="button" data-go="list">That's not me</button></div>` },
+    { id: 'borrowHome', label: 'Home on a borrowed phone', why: 'A yellow pill says whose phone this is. It also ends by itself after an hour away, or the next day at the latest, so Kemi always gets her player back.', html: home(`<div class="borrow-pill"><span>Borrowed phone</span><button class="mini-btn" type="button" data-go="giveback">Give it back</button></div>`) },
+    { id: 'giveback', label: 'Give it back', why: "One tap, and Tunde's login is wiped from Kemi's phone.", html: `
+      ${home(`<div class="borrow-pill"><span>Borrowed phone</span><button class="mini-btn" type="button">Give it back</button></div>`)}
+      <div class="dim"></div>
+      <div class="sheet" role="dialog" aria-label="Give the phone back">
+        <span class="grab"></span>
+        <div class="titled"><h2>Switch back to Kemi?</h2><p class="muted">Tunde leaves this phone. Your seeds and streak stay with your player.</p></div>
+        <div class="actions"><button class="btn" type="button" data-go="kemiBack">Switch back to Kemi</button><button class="btn ghost" type="button" data-go="borrowHome">Keep playing</button></div>
+      </div>` },
+    { id: 'kemiBack', label: 'Kemi again', why: 'Always says who is playing now, after any switch.', html: `
+      <div class="home-top"><span class="avatar teal" aria-hidden="true">K</span><span class="counters">9-day streak · 1/3 · 2,480 seeds</span></div>
+      <div class="game-pic"><div class="board" aria-hidden="true">${'<i></i>'.repeat(9)}</div></div>
+      <div class="actions"><button class="btn" type="button">Quick match</button><div class="more"><button class="btn ghost sm" type="button">Play a friend</button><button class="btn ghost sm" type="button">Play Baba Ayo</button></div></div>
+      <p class="toast">Now playing as Kemi.</p>` },
+    { id: 'remove', label: 'Remove a player from this phone', why: "Removing doesn't delete anything: the player is still there for their code. It warns if they never looked at their code.", html: `
+      <div class="top"><button class="mini-btn ghost" type="button" data-go="list">Back</button><span></span></div>
+      <div class="grow"></div>
+      <div class="dim"></div>
+      <div class="sheet" role="dialog" aria-label="Remove Kemi">
+        <span class="grab"></span>
+        <div class="titled"><h2>Remove Kemi from this phone?</h2><p class="muted">Kemi isn't deleted. She comes back on any phone with her player code, Google or email.</p></div>
+        <div class="actions"><button class="btn danger" type="button" data-go="list">Remove from this phone</button><button class="btn ghost" type="button" data-go="list">Keep Kemi</button></div>
+      </div>` },
+    { id: 'phonefull', label: 'New player, on a full phone', why: 'Already built: a phone makes 2 new players a month. This is where it shows.', html: `
+      <div class="top"><button class="mini-btn ghost" type="button" data-go="list">Back</button><span></span></div>
+      <div class="grow"></div>
+      <div class="dim"></div>
+      <div class="sheet" role="dialog" aria-label="This phone is full">
+        <span class="grab"></span>
+        <div class="titled"><h2>This phone made 2 players this month</h2><p class="muted">Play as a player on this phone, or bring yours with your player code.</p></div>
+        <div class="actions"><button class="btn" type="button" data-go="typecodeBorrow">Use my own player</button><button class="btn ghost" type="button" data-go="list">Back to players</button></div>
+      </div>` },
+  ]},
+  { title: 'Lost your code', screens: [
+    { id: 'lost', label: 'Ask us to help', why: "Asked inside the game, answered inside the game: no phone number or WhatsApp chat needed. Answers only the real player would know.", html: `
+      <div class="top"><button class="mini-btn ghost" type="button" data-go="typecode">Back</button><span></span></div>
+      <div class="scroll grow">
+        <div class="titled"><h2>Ask us to help</h2><p class="muted">Tell us about your player. If it adds up, we'll bring it back to this phone.</p></div>
+        <label class="field"><span>Your player's name</span><input class="input" value="Tunde" aria-label="Your player's name"></label>
+        <label class="field"><span>About how many seeds you had</span><input class="input" value="6,000" aria-label="Seeds"></label>
+        <label class="field"><span>The month you started</span><input class="input" value="September" aria-label="Month"></label>
+        <label class="field"><span>Someone you played recently</span><input class="input" value="Kemi" aria-label="Opponent"></label>
+        <label class="field"><span>Anything else (optional)</span><textarea class="input" aria-label="Message">I changed phones and lost my screenshot.</textarea></label>
+      </div>
+      <button class="btn" type="button" data-go="lostSent">Send</button>` },
+    { id: 'lostSent', label: 'Sent', why: 'One open request per player and per phone. The answer comes back on this phone, so they must keep it.', html: `
+      <div class="titled center" style="margin-top:80px"><h2>We got it</h2><p class="muted">We'll look within 2 days. Keep this phone: if we can help, Tunde comes back here, and this screen says so.</p></div>
+      <div class="grow"></div>
+      <div class="actions"><button class="btn ghost" type="button" data-go="new">Back to the start</button></div>` },
+    { id: 'someoneAsked', label: "On Tunde's phones: the warning", why: 'The strict part. For 24 hours after you approve, every phone Tunde is on shows this. If the real Tunde taps Stop, nothing changes.', html: `
+      ${home()}
+      <div class="toppop" role="dialog" aria-label="Someone asked for Tunde">
+        <b>Someone asked us for Tunde</b>
+        <p class="fine">They said they lost their code. Tomorrow at 15:52 Tunde moves to their phone. Not you? Stop it now.</p>
+        <div class="more"><button class="btn" type="button" data-go="stopped">Stop it</button><button class="btn ghost" type="button" data-go="saved">It's me</button></div>
+      </div>` },
+    { id: 'stopped', label: 'Stopped', why: 'The request is refused, and the player is told to get a new code in case it leaked.', html: `${home()}<p class="toast">Stopped. Tunde stays with you.</p>` },
+    { id: 'recovered', label: 'On the new phone, a day later', why: 'The player comes back with a new code. Every other phone is signed out and the old code stops working.', html: `
+      <div class="titled center" style="margin-top:24px"><span class="avatar lg">T</span><h2>Tunde is back</h2><p class="muted">Here's your new code. Save it this time.</p></div>
+      <div class="code-box">${qr}<span class="code">R8JX-4MTE-QV2K-9BHD</span></div>
+      <div class="grow"></div>
+      <div class="actions"><button class="btn" type="button" data-go="imgSaved">Save image</button><div class="more"><button class="btn ghost sm" type="button" data-go="copied">Copy</button><button class="btn ghost sm" type="button" data-go="shared">Share to myself</button></div></div>` },
+  ]},
+  { title: 'Your dashboard', screens: [
+    { id: 'dashList', label: 'Reviews, then Recovery', why: 'A new tab next to ban reviews. Each request shows its answers against the real ones, and whether the asking phone is already linked to the player.', html: `
+      <div class="dash-top"><span class="wordmark" style="font-size:1.25rem">Dara<i>X&amp;O</i></span><span class="kicker">Admin</span></div>
+      <div class="titled"><h2>Reviews</h2></div>
+      <div class="dash-tabs"><span>Bans</span><span class="on">Recovery 2</span></div>
+      <div class="scroll grow" style="display:grid;gap:16px;align-content:start">
+      <div class="req">
+        <div class="req-head"><b>Tunde</b><span class="fine">Asked 2 hours ago</span></div>
+        <ul class="checks">
+          <li><span>Asking from a phone Tunde played on<small>Played on it 12 Oct</small></span><span class="ok">Yes</span></li>
+          <li><span>Seeds: about 6,000<small>Has 6,120</small></span><span class="ok">Matches</span></li>
+          <li><span>Started: September<small>Joined 14 Sept</small></span><span class="ok">Matches</span></li>
+          <li><span>Played recently: Kemi<small>Played Kemi on 19 Oct</small></span><span class="ok">Matches</span></li>
+        </ul>
+        <p class="verdict">Linked phone and 3 of 3 answers match.</p>
+        <div class="more"><button class="btn sm" type="button" data-go="dashGive">Give it back</button><button class="btn ghost sm" type="button" data-go="dashRefuse">Refuse</button></div>
+      </div>
+      <div class="req">
+        <div class="req-head"><b>Durbar Queen</b><span class="fine">Asked yesterday</span></div>
+        <ul class="checks">
+          <li><span>Asking from a phone this player used</span><span class="no">No</span></li>
+          <li><span>Seeds: about 20,000<small>Has 1,480</small></span><span class="no">Doesn't match</span></li>
+        </ul>
+        <p class="fine">No linked phone and 0 of 3 answers match.</p>
+        <div class="more"><button class="btn ghost sm" type="button" data-go="dashRefuse">Refuse</button></div>
+      </div>
+      </div>` },
+    { id: 'dashGive', label: 'Give it back', why: 'Starts the 24-hour wait. Nothing moves until it ends, and only if nobody taps Stop.', html: `
+      <div class="dash-top"><span class="wordmark" style="font-size:1.25rem">Dara<i>X&amp;O</i></span><span class="kicker">Admin</span></div>
+      <div class="grow"></div>
+      <div class="dim"></div>
+      <div class="sheet" role="dialog" aria-label="Give Tunde back">
+        <span class="grab"></span>
+        <div class="titled"><h2>Give Tunde back?</h2><p class="muted">Tunde's phones get a warning now. In 24 hours, if nobody stops it, Tunde moves to the asking phone with a new code, and every other phone is signed out. It goes in your log.</p></div>
+        <label class="field"><span>Note to them (optional)</span><input class="input" value="Welcome back. Save your new code." aria-label="Note"></label>
+        <div class="actions"><button class="btn" type="button" data-go="someoneAsked">Give it back in 24 hours</button><button class="btn ghost" type="button" data-go="dashList">Cancel</button></div>
+      </div>` },
+    { id: 'dashRefuse', label: 'Refuse', why: 'They read your note on their phone. They can ask again after a week.', html: `
+      <div class="dash-top"><span class="wordmark" style="font-size:1.25rem">Dara<i>X&amp;O</i></span><span class="kicker">Admin</span></div>
+      <div class="grow"></div>
+      <div class="dim"></div>
+      <div class="sheet" role="dialog" aria-label="Refuse">
+        <span class="grab"></span>
+        <div class="titled"><h2>Refuse this request?</h2><p class="muted">They read your note in the game.</p></div>
+        <label class="field"><span>Note to them</span><input class="input" value="Your answers didn't match this player." aria-label="Note"></label>
+        <div class="actions"><button class="btn danger" type="button" data-go="dashList">Refuse</button><button class="btn ghost" type="button" data-go="dashList">Cancel</button></div>
+      </div>` },
+  ]},
+  { title: 'Coming back after Sign out', screens: [
+    { id: 'returning', label: 'First screen on a phone with players', why: 'Today a player who signs out comes back to Play now and becomes a new player. Now the phone offers Continue as them first. This is what fixes the count on your dashboard.', html: `
+      <div class="top"><span class="wordmark">Dara<i>X&amp;O</i></span></div>
+      <div class="titled center" style="margin-top:28px"><span class="avatar lg">T</span><h2>Welcome back, Tunde</h2><p class="muted">Sharp-sharp · 6,120 seeds</p></div>
+      <div class="grow"></div>
+      <div class="actions">
+        <button class="btn" type="button" data-go="homeTunde">Continue as Tunde</button>
+        <div class="more"><button class="btn ghost sm" type="button" data-go="list">Another player</button><button class="btn ghost sm" type="button" data-go="new">New player</button></div>
+      </div>` },
+  ]},
+];
+
+const all = FLOWS.flatMap((f) => f.screens);
+const phone = document.getElementById('phone');
+const why = document.getElementById('why');
+const flows = document.getElementById('flows');
+flows.innerHTML = FLOWS.map((f) => `<li class="flow"><h2>${f.title}</h2><ol>${f.screens.map((s) => `<li><button type="button" data-open="${s.id}">${s.label}</button></li>`).join('')}</ol></li>`).join('');
+phone.innerHTML = all.map((s) => `<section class="screen" id="s-${s.id}" hidden aria-label="${s.label}">${s.html}</section>`).join('');
+
+let at = 0;
+function open(id) {
+  const i = all.findIndex((s) => s.id === id);
+  if (i < 0) return;
+  at = i;
+  all.forEach((s, n) => { document.getElementById(`s-${s.id}`).hidden = n !== i; });
+  why.textContent = all[i].why;
+  flows.querySelectorAll('[data-open]').forEach((b) => b.setAttribute('aria-current', String(b.dataset.open === id)));
+  try { history.replaceState(null, '', `#${id}`); } catch {}
+}
+document.addEventListener('click', (e) => {
+  const go = e.target.closest('[data-go]');
+  if (go) return open(go.dataset.go);
+  const pick = e.target.closest('[data-open]');
+  if (pick) return open(pick.dataset.open);
+  const t = e.target.closest('.toggle');
+  if (t) t.setAttribute('aria-checked', String(t.getAttribute('aria-checked') !== 'true'));
+});
+document.getElementById('prev').onclick = () => open(all[Math.max(0, at - 1)].id);
+document.getElementById('next').onclick = () => open(all[Math.min(all.length - 1, at + 1)].id);
+open(all.some((s) => s.id === location.hash.slice(1)) ? location.hash.slice(1) : 'new');
+</script>
+</body>
+</html>

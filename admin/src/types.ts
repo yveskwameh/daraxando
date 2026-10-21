@@ -156,7 +156,32 @@ export interface AdminAction {
 /* ---------- the dashboard's views of the whole game (the game's worker/adminViews.ts) ---------- */
 
 /** `phoneLinks`: every phone a player uses is linked, and a phone makes 2 new players in 30 days (the game's worker/phones.ts). */
-export interface Info { copy: string; timedBans: boolean; banDays: number[]; phoneLinks?: boolean }
+/** System health (the game's worker/health.ts). */
+export type HealthState = 'ok' | 'warn' | 'down' | 'off' | 'unknown';
+export interface HealthCheck { id: string; label: string; state: HealthState; detail: string; ms?: number; link?: string }
+export interface Health { copy: string; at: number; deployedAt: number | null; checks: HealthCheck[] }
+
+export interface Info { copy: string; timedBans: boolean; banDays: number[]; phoneLinks?: boolean; codes?: boolean }
+
+/** "Lost your code? Ask us to help" (the game's worker/codes.ts, recoveryList): each answer checked against the player. */
+export interface Recovery {
+  id: string;
+  state: 'open' | 'waiting' | 'refused' | 'stopped' | 'done';
+  at: number;
+  decidedAt: number | null;
+  due: number | null;
+  note: string | null;
+  message: string;
+  player: { id: string; name: string; avatar: string; print: string; banned: boolean } | null;
+  checks: {
+    phone: { ok: boolean; how?: PhoneHow; lastAt?: number };
+    seeds: { ok: boolean; said: number; has: number | null };
+    month: { ok: boolean; said: string; joined: number | null };
+    opponent: { ok: boolean; said: string; lastAt: number | null };
+  };
+  answersOk: number;
+  suggest: 'give' | 'refuse';
+}
 
 export type PhoneHow = 'made' | 'signin' | 'seen';
 /** A player linked to another through a phone. */

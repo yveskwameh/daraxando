@@ -44,9 +44,9 @@ function fakeDb(answer: (sql: string, args: unknown[]) => Record<string, unknown
 const NOW = Date.parse('2026-10-19T21:00:00Z');
 
 describe('phone links', () => {
-  it('are on the test copy now, and on the real game only once the lawyer approves', () => {
-    expect(PHONE_LINKS_ON_REAL_GAME).toBe(false);
-    expect(phoneLinksOn({ ENVIRONMENT: 'production' } as Env)).toBe(false);
+  it('are on everywhere since the lawyer approved them', () => {
+    expect(PHONE_LINKS_ON_REAL_GAME).toBe(true);
+    expect(phoneLinksOn({ ENVIRONMENT: 'production' } as Env)).toBe(true);
     expect(phoneLinksOn({ ENVIRONMENT: 'staging' } as Env)).toBe(true);
     expect(phoneLinksOn({ ENVIRONMENT: 'local' } as Env)).toBe(true);
   });
@@ -60,9 +60,8 @@ describe('phone links', () => {
     expect(calls[0].args).toEqual(['p1', 'phoneA', 'signin', NOW]);
   });
 
-  it('keep nothing new on the real game, and nothing without a phone id', async () => {
+  it('keep nothing without a phone id', async () => {
     const { db, calls } = fakeDb();
-    await linkPhone({ ENVIRONMENT: 'production', DB: db } as Env, 'p1', 'phoneA', 'seen', NOW);
     await linkPhone({ ENVIRONMENT: 'staging', DB: db } as Env, 'p1', null, 'seen', NOW);
     expect(calls).toHaveLength(0);
   });
@@ -81,10 +80,9 @@ describe('new players a phone', () => {
     expect(await phoneFull({ ENVIRONMENT: 'staging', DB: count(2).db } as Env, 'phoneA', NOW)).toBe(true);
   });
 
-  it('has no cap on the real game until the lawyer approves', async () => {
-    const full = count(9);
-    expect(await phoneFull({ ENVIRONMENT: 'production', DB: full.db } as Env, 'phoneA', NOW)).toBe(false);
-    expect(full.calls).toHaveLength(0);
+  it('applies on the real game too', async () => {
+    expect(await phoneFull({ ENVIRONMENT: 'production', DB: count(2).db } as Env, 'phoneA', NOW)).toBe(true);
+    expect(await phoneFull({ ENVIRONMENT: 'production', DB: count(2).db } as Env, null, NOW)).toBe(false);
   });
 });
 

@@ -21,6 +21,7 @@ import type { Email } from './email';
 import type { Env } from './env';
 import { PUSH_FROM, STAT, WAIT_BUCKETS, type PushFrom } from './stats';
 import { KEEP_LINKS_MS } from './phones';
+import { tidyRecoveries } from './codes';
 
 const DAY_MS = 86_400_000;
 /** 8 am Lagos, all year (Lagos doesn't change its clocks). The same line is in wrangler.jsonc. */
@@ -602,13 +603,15 @@ export async function sendReport(env: Env, opts: { day?: string; force?: boolean
   const to = reportTo(env);
   // The daily tidy-up (docs/BACKEND.md, privacy): play days past 400 days, sign-in codes past 2 days,
   // Google sign-in hand-offs past their 5 minutes, even on days nobody asks for a code, and phone
-  // links other than the phone a player was made on, 400 days after the phone last opened it.
+  // links other than the phone a player was made on, 400 days after the phone last opened it, and
+  // recovery requests 30 days after they're settled (worker/codes.ts).
   if (!opts.force) {
     await env.DB.batch([
       env.DB.prepare('DELETE FROM player_days WHERE day < ?').bind(addDays(dayKey(now), -KEEP_DAYS)),
       env.DB.prepare('DELETE FROM email_codes WHERE created_at < ?').bind(now - KEEP_CODES_MS),
       env.DB.prepare('DELETE FROM auth_handoffs WHERE expires_at < ?').bind(now),
       env.DB.prepare("DELETE FROM player_phones WHERE how != 'made' AND last_at < ?").bind(now - KEEP_LINKS_MS),
+      tidyRecoveries(env.DB, now),
     ]).catch((err) => console.error('[tidy]', err));
     // Timed bans that ended for players who haven't opened the game since (migrations/0012_admin.sql).
     await liftEndedBans(env.DB, now);

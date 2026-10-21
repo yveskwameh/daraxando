@@ -101,11 +101,23 @@ One player (below) also has `days`: `recent`, the days they finished a match in 
 
 Banned players' requests for a review, the oldest open one first (`status` is `open`, `lifted`, `kept` or `all`; the others list newest first, up to 100). Each has `id`, `playerId`, `message` (what they wrote), `at`, `status`, `note`, `decidedAt`, and the player's `name`, `avatar`, `bannedAt` and `banReason`, so a dashboard can show the request next to the ban.
 
+### System health
+
+`GET /api/admin/health`
+
+Everything the game depends on, checked now (`worker/health.ts`, `docs/HEALTH.md`): `copy`, `at`, `deployedAt` (when this version went live, from the `version_metadata` binding) and `checks`, each with `id`, `label`, `state` (`ok`, `warn`, `down`, `off` for not set up on this copy, `unknown` for couldn't be checked), a plain `detail` line, `ms` where timing matters, and a `link` to a status page. Checks: database, matches and Quick match, email (asks Resend's API about our key and domain, never sends), Google sign-in, notifications, the 7 pm reminders, the 8 am email, the free plan today, errors in the last hour, the analytics key, and Cloudflare's open incidents on Workers, D1, Durable Objects, Web Analytics and the Lagos data centre. Reads only, keeps nothing. The dashboard keeps each answer for 30 seconds.
+
+### Lost player codes
+
+`GET /api/admin/recoveries?status=open` (or `all`)
+
+"Lost your code? Ask us to help" requests (`worker/codes.ts`), oldest first while waiting. `open` lists requests waiting for an answer and ones given back that are still in their 24 hours. Each has `id`, `state` (`open`, `waiting`, `refused`, `stopped`, `done`), `at`, `decidedAt`, `due`, `note`, `message`, `player` (id, name, avatar, print, banned) and `checks`: whether the asking phone is linked to the player (`phone`, with how and when), and whether the seeds, the month they started and the player they played match (`seeds`, `month`, `opponent`). `answersOk` counts the answers that match, and `suggest` is `give` when the phone is linked or all 3 match (Yves's rule, 21 October 2026). Empty on a copy with player codes off.
+
 ### The admin log
 
 `GET /api/admin/actions?limit=50&before=<id>`
 
-Every change made through this API, newest first: `id`, `at`, `action` (`rename`, `ban`, `unban`, `seeds`, `appeal-lift`, `appeal-keep`, and `ban-ended` when a timed ban ends by itself), `playerId`, `detail`. For older pages, pass the last `id` you got as `before`. `limit` is 1 to 100.
+Every change made through this API, newest first: `id`, `at`, `action` (`rename`, `ban`, `unban`, `seeds`, `appeal-lift`, `appeal-keep`, `recovery-give`, `recovery-refuse`, `recovery-stopped` (the player tapped Stop), and `ban-ended` when a timed ban ends by itself), `playerId`, `detail`. For older pages, pass the last `id` you got as `before`. `limit` is 1 to 100.
 
 ## Changing
 
@@ -123,6 +135,8 @@ Answering a ban review (each request is answered once; 409 after that):
 | Request | Body | What it does |
 | --- | --- | --- |
 | `POST /api/admin/appeals/<id>/lift` | `{ "note": "You were right, sorry." }` (optional) | Lifts the ban. The player is back to normal on their next request |
+| `POST /api/admin/recoveries/<id>/give` | `{ "note": "Welcome back." }` (optional) | Starts the 24 hours. Every phone the player is on shows "Someone asked us for …" with Stop. After that, the asking phone collects the player when it next opens: a new code, and every other phone signed out |
+| `POST /api/admin/recoveries/<id>/refuse` | `{ "note": "Your answers didn't match this player." }` | The asking phone shows the note (3 to 200 characters). They can ask again a week later |
 | `POST /api/admin/appeals/<id>/keep` | `{ "note": "The messages came from your account on three days." }` | Keeps the ban. The player reads the note in the ban sheet, so write it to them (3 to 300 characters). They can ask again a week later |
 
 Seed corrections are only for fixing mistakes, never prizes or anything linked to money (`docs/SAFETY-REVIEW.md`). Any new kind of change that touches seeds goes to the lawyer first.

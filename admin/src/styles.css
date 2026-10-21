@@ -891,3 +891,43 @@ dialog.palette[open] { animation: pal-in 180ms var(--ease-out); }
   .spin { animation-duration: 1.6s !important; }
   .skel i, .live .dot { animation: none !important; }
 }
+
+/* Recovery requests (src/screens/Reviews.tsx): each answer against the player. */
+.checks { display: grid; gap: var(--sp-75, 6px); margin: 0; padding: 0; list-style: none; }
+.checks li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--sp-100); padding: var(--sp-100) var(--sp-150); border-radius: 12px; background: var(--night); font-size: 0.9375rem; }
+.checks li small { display: block; color: var(--muted); font-size: 0.8125rem; }
+.checks .ok { color: var(--teal); }
+.checks .no { color: var(--fuchsia-glow); }
+.verdict { padding: var(--sp-100) var(--sp-150); border-radius: 12px; font-weight: 700; font-size: 0.9375rem; }
+.verdict.give { background: color-mix(in srgb, var(--teal) 16%, transparent); color: var(--teal); }
+.verdict.refuse { background: color-mix(in srgb, var(--fuchsia-glow) 14%, transparent); color: var(--fuchsia-glow); }
+
+/* System health (src/screens/Health.tsx): a state is always an icon and a word, never colour alone. */
+.hstate { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px 4px 7px; border-radius: 999px; font: 800 0.8125rem/1 var(--body); white-space: nowrap; background: var(--raise); color: var(--muted); }
+.hstate.ok { background: color-mix(in srgb, var(--teal) 16%, transparent); color: var(--teal); }
+.hstate.warn { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.hstate.down { background: color-mix(in srgb, var(--alarm) 18%, transparent); color: var(--alarm); }
+.hword.ok { color: var(--teal); }
+.hword.warn { color: var(--warn); }
+.hword.down { color: var(--alarm); }
+.health-card .kicker { display: inline-flex; align-items: center; gap: 6px; }
+.health-card.down { box-shadow: inset 0 0 0 2px var(--alarm); }
+.health-card.warn { box-shadow: inset 0 0 0 2px var(--warn); }
+.health-sum { display: grid; justify-items: start; gap: var(--sp-100); }
+.health-sum b { font: 800 1.125rem/1.3 var(--head); }
+.health-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-150); }
+.health-banner { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-100) var(--sp-150); }
+.health-banner b { font: 800 1.125rem/1.3 var(--head); }
+.health-banner .fine { grid-column: 2; grid-row: 2; }
+.health-banner .mini-btn { grid-column: 3; grid-row: 1 / span 2; }
+.health-banner.down { box-shadow: inset 0 0 0 2px var(--alarm); }
+.health-banner.warn { box-shadow: inset 0 0 0 2px var(--warn); }
+.health-list { display: grid; gap: var(--sp-150); grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.health-row { display: grid; gap: var(--sp-100); align-content: start; }
+.health-row-top { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-150); }
+.health-row-top b { font: 800 1rem/1.25 var(--head); }
+.health-link { display: inline-flex; align-items: center; gap: 4px; color: var(--indigo-glow); }
+@media (max-width: 420px) {
+  .health-banner { grid-template-columns: auto minmax(0, 1fr); }
+  .health-banner .mini-btn { grid-column: 1 / -1; grid-row: auto; justify-self: start; }
+}

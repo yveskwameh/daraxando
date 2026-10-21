@@ -30,6 +30,8 @@
   // the 7 pm streak reminders (shared/notify.ts) at 18:00 UTC. The free plan allows 5 schedules per
   // account, and each copy uses 2.
   "triggers": { "crons": ["0 7 * * *", "0 18 * * *"] },
+  // When this version went live, for the dashboard's health page (worker/health.ts). Free.
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
 
   // Player profiles, ratings and match history. On your Mac this is a local database
   // (in .wrangler), so the id below is a placeholder that never leaves your machine.
@@ -91,6 +93,7 @@
         { "tag": "v2", "new_sqlite_classes": ["Notifier"] }
       ],
       "triggers": { "crons": ["0 7 * * *", "0 18 * * *"] },
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "d1_databases": [
         { "binding": "DB", "database_name": "daraxando-staging", "database_id": "d8f9b78c-21fc-45d1-82a3-cb5b3effbc13", "migrations_dir": "migrations" }
       ],
@@ -123,6 +126,7 @@
         { "tag": "v2", "new_sqlite_classes": ["Notifier"] }
       ],
       "triggers": { "crons": ["0 7 * * *", "0 18 * * *"] },
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "d1_databases": [
         { "binding": "DB", "database_name": "daraxando", "database_id": "e40f6046-959d-4140-9dfa-08839941ae03", "migrations_dir": "migrations" }
       ],

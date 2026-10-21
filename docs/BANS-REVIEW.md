@@ -2,7 +2,7 @@
 
 Written 19 October 2026, for Yves to send to the lawyer.
 
-**Status:** waiting for the lawyer. Until they approve, timed bans work on the test copy only. On the real game every ban still lasts until Yves lifts it (`TIMED_BANS_ON_REAL_GAME` in `worker/admin.ts` is `false`), and nothing new is kept.
+**Status:** approved by the lawyer on 21 October 2026, privacy lines only (no change to the terms). The lawyer asked to keep the notice short, so the lines in `src/legal/privacy.md` are shorter than the ones proposed below. On everywhere.
 
 ## What changes
 

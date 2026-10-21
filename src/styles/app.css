@@ -1368,3 +1368,73 @@ dialog .onb-avs .tile { padding: 8px 4px; gap: 4px; }
 .mini-btn.friend-ask { display: inline-flex; align-items: center; gap: var(--space-pair); justify-self: center; align-self: center; margin-inline: auto; min-height: 44px; }
 .mini-btn.friend-ask svg { width: 18px; height: 18px; color: var(--teal); }
 .nowrap { white-space: nowrap; }
+
+/* ---------- player codes (src/lib/codes.ts, docs/accounts-prototype.html) ---------- */
+.titled.center { justify-items: center; text-align: center; }
+.sheet-body > .titled.center h2 { padding-inline: 40px; text-wrap: balance; }
+.center-text { text-align: center; }
+.hero-av { display: grid; place-items: center; margin-bottom: var(--space-pair); }
+/* Your code: the QR on cream, the 16 characters, and the line to keep it private. */
+.code-card { display: grid; justify-items: center; gap: var(--space-item); padding: var(--space-block); border-radius: 20px; background: var(--deep); text-align: center; }
+.qr { display: grid; place-items: center; width: 148px; height: 148px; padding: 10px; border-radius: 16px; background: var(--cream); color: var(--night); }
+.qr svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+.code-big { font: 800 clamp(1.0625rem, 5.6vw, 1.375rem)/1.1 var(--head); letter-spacing: .06em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.code-card[aria-busy] .code-big { color: var(--muted); letter-spacing: 0; font-size: 1rem; }
+/* Typing a code: four boxes of four, filled from one field laid over them (like .code-cells). */
+.pcode {
+  position: relative;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px;
+  padding: 8px; border-radius: 22px;
+  background: var(--night); box-shadow: inset 0 0 0 2px var(--line);
+}
+.pcode span {
+  display: grid; place-items: center; height: 56px;
+  border-radius: 14px; background: var(--raise); box-shadow: inset 0 0 0 2px var(--line);
+  font: 800 clamp(1rem, 5vw, 1.25rem)/1 var(--head); letter-spacing: .06em; color: var(--danfo); white-space: nowrap;
+}
+.pcode:focus-within span.cur { box-shadow: inset 0 0 0 2px var(--danfo); }
+.pcode.busy span { opacity: .6; }
+.pcode.shake { animation: shake 400ms var(--ease-out); }
+.pcode-in {
+  position: absolute; inset: 0; z-index: 1;
+  width: 100%; height: 100%; padding: 0; border: 0; border-radius: 22px;
+  background: transparent; color: transparent; caret-color: transparent;
+  font-size: 16px; /* 16px or more, so iPhones don't zoom in */
+}
+.pcode-in:focus { outline: none; }
+.pcode-in::selection { background: transparent; }
+/* Lost your code: the form scrolls inside the sheet. */
+.lost-form { display: grid; gap: var(--space-block); align-content: start; }
+.ask-field { display: grid; gap: var(--space-pair); }
+.ask-field > span { font: 700 0.875rem/1.2 var(--body); letter-spacing: 0; text-transform: none; color: var(--text); }
+select.text-in { appearance: none; background-image: none; }
+textarea.text-in { min-height: 76px; resize: none; line-height: 1.4; padding-block: 12px; }
+/* Players on this phone */
+.players-list { display: grid; gap: var(--space-pair); margin: 0; padding: 0; list-style: none; max-height: 46dvh; }
+.prow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; padding-right: 4px; border-radius: 18px; background: var(--deep); }
+.prow.now { box-shadow: inset 0 0 0 2px var(--indigo-glow); }
+.prow-main { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-item); min-height: 64px; padding: 10px 6px 10px 12px; border: 0; background: transparent; color: inherit; text-align: left; }
+.prow-main b { display: block; font: 800 1rem/1.2 var(--head); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prow-main small { display: block; font-size: 0.8125rem; color: var(--muted); }
+.prow .x-btn { width: 44px; height: 44px; }
+/* A borrowed phone: says whose it is, with Give it back. */
+.borrow-bar { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--space-item); padding: 8px 8px 8px 14px; border-radius: 16px; background: var(--danfo); color: var(--night); }
+.borrow-bar span { display: grid; font-size: 0.8125rem; line-height: 1.3; }
+.borrow-bar b { font: 800 0.9375rem/1.2 var(--head); }
+.borrow-bar .mini-btn { min-height: 40px; background: var(--night); color: var(--cream); }
+/* The pop-ups about your code: words on top, two buttons under them. */
+.acct-pop { grid-template-columns: minmax(0, 1fr); row-gap: var(--space-item); padding: 14px 14px 20px; }
+.acct-pop > div > span { margin-top: 4px; line-height: 1.4; }
+.acct-pop .more { justify-content: stretch; }
+.acct-pop .more > .btn { max-width: none; min-height: 44px; }
+.acct-pop.warn { box-shadow: 0 0 0 3px var(--danfo); }
+/* Welcome back: one player, one tap. */
+.welcome-back { justify-content: center; gap: var(--space-group); }
+.welcome-back h1 { font: 900 1.75rem/1.15 var(--head); text-wrap: balance; }
+/* On a short phone the code scrolls and the buttons stay in view; the explanation in these pop-ups always shows. */
+.code-scroll { display: grid; gap: var(--space-group); align-content: start; }
+.install-pop.acct-pop > div > span { display: block; }
+@media (max-height: 700px) {
+  .qr { width: 116px; height: 116px; padding: 8px; }
+  .code-card { padding: var(--space-item); gap: var(--space-pair); }
+}

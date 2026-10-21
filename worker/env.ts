@@ -66,6 +66,10 @@ export interface Env {
   ADMIN_ORIGIN?: string;
   /** Tests only, and only when ENVIRONMENT is local: a stand-in for Cloudflare's analytics API. */
   CF_GRAPHQL_URL?: string;
+  /** Tests only, and only when ENVIRONMENT is local: a stand-in for Cloudflare's status page (worker/health.ts). */
+  CF_STATUS_URL?: string;
+  /** When this version went live (wrangler.jsonc `version_metadata`), for the dashboard's health page. */
+  CF_VERSION_METADATA?: WorkerVersionMetadata;
   /** Tests only, and only when ENVIRONMENT is local: a stand-in for Google's sign-in page and token address. */
   GOOGLE_AUTH_URL?: string;
   GOOGLE_TOKEN_URL?: string;
