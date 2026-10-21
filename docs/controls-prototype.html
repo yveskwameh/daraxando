@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Game controls prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@600;700;800;900&family=Onest:wght@400;500;600;700&display=swap">
+<style>
+/*
+ * Dara X&O: feature switches, the announcement banner and the new-player walkthrough, as a
+ * clickable prototype for Yves (21 October 2026). Nothing here is the game: names and numbers are
+ * made up. Same colours, fonts and spacing as the game and the dashboard.
+ */
+:root {
+  color-scheme: dark;
+  --night: #0b0a2a; --deep: #17164a; --raise: #24226a; --line: #34318a;
+  --indigo: #3d27db; --indigo-glow: #9b8fff; --fuchsia: #dc0fa1; --fuchsia-glow: #ff4fb8;
+  --danfo: #ffc921; --cream: #fff4e0; --teal: #35d6c0; --text: #fff; --muted: #b8b4e8;
+  --google-fill: #131314; --google-ring: #8e918f; --google-text: #e3e3e3;
+  --head: 'Gabarito', 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --body: 'Onest', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --space-pair: 8px; --space-item: 12px; --space-block: 16px; --space-group: 24px;
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #06051c; color: var(--text); font: 400 1rem/1.5 var(--body); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-family: var(--head); line-height: 1.15; text-wrap: balance; }
+:focus-visible { outline: 3px solid var(--danfo); outline-offset: 2px; }
+
+/* ---------- the page: a list of screens and a phone ---------- */
+.wrap { display: grid; grid-template-columns: minmax(0, 320px) auto; gap: 40px; justify-content: center; align-items: start; padding: 32px max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left)); }
+.guide { position: sticky; top: 24px; display: grid; gap: var(--space-block); }
+.guide h1 { font-size: 1.5rem; }
+.guide .lede { color: var(--muted); font-size: 0.9375rem; }
+.flows { display: grid; gap: var(--space-block); margin: 0; padding: 0; list-style: none; }
+.flow h2 { font: 800 0.75rem/1.2 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--indigo-glow); margin-bottom: 6px; }
+.flow ol { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.flow button { width: 100%; text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: 10px; color: var(--muted); font-size: 0.9rem; line-height: 1.35; }
+.flow button:hover { background: var(--deep); color: var(--text); }
+.flow button[aria-current="true"] { background: var(--cream); color: var(--night); font-weight: 600; }
+.note { padding: 12px 14px; border-radius: 14px; background: var(--deep); color: var(--muted); font-size: 0.8125rem; line-height: 1.5; }
+.note b { color: var(--text); }
+.phone-col { display: grid; gap: 12px; justify-items: center; }
+.phone { position: relative; width: 390px; height: 800px; border-radius: 44px; background: var(--night); box-shadow: 0 0 0 10px #1c1a3f, 0 0 0 11px #3a3770, 0 30px 80px rgba(0,0,0,.6); overflow: hidden; }
+.why { max-width: 390px; color: var(--muted); font-size: 0.875rem; text-align: center; min-height: 3em; }
+.nav-row { display: flex; gap: 10px; }
+.nav-row button { min-height: 40px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--deep); color: var(--muted); font-weight: 600; }
+.nav-row button:hover { color: var(--text); }
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-top: 20px; }
+  .guide { position: static; order: 2; }
+  .phone-col { order: 1; }
+  .phone { width: min(100%, 390px); height: 760px; border-radius: 32px; box-shadow: 0 0 0 1px #3a3770; }
+}
+
+/* ---------- inside the phone: the game's own pieces ---------- */
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; gap: var(--space-group); padding: 52px 16px 28px; overflow: hidden; }
+.screen[hidden] { display: none; }
+.kicker { font: 800 0.75rem/1.2 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--indigo-glow); }
+.fine { font-size: 0.8125rem; line-height: 1.5; color: var(--muted); }
+.muted { color: var(--muted); }
+.titled { display: grid; gap: var(--space-pair); }
+.titled h2 { font-size: 1.5rem; }
+.titled.center { text-align: center; justify-items: center; }
+.grow { flex: 1; }
+.stack { display: grid; gap: var(--space-item); }
+.actions { display: grid; gap: var(--space-item); }
+.more { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-item); }
+
+.btn {
+  position: relative; isolation: isolate; overflow: hidden;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 56px; padding: 0 20px; border: 0; border-radius: 999px;
+  background: var(--fuchsia); color: #fff; box-shadow: 0 0 0 3px var(--cream);
+  font: 800 1.125rem/1.1 var(--head); width: 100%;
+  transition: transform 160ms var(--ease-out);
+}
+/* A stand-in for the Ankara print the game draws on every big button. */
+.btn::before { content: ""; position: absolute; inset: 0; z-index: -1; opacity: .22; background: radial-gradient(circle at 8px 8px, rgba(255,255,255,.55) 2px, transparent 3px) 0 0 / 16px 16px; }
+.btn:active { transform: scale(.96); }
+.btn.ghost { background: var(--raise); box-shadow: inset 0 0 0 2px var(--line); }
+.btn.ghost::before { opacity: .08; }
+.btn.sm { min-height: 46px; font-size: 0.9375rem; padding: 8px 14px; }
+.btn.danger { background: var(--raise); color: var(--fuchsia-glow); box-shadow: inset 0 0 0 2px var(--fuchsia-glow); }
+.btn.danger::before { display: none; }
+.btn.google { background: var(--google-fill); color: var(--google-text); box-shadow: inset 0 0 0 1px var(--google-ring); font: 500 1rem/1 var(--body); }
+.btn.google::before { display: none; }
+.mini-btn { min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--cream); color: var(--night); font: 800 0.875rem/1 var(--head); white-space: nowrap; }
+.mini-btn.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 2px var(--line); }
+.x-btn { position: absolute; top: 14px; right: 14px; width: 44px; height: 44px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); display: grid; place-items: center; }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.wordmark { display: inline-flex; align-items: center; font: 900 1.625rem/1 var(--head); letter-spacing: -.02em; }
+.wordmark i { font-style: normal; display: inline-grid; place-items: center; margin-left: 3px; padding: 2px 9px 4px; border-radius: 999px; background: var(--fuchsia); box-shadow: 0 0 0 2px var(--cream); font-size: 1rem; transform: rotate(-4deg); }
+
+.avatar { flex: none; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--indigo); box-shadow: 0 0 0 3px var(--deep), 0 0 0 5px var(--indigo-glow); font: 900 1.25rem/1 var(--head); color: var(--cream); }
+.avatar.lg { width: 84px; height: 84px; font-size: 2.125rem; }
+.avatar.teal { background: #0f7e72; }
+.avatar.flame { background: #b8540f; }
+.me-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 22px; background: var(--deep); }
+.me-card b { display: block; font: 800 1.1875rem/1.2 var(--head); }
+.me-card span { font-size: 0.8125rem; color: var(--muted); }
+.board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; aspect-ratio: 1; max-width: 300px; width: 100%; margin: 0 auto; }
+.board i { border-radius: 14px; background: var(--raise); }
+
+.code-box { min-width: 0; display: grid; gap: var(--space-item); justify-items: center; padding: 20px 16px; border-radius: 22px; background: var(--deep); }
+.code { font: 800 1.3125rem/1 var(--head); letter-spacing: .04em; font-variant-numeric: tabular-nums; color: var(--cream); white-space: nowrap; }
+.code.hidden { letter-spacing: .2em; color: var(--muted); }
+.qr { width: 132px; height: 132px; padding: 10px; border-radius: 14px; background: var(--cream); display: grid; grid-template-columns: repeat(21, 1fr); }
+.qr i { display: block; }
+.qr i.on { background: var(--night); }
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-item); width: 100%; }
+
+.code-in { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.code-in input { width: 100%; min-height: 56px; border: 0; border-radius: 14px; background: var(--deep); box-shadow: inset 0 0 0 2px var(--line); color: var(--cream); text-align: center; font: 800 1.25rem/1 var(--head); letter-spacing: .06em; text-transform: uppercase; }
+.code-in input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--danfo); }
+.code-in.bad input { box-shadow: inset 0 0 0 2px var(--fuchsia-glow); }
+.form-error { color: var(--fuchsia-glow); font-weight: 600; font-size: 0.875rem; }
+
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border-radius: 18px; background: var(--deep); }
+.switch-row b { display: block; font: 700 0.9375rem/1.3 var(--body); }
+.toggle { flex: none; position: relative; width: 52px; height: 32px; border: 0; border-radius: 999px; background: var(--line); }
+.toggle::after { content: ""; position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; background: var(--muted); transition: transform 180ms var(--ease-out); }
+.toggle[aria-checked="true"] { background: var(--teal); }
+.toggle[aria-checked="true"]::after { transform: translateX(20px); background: var(--night); }
+
+.players { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.prow { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 68px; padding: 10px 14px; border: 0; border-radius: 18px; background: var(--deep); text-align: left; }
+.prow b { display: block; font: 800 1.0625rem/1.25 var(--head); }
+.prow small { font-size: 0.8125rem; color: var(--muted); }
+.prow .avatar { width: 42px; height: 42px; font-size: 1.0625rem; }
+.prow.now { box-shadow: inset 0 0 0 2px var(--indigo-glow); }
+.tag { display: inline-flex; align-items: center; padding: 4px 9px; border-radius: 999px; background: var(--raise); color: var(--muted); font: 800 0.6875rem/1 var(--body); }
+.tag.now { background: var(--indigo); color: var(--cream); }
+
+/* Sheets slide up over a dimmed screen, like every sheet in the game. */
+.dim { position: absolute; inset: 0; background: rgba(5, 4, 22, .72); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; display: grid; gap: var(--space-group); padding: 16px 20px 28px; border-radius: 28px 28px 0 0; background: var(--deep); animation: up 260ms var(--ease-out); }
+.sheet .grab { justify-self: center; width: 40px; height: 5px; border-radius: 3px; background: var(--line); }
+@keyframes up { from { transform: translateY(40px); opacity: 0; } }
+
+/* A pop-up that slides down from the top (TopPop in the game). */
+.toppop { position: absolute; top: 44px; left: 12px; right: 12px; display: grid; gap: var(--space-item); padding: 16px; border-radius: 22px; background: var(--cream); color: var(--night); box-shadow: 0 16px 40px rgba(0,0,0,.45); animation: down 260ms var(--ease-out); z-index: 5; }
+.toppop .fine { color: #4b4880; }
+.toppop b { font: 800 1.0625rem/1.25 var(--head); }
+@keyframes down { from { transform: translateY(-30px); opacity: 0; } }
+.toppop .btn { min-height: 46px; font-size: 0.9375rem; box-shadow: none; }
+.toppop .btn.ghost { background: transparent; color: var(--night); box-shadow: inset 0 0 0 2px #c9c2e8; }
+
+/* Home, cut down to what this flow touches. */
+.home-top { display: flex; align-items: center; justify-content: space-between; }
+.counters { display: flex; gap: 6px; padding: 6px 10px; border-radius: 999px; background: var(--deep); font: 800 0.875rem/1 var(--head); }
+.borrow-pill { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 8px 8px 16px; border-radius: 999px; background: var(--danfo); color: var(--night); font: 700 0.875rem/1.2 var(--body); }
+.borrow-pill .mini-btn { background: var(--night); color: var(--cream); }
+.game-pic { flex: 1; display: grid; place-items: center; border-radius: 26px; background: var(--deep); }
+.game-pic .board { max-width: 220px; }
+.toast { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 16px 26px; background: var(--teal); color: var(--night); font: 700 0.9375rem/1.4 var(--body); text-align: center; animation: up 220ms var(--ease-out); }
+.settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 18px; background: var(--deep); }
+.settings-row b { font-weight: 700; }
+.section-title { font: 800 0.75rem/1.2 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.scroll { overflow-y: auto; display: grid; gap: var(--space-block); align-content: start; }
+.img-card { width: 100%; display: grid; gap: 12px; justify-items: center; padding: 22px 18px; border-radius: 22px; background: var(--indigo); box-shadow: 0 0 0 3px var(--cream); text-align: center; }
+.img-card .wordmark { font-size: 1.25rem; }
+.img-card .wordmark i { font-size: 0.8125rem; }
+.img-card .who { display: flex; align-items: center; gap: 10px; font: 800 1.125rem/1 var(--head); }
+.img-card .who .avatar { width: 36px; height: 36px; font-size: 1rem; box-shadow: none; background: var(--night); }
+.img-card .code { color: #fff; }
+.img-card .fine { color: #e3e0ff; }
+.saved-note { display: flex; align-items: center; gap: 8px; justify-content: center; color: var(--teal); font-weight: 700; font-size: 0.9375rem; }
+.field { display: grid; gap: 8px; }
+.field span { font-weight: 700; font-size: 0.9375rem; }
+.input { width: 100%; min-height: 54px; padding: 12px 14px; border: 0; border-radius: 16px; background: var(--deep); color: var(--text); box-shadow: inset 0 0 0 2px var(--line); font: 500 1rem/1.4 var(--body); }
+.input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--danfo); }
+textarea.input { min-height: 84px; resize: none; }
+.six { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.six input { min-height: 56px; text-align: center; font: 800 1.375rem/1 var(--head); padding: 0; }
+.dash { background: #0b0a2a; }
+.dash-top { display: flex; align-items: center; justify-content: space-between; }
+.dash-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--deep); }
+.dash-tabs span { flex: 1; text-align: center; padding: 9px 0; border-radius: 999px; font: 800 0.875rem/1 var(--head); color: var(--muted); }
+.dash-tabs span.on { background: var(--cream); color: var(--night); }
+.req { display: grid; gap: 12px; padding: 16px; border-radius: 20px; background: var(--deep); }
+.req-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.req-head b { font: 800 1.0625rem/1.2 var(--head); }
+.checks { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 0.875rem; }
+.checks li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 8px 10px; border-radius: 12px; background: var(--night); }
+.checks li small { display: block; color: var(--muted); font-size: 0.75rem; }
+.ok { color: var(--teal); font-weight: 800; }
+.no { color: var(--fuchsia-glow); font-weight: 800; }
+.verdict { padding: 10px 12px; border-radius: 12px; background: rgba(53, 214, 192, .14); color: var(--teal); font: 700 0.875rem/1.4 var(--body); }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
+
+/* ---------- this prototype ---------- */
+.dash-screen { gap: var(--space-block); padding-top: 44px; padding-bottom: 96px; }
+.dash-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dash-bar .wordmark { font-size: 1.25rem; }
+.dash-bar .wordmark i { font-size: .8125rem; }
+.seg { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--deep); }
+.seg span { padding: 7px 12px; border-radius: 999px; font: 800 .8125rem/1 var(--head); color: var(--muted); }
+.seg span.on { background: var(--cream); color: var(--night); }
+.tabbar { position: absolute; left: 12px; right: 12px; bottom: 14px; display: grid; grid-template-columns: repeat(5, 1fr); padding: 8px 6px; border-radius: 26px; background: var(--deep); box-shadow: 0 0 0 1px var(--line), 0 12px 30px rgba(0,0,0,.5); }
+.tabbar span { display: grid; justify-items: center; gap: 3px; font: 700 .6875rem/1 var(--body); color: var(--muted); }
+.tabbar span i { width: 20px; height: 20px; border-radius: 6px; background: var(--line); }
+.tabbar span.on { color: var(--text); }
+.tabbar span.on i { background: var(--fuchsia); }
+.card { display: grid; gap: var(--space-item); padding: 16px; border-radius: 20px; background: var(--deep); }
+.group-title { font: 800 .75rem/1.2 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--indigo-glow); }
+.sw { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.sw:first-of-type { border-top: 0; padding-top: 0; }
+.sw b { display: block; font: 800 .9375rem/1.3 var(--head); }
+.sw span { display: block; font-size: .8125rem; color: var(--muted); line-height: 1.4; }
+.sw .offline { color: var(--danfo); font-weight: 700; }
+.alert { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 16px; background: rgba(255, 201, 33, .12); color: var(--danfo); font: 700 .875rem/1.4 var(--body); box-shadow: inset 0 0 0 2px rgba(255, 201, 33, .5); }
+.count { justify-self: end; font-size: .75rem; color: var(--muted); }
+.count.bad { color: var(--fuchsia-glow); font-weight: 700; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips span { padding: 8px 12px; border-radius: 999px; background: var(--raise); box-shadow: inset 0 0 0 2px var(--line); font: 700 .8125rem/1 var(--body); color: var(--muted); }
+.chips span.on { background: var(--cream); color: var(--night); box-shadow: none; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-item); }
+.preview { display: grid; gap: 8px; padding: 12px; border-radius: 18px; background: var(--night); }
+.mini-pop { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px; border-radius: 16px; background: var(--deep); box-shadow: 0 0 0 2px var(--cream); }
+.mini-pop .ic, .ann .ic { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: var(--raise); color: var(--danfo); font: 900 1rem/1 var(--head); }
+.mini-pop b, .ann b { display: block; font: 800 .875rem/1.3 var(--head); }
+.mini-pop small, .ann small { display: block; font-size: .75rem; color: var(--muted); }
+.ann-row { display: grid; gap: 4px; padding: 12px 0; border-top: 1px solid var(--line); }
+.ann-row:first-of-type { border-top: 0; padding-top: 0; }
+.ann-row b { font: 700 .9375rem/1.35 var(--body); }
+.ann-row small { font-size: .8125rem; color: var(--muted); }
+.live-tag { justify-self: start; padding: 4px 9px; border-radius: 999px; background: rgba(53, 214, 192, .16); color: var(--teal); font: 800 .75rem/1 var(--body); }
+/* The banner on Home: the game's top pop-up, dark with a cream ring like the others. */
+.ann { position: absolute; top: 44px; left: 12px; right: 12px; z-index: 5; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 10px 12px; align-items: start; padding: 14px 8px 20px 14px; border-radius: 20px; background: var(--deep); box-shadow: 0 0 0 2px var(--cream), 0 16px 40px rgba(0,0,0,.45); animation: down 260ms var(--ease-out); }
+.ann > div { display: grid; gap: 4px; }
+.ann .mini-btn { justify-self: start; margin-top: 6px; min-height: 40px; padding: 0 18px; }
+.ann .xx { width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font: 700 1.25rem/1 var(--body); }
+.ann::after { content: ""; position: absolute; left: 50%; bottom: 7px; width: 32px; height: 4px; margin-left: -16px; border-radius: 2px; background: var(--line); }
+.qm-off { opacity: .55; }
+.pill-off { display: inline-flex; align-items: center; padding: 4px 9px; border-radius: 999px; background: var(--night); color: var(--muted); font: 800 .75rem/1 var(--body); }
+/* Home, closer to the real one for the walkthrough. */
+.h-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.ring { position: relative; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; box-shadow: inset 0 0 0 4px var(--line); }
+.ring .avatar { width: 44px; height: 44px; font-size: 1.125rem; box-shadow: none; }
+.ring small { position: absolute; bottom: -6px; padding: 2px 6px; border-radius: 999px; background: var(--danfo); color: var(--night); font: 800 .625rem/1 var(--head); }
+.pillc { display: flex; justify-content: space-around; gap: 6px; padding: 10px 8px; border-radius: 999px; background: var(--deep); font: 800 .875rem/1 var(--head); }
+.ranks { width: 48px; height: 48px; border-radius: 16px; background: var(--deep); display: grid; place-items: center; font: 800 .6875rem/1 var(--body); color: var(--muted); }
+.gp { flex: 1; display: grid; gap: 10px; align-content: start; padding: 14px; border-radius: 26px; background: var(--deep); }
+.gp .chip { justify-self: start; padding: 8px 14px; border-radius: 999px; background: var(--cream); color: var(--night); font: 800 1rem/1 var(--head); }
+.gp .board { max-width: 200px; }
+/* The walkthrough: everything dims except the part being shown. */
+.spot { position: absolute; z-index: 6; border-radius: 22px; box-shadow: 0 0 0 3px var(--cream), 0 0 0 9999px rgba(5, 4, 22, .78); pointer-events: none; }
+.coach { position: absolute; left: 14px; right: 14px; z-index: 7; display: grid; gap: var(--space-item); padding: 16px; border-radius: 22px; background: var(--cream); color: var(--night); box-shadow: 0 16px 40px rgba(0,0,0,.5); animation: up 240ms var(--ease-out); }
+.coach .step { font: 800 .75rem/1 var(--body); letter-spacing: .1em; text-transform: uppercase; color: #6b4fd8; }
+.coach b { font: 800 1.1875rem/1.25 var(--head); }
+.coach p { font-size: .9375rem; line-height: 1.45; color: #2d2a5c; }
+.coach .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.coach .skip { border: 0; background: none; color: #4b4880; font: 700 .9375rem/1 var(--body); min-height: 44px; padding: 0 6px; }
+.coach .go { min-height: 46px; padding: 0 22px; border: 0; border-radius: 999px; background: var(--fuchsia); color: #fff; box-shadow: 0 0 0 3px var(--night); font: 800 1rem/1 var(--head); }
+.coach .baba { display: flex; align-items: center; gap: 10px; }
+.coach .baba .avatar { width: 40px; height: 40px; font-size: 1rem; background: #0f7e72; box-shadow: none; }
+.dots { display: flex; gap: 6px; }
+.dots i { width: 8px; height: 8px; border-radius: 50%; background: #c9c2e8; }
+.dots i.on { background: #6b4fd8; width: 22px; border-radius: 4px; }
+.tip { position: absolute; z-index: 7; display: grid; gap: 8px; max-width: 250px; padding: 12px 14px; border-radius: 16px; background: var(--cream); color: var(--night); box-shadow: 0 12px 30px rgba(0,0,0,.45); font-size: .875rem; line-height: 1.4; animation: up 220ms var(--ease-out); }
+.tip b { font: 800 .9375rem/1.2 var(--head); }
+.tip::before { content: ""; position: absolute; top: -7px; left: 28px; width: 14px; height: 14px; background: var(--cream); transform: rotate(45deg); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <aside class="guide" aria-label="Screens">
+    <div class="titled">
+      <h1>Game controls prototype</h1>
+      <p class="lede">Feature switches and the announcement banner in your dashboard, and the walkthrough for new players, for your approval before any of it is built. Tap the buttons, or pick a screen here.</p>
+    </div>
+    <ul class="flows" id="flows"></ul>
+    <p class="note"><b>Not in the game yet.</b> Proposed wording, for you to change. The dashboard is shown at phone size; on a computer it uses the sidebar like the rest.</p>
+  </aside>
+  <div class="phone-col">
+    <div class="phone" id="phone"></div>
+    <p class="why" id="why"></p>
+    <div class="nav-row"><button type="button" id="prev">Back a screen</button><button type="button" id="next">Next screen</button></div>
+  </div>
+</div>
+<script>
+const board = `<div class="board" aria-hidden="true">${'<i></i>'.repeat(9)}</div>`;
+const tabs = (on) => `<nav class="tabbar" aria-label="Dashboard">${['Today', 'Players', 'Growth', 'Reviews', 'Controls'].map((t) => `<span class="${t === on ? 'on' : ''}"><i></i>${t}</span>`).join('')}</nav>`;
+const dbar = `<div class="dash-bar"><span class="wordmark">Dara<i>X&amp;O</i></span><div class="seg"><span class="on">Live</span><span>Test</span></div></div>`;
+const sw = (name, line, on = true, extra = '') => `<div class="sw"><div><b>${name}</b><span>${line}</span>${extra}</div><button class="toggle" type="button" role="switch" aria-checked="${on}" aria-label="${name}"${name === 'Quick match' && on ? ' data-go="swConfirm"' : ''}></button></div>`;
+const switches = (qmOn) => `
+  ${dbar}
+  <div class="titled"><h2>Controls</h2><p class="fine">Turn parts of the game off and on without a push. Changes reach players within a minute.</p></div>
+  <div class="seg" style="align-self:start"><span class="on">Switches</span><span data-go="anNew">Announcement</span></div>
+  <div class="scroll grow">
+    ${qmOn ? '' : '<p class="alert">1 switch is off: Quick match, since 18:20.</p>'}
+    <section class="card"><span class="group-title">Playing people</span>
+      ${sw('Quick match', qmOn ? 'Finding a player, and games waiting to be joined.' : 'Off since 18:20, by you. Players see "Quick match is resting for a bit."', qmOn)}
+      ${sw('Friend rooms', 'Play a friend with a code or a link.')}
+      ${sw('Stakes', 'Staking Dara Seeds. Off: every match is free.')}
+    </section>
+    <section class="card"><span class="group-title">New players and sign-in</span>
+      ${sw('New players', 'Play now on the first screen. Off: "We\'re full right now. Try again soon."')}
+      ${sw('Email sign-in codes', 'Uses the 90 free emails a day. Google and player codes still work.')}
+      ${sw('Player codes', 'Saving, typing and recovering player codes.')}
+    </section>
+    <section class="card"><span class="group-title">In a match and on the phone</span>
+      ${sw('Typed messages', 'The quick messages always stay.')}
+      ${sw('Baba Ayo without internet', 'Offline games that count.')}
+      ${sw('7 pm streak reminders', 'Tonight\'s run, and every run until it\'s back on.')}
+    </section>
+  </div>
+  ${tabs('Controls')}`;
+const home = (extra = '', qm = 'Quick match') => `
+  <div class="h-top"><span class="ring"><span class="avatar">D</span><small>JJC</small></span><div class="pillc"><span>0</span><span>1/3</span><span>5,000</span></div><span class="ranks">Ranks</span></div>
+  <div class="gp"><span class="chip">Fading</span><p class="fine">3 pieces each. Your oldest one disappears.</p>${board}</div>
+  <div class="actions"><button class="btn" type="button">${qm}</button><div class="more"><button class="btn ghost sm" type="button">Play a friend</button><button class="btn ghost sm" type="button">Play Baba Ayo</button></div></div>${extra}`;
+
+const FLOWS = [
+  { title: 'Feature switches (dashboard)', screens: [
+    { id: 'swList', label: 'Controls, then Switches', why: 'Modelled on the feature pages of Front, Whereby and Buffer (Mobbin): grouped, one plain line each, a switch on the right. Each line says what players see when it is off. Tap the Quick match switch.', html: switches(true), cls: 'dash-screen' },
+    { id: 'swConfirm', label: 'Turning one off asks first', why: 'One extra tap, because a switch changes the game for everyone. It says exactly what players will see, and it goes in the log with your reason.', html: `${switches(true)}
+      <div class="dim"></div>
+      <div class="sheet" role="dialog" aria-label="Turn off Quick match">
+        <span class="grab"></span>
+        <div class="titled"><h2>Turn off Quick match?</h2><p class="muted">Nobody can start or join Quick match. Matches already playing finish as normal. Players see: "Quick match is resting for a bit. Play a friend or Baba Ayo."</p></div>
+        <label class="field"><span>Why (only you see this)</span><input class="input" value="Matchmaker errors after the update" aria-label="Why"></label>
+        <div class="actions"><button class="btn danger" type="button" data-go="swOff">Turn off Quick match</button><button class="btn ghost" type="button" data-go="swList">Keep it on</button></div>
+      </div>`, cls: 'dash-screen' },
+    { id: 'swOff', label: 'A switch is off', why: 'An off switch shows at the top of Controls and on Today under Needs you, so you never forget one. Turning it back on is one tap, no question.', html: switches(false), cls: 'dash-screen' },
+    { id: 'qmOff', label: 'On the game: Quick match resting', why: 'Players see why, and what they can do instead. Nothing breaks, and the button comes back by itself within a minute of you turning it on.', html: home('<p class="toast">Quick match is resting for a bit. Play a friend or Baba Ayo.</p>', 'Quick match <span class="pill-off">Resting</span>') },
+  ]},
+  { title: 'Announcement banner', screens: [
+    { id: 'anNew', label: 'Write an announcement', why: 'Like Confluence\'s announcement banner and Intercom\'s preview (Mobbin): the message, an optional button, when it shows, and a preview. One at a time, so players never get a stack.', cls: 'dash-screen', html: `
+      ${dbar}
+      <div class="titled"><h2>Controls</h2></div>
+      <div class="seg" style="align-self:start"><span data-go="swList">Switches</span><span class="on">Announcement</span></div>
+      <div class="scroll grow">
+        <section class="card">
+          <label class="field"><span>Message</span><textarea class="input" aria-label="Message">Friday is Fading night. Find a player from 8 pm.</textarea></label>
+          <span class="count">49 of 90</span>
+          <div class="field"><span>Button (optional)</span><div class="chips"><span>None</span><span class="on">Quick match</span><span>Play a friend</span><span>Baba Ayo</span><span>Pick a game</span><span>Ranks</span></div></div>
+          <div class="two"><label class="field"><span>Shows from</span><input class="input" value="Fri 18:00" aria-label="Shows from"></label><label class="field"><span>Until</span><input class="input" value="Sat 02:00" aria-label="Until"></label></div>
+          <span class="fine">Preview</span>
+          <div class="preview"><div class="mini-pop"><span class="ic">!</span><div><b>Friday is Fading night. Find a player from 8 pm.</b></div><span class="mini-btn">Quick match</span></div></div>
+          <button class="btn sm" type="button" data-go="anLive">Schedule it</button>
+          <button class="btn ghost sm" type="button" data-go="anBad">Try a message with an emoji</button>
+        </section>
+      </div>
+      ${tabs('Controls')}` },
+    { id: 'anBad', label: 'The game\'s rules apply', why: 'Checked as you type, the same rules as every line in the game: one or two short sentences, no emojis, no links, starts with a capital. Your own judgement covers the rest: never push staking more.', cls: 'dash-screen', html: `
+      ${dbar}
+      <div class="titled"><h2>Controls</h2></div>
+      <div class="seg" style="align-self:start"><span>Switches</span><span class="on">Announcement</span></div>
+      <div class="scroll grow">
+        <section class="card">
+          <label class="field"><span>Message</span><textarea class="input" aria-label="Message" style="box-shadow: inset 0 0 0 2px var(--fuchsia-glow)">Friday is Fading night 🔥 Find a player from 8 pm.</textarea></label>
+          <p class="form-error" role="alert">Emojis aren't allowed in the game. Take it out to schedule.</p>
+          <button class="btn sm" type="button" disabled style="opacity:.5">Schedule it</button>
+          <button class="btn ghost sm" type="button" data-go="anNew">Back</button>
+        </section>
+      </div>
+      ${tabs('Controls')}` },
+    { id: 'anLive', label: 'Scheduled, live and past', why: 'You can stop one at any time. Past announcements stay listed for 30 days, so you can copy one again.', cls: 'dash-screen', html: `
+      ${dbar}
+      <div class="titled"><h2>Controls</h2></div>
+      <div class="seg" style="align-self:start"><span>Switches</span><span class="on">Announcement</span></div>
+      <div class="scroll grow">
+        <section class="card">
+          <span class="live-tag">Scheduled</span>
+          <b style="font:800 1.0625rem/1.3 var(--head)">Friday is Fading night. Find a player from 8 pm.</b>
+          <p class="fine">Shows Fri 18:00 to Sat 02:00, with a Quick match button. Once per phone.</p>
+          <div class="more"><button class="btn ghost sm" type="button" data-go="anNew">Change</button><button class="btn danger sm" type="button">Stop it</button></div>
+        </section>
+        <section class="card">
+          <span class="group-title">Past</span>
+          <div class="ann-row"><b>Big 5×5 is back in Pick a game.</b><small>Showed 14 to 16 Oct</small></div>
+          <div class="ann-row"><b>Quick match was slow this morning. It's fixed.</b><small>Showed 12 Oct, 2 hours</small></div>
+        </section>
+      </div>
+      ${tabs('Controls')}` },
+    { id: 'anHome', label: 'On the game: the banner', why: 'The game\'s own top pop-up: swipe it up or tap X and it never shows again on that phone. It counts as the one pop-up of that visit, so it never stacks with Baba Ayo or an ask, and never shows mid-match or during a new player\'s first game.', html: home(`
+      <div class="ann" role="dialog" aria-label="Announcement"><span class="ic">!</span><div><b>Friday is Fading night. Find a player from 8 pm.</b><button class="mini-btn" type="button">Quick match</button></div><button class="xx" type="button" aria-label="Close">×</button></div>`) },
+  ]},
+  { title: 'Walkthrough for new players (proposal)', screens: [
+    { id: 'wt1', label: '1 of 3: Quick match', why: 'Right after the first game and the name sheet, on Home. Three steps, because short tours get finished: 1 to 2 steps about 73%, 9 or more about 8%. It starts with the one thing that matters most: playing real people.', html: home(`
+      <div class="spot" style="left:12px; right:12px; bottom:94px; height:60px; border-radius:999px"></div>
+      <div class="coach" style="bottom:172px">
+        <div class="baba"><span class="avatar">B</span><span class="step">1 of 3</span></div>
+        <b>Play people across Nigeria</b>
+        <p>Quick match finds you a player, or starts your own game for others to join.</p>
+        <div class="row"><button class="skip" type="button" data-go="wtSkip">Skip</button><div class="dots"><i class="on"></i><i></i><i></i></div><button class="go" type="button" data-go="wt2">Next</button></div>
+      </div>`) },
+    { id: 'wt2', label: '2 of 3: Your day', why: 'The counters: the streak and the quests are why people come back tomorrow. One line each, nothing about staking more.', html: home(`
+      <div class="spot" style="left:78px; right:72px; top:56px; height:44px; border-radius:999px"></div>
+      <div class="coach" style="top:130px">
+        <div class="baba"><span class="avatar">B</span><span class="step">2 of 3</span></div>
+        <b>Come back every day</b>
+        <p>Play once a day to grow your streak. Finish quests to earn Dara Seeds.</p>
+        <div class="row"><button class="skip" type="button" data-go="wtSkip">Skip</button><div class="dots"><i></i><i class="on"></i><i></i></div><button class="go" type="button" data-go="wt3">Next</button></div>
+      </div>`) },
+    { id: 'wt3', label: '3 of 3: You, then play', why: 'Your animal opens You: your title, and where your player code lives. The last step ends on doing, not reading: Find a player opens Quick match. Later just closes the tour.', html: home(`
+      <div class="spot" style="left:14px; top:48px; width:60px; height:60px; border-radius:50%"></div>
+      <div class="coach" style="top:130px">
+        <div class="baba"><span class="avatar">B</span><span class="step">3 of 3</span></div>
+        <b>This is you</b>
+        <p>Your title grows as you play. Tap here for your player code, so you never lose your progress.</p>
+        <div class="row"><button class="skip" type="button" data-go="wtSkip">Later</button><div class="dots"><i></i><i></i><i class="on"></i></div><button class="go" type="button" data-go="wtDone">Find a player</button></div>
+      </div>`) },
+    { id: 'wtSkip', label: 'Skipped or done', why: 'Skip works at any step and never asks again. The tour can be seen again any time from Settings.', html: home('<p class="toast">You can see the tour again in Settings.</p>') },
+    { id: 'wtDone', label: 'Ends in Quick match', why: 'Finishing the tour opens Quick match straight away, so the next thing a new player does is play a real person.', html: `${home()}<div class="dim"></div><div class="sheet" role="dialog" aria-label="Quick match"><span class="grab"></span><div class="titled"><h2>Quick match</h2><p class="muted">2 games waiting. Swipe to pick a player.</p></div><div class="me-card"><span class="avatar teal">K</span><div><b>Kemi</b><span>Rivers · Fading · Free</span></div><span></span></div><div class="actions"><button class="btn" type="button">Join Kemi</button><div class="more"><button class="btn ghost sm" type="button">Start my own game</button><button class="btn ghost sm" type="button">Play Baba Ayo</button></div></div></div>` },
+    { id: 'wtTip', label: 'Later: one tip at a time', why: 'Everything else is taught when it matters, one small tip at a time, like Duolingo. Example: after their third match, the game chip says there are 4 games. Never more than one tip a visit, and it counts as that visit\'s pop-up.', html: home(`
+      <div class="spot" style="left:30px; top:142px; width:104px; height:40px; border-radius:999px"></div>
+      <div class="tip" style="left:30px; top:196px"><b>4 games to play</b>Tap here for Classic, Big 5×5 and Pro 7×7.<button class="mini-btn" type="button" data-go="wtSkip" style="justify-self:start">Got it</button></div>`) },
+    { id: 'wtReplay', label: 'Settings: see the tour again', why: 'Tours people open themselves get finished far more often than ones that start on their own, so it stays one tap away.', html: `
+      <div class="top"><button class="mini-btn ghost" type="button">Back</button><h2 style="font-size:1.25rem">Settings</h2><span style="width:56px"></span></div>
+      <div class="scroll grow">
+        <div class="settings-row"><div><b>Show the tour again</b><p class="fine">A quick look at Home, in 3 steps.</p></div><button class="mini-btn" type="button" data-go="wt1">Show</button></div>
+        <div class="settings-row"><div><b>Music</b></div><button class="toggle" type="button" role="switch" aria-checked="true" aria-label="Music"></button></div>
+        <div class="settings-row"><div><b>Sound effects</b></div><button class="toggle" type="button" role="switch" aria-checked="true" aria-label="Sound effects"></button></div>
+      </div>` },
+  ]},
+];
+
+const all = FLOWS.flatMap((f) => f.screens);
+const phone = document.getElementById('phone');
+const why = document.getElementById('why');
+const flows = document.getElementById('flows');
+flows.innerHTML = FLOWS.map((f) => `<li class="flow"><h2>${f.title}</h2><ol>${f.screens.map((s) => `<li><button type="button" data-open="${s.id}">${s.label}</button></li>`).join('')}</ol></li>`).join('');
+phone.innerHTML = all.map((s) => `<section class="screen ${s.cls ?? ''}" id="s-${s.id}" hidden aria-label="${s.label}">${s.html}</section>`).join('');
+let at = 0;
+function open(id) {
+  const i = all.findIndex((s) => s.id === id);
+  if (i < 0) return;
+  at = i;
+  all.forEach((s, n) => { document.getElementById(`s-${s.id}`).hidden = n !== i; });
+  why.textContent = all[i].why;
+  flows.querySelectorAll('[data-open]').forEach((b) => b.setAttribute('aria-current', String(b.dataset.open === id)));
+  try { history.replaceState(null, '', `#${id}`); } catch {}
+}
+document.addEventListener('click', (e) => {
+  const go = e.target.closest('[data-go]');
+  if (go) return open(go.dataset.go);
+  const pick = e.target.closest('[data-open]');
+  if (pick) return open(pick.dataset.open);
+  const t = e.target.closest('.toggle');
+  if (t) t.setAttribute('aria-checked', String(t.getAttribute('aria-checked') !== 'true'));
+});
+document.getElementById('prev').onclick = () => open(all[Math.max(0, at - 1)].id);
+document.getElementById('next').onclick = () => open(all[Math.min(all.length - 1, at + 1)].id);
+open(all.some((s) => s.id === location.hash.slice(1)) ? location.hash.slice(1) : 'swList');
+</script>
+</body>
+</html>

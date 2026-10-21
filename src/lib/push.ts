@@ -12,15 +12,17 @@ import { call, post } from './api';
 import { protectStorage } from './device';
 import { KEYS, store } from './storage';
 
-export type PushKind = 'streak' | 'friends';
+/** The 7 pm streak reminder, a friend joining your room, and News from Dara X&O (docs/NEWS-REVIEW.md). */
+export type PushKind = 'streak' | 'friends' | 'news';
 export type PushPrefs = Record<PushKind, boolean>;
 export type PushState = 'unsupported' | 'blocked' | 'ready';
 /** Where a player turned notifications on, for the 8 am email's count (worker/stats.ts). */
 export type PushFrom = 'streak-ask' | 'friends-ask' | 'settings';
 
-const OFF: PushPrefs = { streak: false, friends: false };
+const OFF: PushPrefs = { streak: false, friends: false, news: false };
 
-export const pushPrefs = (): PushPrefs => store.json<PushPrefs>(KEYS.push, OFF);
+// Phones from before news have only the first two: news is off for them until they turn it on.
+export const pushPrefs = (): PushPrefs => ({ ...OFF, ...store.json<Partial<PushPrefs>>(KEYS.push, {}) });
 
 /** Whether this phone can show notifications, and whether the player blocked them. */
 export function pushState(): PushState {
@@ -50,7 +52,7 @@ async function subscription(create: boolean, token: string) {
  */
 export async function setPush(token: string, want: PushPrefs, from?: PushFrom): Promise<{ ok: true; prefs: PushPrefs } | { ok: false; why: 'blocked' | 'unsupported' | 'error'; message?: string }> {
   if (pushState() === 'unsupported') return { ok: false, why: 'unsupported' };
-  const anyOn = want.streak || want.friends;
+  const anyOn = want.streak || want.friends || want.news;
   try {
     if (anyOn && Notification.permission !== 'granted') {
       const answer = await Notification.requestPermission();
@@ -64,7 +66,8 @@ export async function setPush(token: string, want: PushPrefs, from?: PushFrom): 
       await sub.unsubscribe().catch(() => {});
     } else {
       // `from` only when this turns something on, so the count is of players saying yes.
-      const turnsOn = (want.streak && !pushPrefs().streak) || (want.friends && !pushPrefs().friends);
+      const now = pushPrefs();
+      const turnsOn = (want.streak && !now.streak) || (want.friends && !now.friends) || (want.news && !now.news);
       await call('/api/push', token, post({ ...sub.toJSON(), ...want, ...(from && turnsOn ? { from } : {}) }));
     }
     store.set(KEYS.push, JSON.stringify(want));

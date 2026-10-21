@@ -1,7 +1,7 @@
 // The dashboard's sections say what the email says, and "Needs you" flags the right things.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { needsFor } from '../src/needs.ts';
+import { needsFor, rankNeeds } from '../src/needs.ts';
 import { headline, limitsOf, SECTIONS, sectionById, waitNote, whenFor } from '../src/sections.ts';
 import type { DayResult, Report } from '../src/types.ts';
 
@@ -64,9 +64,20 @@ test('Needs you: ban reviews, the free plan and sharp drops', () => {
 
   const drop = run([...week.slice(0, 7).map((d): [string, Report] => [d, sample(d)]), ['2026-10-17', sample('2026-10-17', { played: 50, joined: 10 })]]);
   const ids = needsFor(drop, '2026-10-17', '2026-10-19', 0).map((n) => `${n.id}:${n.level}`);
-  assert.deepEqual(ids, ['played:alarm', 'joined:warn']);
+  assert.deepEqual(ids, ['players:alarm']);
+  assert.match(needsFor(drop, '2026-10-17', '2026-10-19', 0)[0].body, / played and 10 new, against /);
+
+  // A small game (under 10 a day) doesn't raise drops at all.
+  const small = run([...week.slice(0, 7).map((d): [string, Report] => [d, sample(d, { played: 6, joined: 2 })]), ['2026-10-17', sample('2026-10-17', { played: 0, joined: 0 })]]);
+  assert.deepEqual(needsFor(small, '2026-10-17', '2026-10-19', 0), []);
 
   // Today isn't over, so a low number today isn't a drop.
   const today = run([...week.slice(0, 7).map((d): [string, Report] => [d, sample(d)]), ['2026-10-17', sample('2026-10-17', { played: 5 })]]);
   assert.deepEqual(needsFor(today, '2026-10-17', '2026-10-17', 0), []);
+});
+
+test('Needs you comes in the order to do them', () => {
+  const n = (id: string, level: 'alarm' | 'warn' | 'note') => ({ id, level, title: id, body: '' });
+  const ranked = rankNeeds([n('appeals', 'warn'), n('players', 'alarm'), n('usage', 'note'), n('phones', 'warn'), n('health:email', 'alarm')]);
+  assert.deepEqual(ranked.map((x) => x.id), ['health:email', 'players', 'phones', 'appeals', 'usage']);
 });

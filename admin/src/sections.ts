@@ -172,6 +172,24 @@ export const SECTIONS: Section[] = [
     },
   },
   {
+    id: 'tour',
+    title: 'Walkthrough for new players',
+    metrics: [
+      { id: 'shown', label: 'Shown', unit: 'count', get: (r) => r.extra.tour?.shown ?? null },
+      { id: 'done', label: 'Finished', unit: 'count', get: (r) => r.extra.tour?.done ?? null },
+      { id: 'find', label: 'Find a player', unit: 'count', get: (r) => r.extra.tour?.find ?? null },
+    ],
+    rows: (r) => {
+      const t = r.extra.tour ?? { shown: 0, done: 0, skipped: 0, find: 0, replay: 0 };
+      return [
+        { label: 'Shown', value: fmt(t.shown), note: t.replay ? `${fmt(t.replay)} more opened it again from Settings` : undefined },
+        { label: 'Finished all 3 steps', value: fmt(t.done), note: t.shown ? `${Math.round((t.done / t.shown) * 100)}% of those shown` : undefined },
+        { label: 'Skipped', value: fmt(t.skipped) },
+        { label: 'Tapped Find a player at the end', value: fmt(t.find) },
+      ];
+    },
+  },
+  {
     id: 'also',
     title: 'Also',
     metrics: [

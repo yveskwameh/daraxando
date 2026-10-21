@@ -10,6 +10,7 @@ import { MODES } from '../../shared/modes';
 import { stateName, zoneName } from '../../shared/places';
 import { BABA_OFFER_MS, EMPTY_OFFER_MS, searchStage, SEARCH_STEP_MS } from '../../shared/matching';
 import { fmt, tableLock } from '../../shared/stakes';
+import { useControls } from '../lib/controls';
 import { Avatar, Cowries, Icon } from '../components/art';
 import { buzz } from '../lib/haptics';
 import { prefs, usePrefs } from '../lib/prefs';
@@ -21,7 +22,9 @@ import { BabaSheet } from '../sheets/BabaSheet';
 
 export function Search({ go }: { go: Go }) {
   const { token, profile } = usePlayer();
-  const { mode, stake } = usePrefs();
+  const { mode, stake: picked } = usePrefs();
+  // Stakes turned off in Controls: every new game is free (src/lib/controls.ts).
+  const stake = useControls().off.includes('stakes') ? 0 : picked;
   const [since] = useState(() => Date.now());
   const [elapsed, setElapsed] = useState(0);
   const [baba, setBaba] = useState(false);

@@ -3,6 +3,7 @@ import type { ModeId } from '../../shared/modes';
 import type { StateCode } from '../../shared/places';
 import type { FriendsData, LeaderRow, LeagueData, LiveGame, Profile } from '../../shared/protocol';
 import type { Alerts } from '../../shared/codes';
+import type { Controls, TourEvent } from '../../shared/controls';
 import { deviceId } from './device';
 
 export class ApiError extends Error {
@@ -78,7 +79,9 @@ export const api = {
   live: (token: string) => call<{ games: LiveGame[]; n: number; looking: number }>('/api/live', token),
 
   /** The phone's id goes along, so the server can link the player to the phones they use (worker/phones.ts). */
-  me: (token: string) => call<{ profile: Profile; alerts?: Alerts }>('/api/me', token, { headers: { 'x-device': deviceId() } }),
+  me: (token: string) => call<{ profile: Profile; alerts?: Alerts; controls?: Controls }>('/api/me', token, { headers: { 'x-device': deviceId() } }),
+  /** The new-player walkthrough, counted for the 8 am email (docs/WALKTHROUGH.md). Nothing is kept per player. */
+  tour: (token: string, e: TourEvent) => call<null>('/api/tour', token, { method: 'POST', body: JSON.stringify({ e }) }),
 
   /** Accept the current Terms of play and Privacy notice (shared/legal.ts). */
   acceptTerms: (token: string, version: string) => call<{ profile: Profile }>('/api/terms', token, post({ version })),

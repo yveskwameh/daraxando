@@ -29,6 +29,8 @@ import { bump, isPushFrom, STAT } from './stats';
 import { REPORT_CRON, sendReport } from './report';
 import { linkPhone, phoneFull, PHONE_FULL } from './phones';
 import { alertsFor, codeRoute } from './codes';
+import { controlsOf, switchOn } from './controls';
+import { isTourEvent, offLine } from '../shared/controls';
 
 export { Match } from './match';
 export { Matchmaker } from './matchmaker';
@@ -116,6 +118,8 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     }
     const b = await body<{ name: string; avatar: string; state: string; age: boolean; terms: string; auto: boolean }>(req);
     if (b.age !== true) return fail(400, 'Dara X&O is for players aged 13 and up.');
+    // New players turned off in the dashboard's Controls (worker/controls.ts).
+    if (!(await switchOn(env, 'newPlayers'))) return fail(503, offLine('newPlayers'));
     // Two new players a phone in 30 days (worker/phones.ts). The first screen offers Sign in instead.
     if (await phoneFull(env, phone, Date.now())) return fail(403, PHONE_FULL);
     // Tapping Play now accepts the terms on screen, and that version is kept as the record.
@@ -187,6 +191,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     }
     const code = peekMatch[1].toUpperCase();
     if (!isRoomCode(code)) return fail(404, 'That code is not right. Check it with your friend.');
+    if (!(await switchOn(env, 'friends'))) return fail(503, offLine('friends'));
     const room = await env.MATCH.get(env.MATCH.idFromName(code)).peek();
     if (!room) return fail(404, 'No room with that code. Check it with your friend.');
     return json({ code, ...room });
@@ -200,6 +205,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
 
   /* --- player codes and "Lost your code?" (worker/codes.ts). The phone may not have a player yet. --- */
   if (path === '/api/code' || path.startsWith('/api/code/') || path === '/api/recovery' || path.startsWith('/api/recovery/')) {
+    if (!(await switchOn(env, 'codes'))) return fail(503, offLine('codes'));
     return codeRoute(req, env, url, tokenFrom(req, url) ? await playerFrom(req, url, env) : null);
   }
 
@@ -221,7 +227,17 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     await linkPhone(env, me.id, phone, 'seen', now);
     // Their code opened them on another phone, or a recovery is waiting (worker/codes.ts).
     const alerts = await alertsFor(env, me, phone);
-    return json(alerts ? { profile: me, alerts } : { profile: me });
+    // Switches that are off and the announcement on Home (worker/controls.ts), cached 30 seconds.
+    const controls = await controlsOf(env, now);
+    return json({ profile: me, controls, ...(alerts ? { alerts } : {}) });
+  }
+
+  /* --- the new-player walkthrough: counted for the 8 am email, never kept per player (docs/WALKTHROUGH.md) --- */
+  if (path === '/api/tour' && method === 'POST') {
+    const e = (await body<{ e: string }>(req)).e;
+    if (!isTourEvent(e)) return fail(400, 'Unknown tour event.');
+    await bump(env.DB, dayKey(now), STAT.tour(e)).run();
+    return new Response(null, { status: 204 });
   }
 
   /* --- accepting new terms (shared/legal.ts): the version on screen, and when, as the record --- */
@@ -282,7 +298,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   /* --- notifications on this phone (worker/push.ts, shared/notify.ts) --- */
   if (path === '/api/push' && (method === 'POST' || method === 'PATCH' || method === 'DELETE')) {
     if (!pushReady(env)) return fail(503, "Notifications aren't set up here yet.");
-    const b = await body<{ endpoint: string; keys: { p256dh: string; auth: string }; streak: boolean; friends: boolean; from?: string }>(req);
+    const b = await body<{ endpoint: string; keys: { p256dh: string; auth: string }; streak: boolean; friends: boolean; news?: boolean; from?: string }>(req);
     if (!pushEndpointOk(b.endpoint, env)) return fail(400, "This phone's notification address isn't one we know.");
     if (method === 'DELETE') {
       await env.DB.prepare('DELETE FROM push_subs WHERE endpoint = ? AND player_id = ?').bind(b.endpoint, me.id).run();
@@ -290,8 +306,10 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     }
     const streak = b.streak === true ? 1 : 0;
     const friends = b.friends === true ? 1 : 0;
+    // News from Dara X&O (docs/NEWS-REVIEW.md): off unless the player turns it on.
+    const news = b.news === true ? 1 : 0;
     if (method === 'PATCH') {
-      const r = await env.DB.prepare('UPDATE push_subs SET streak = ?, friends = ? WHERE endpoint = ? AND player_id = ?').bind(streak, friends, b.endpoint, me.id).run();
+      const r = await env.DB.prepare('UPDATE push_subs SET streak = ?, friends = ?, news = ? WHERE endpoint = ? AND player_id = ?').bind(streak, friends, news, b.endpoint, me.id).run();
       if (!r.meta.changes) return fail(404, 'Turn notifications on again.');
       return json({ on: true });
     }
@@ -302,15 +320,15 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     const fresh = !(await env.DB.prepare('SELECT 1 FROM push_subs WHERE endpoint = ? AND player_id = ?').bind(b.endpoint, me.id).first());
     await env.DB.batch([
       env.DB.prepare(
-        `INSERT INTO push_subs (endpoint, player_id, p256dh, auth, streak, friends, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-         ON CONFLICT (endpoint) DO UPDATE SET player_id = ?2, p256dh = ?3, auth = ?4, streak = ?5, friends = ?6`,
-      ).bind(b.endpoint, me.id, b.keys!.p256dh, b.keys!.auth, streak, friends, now),
+        `INSERT INTO push_subs (endpoint, player_id, p256dh, auth, streak, friends, news, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?8, ?7)
+         ON CONFLICT (endpoint) DO UPDATE SET player_id = ?2, p256dh = ?3, auth = ?4, streak = ?5, friends = ?6, news = ?8`,
+      ).bind(b.endpoint, me.id, b.keys!.p256dh, b.keys!.auth, streak, friends, now, news),
       // At most 5 phones per player: the oldest goes.
       env.DB.prepare(
         'DELETE FROM push_subs WHERE player_id = ?1 AND endpoint NOT IN (SELECT endpoint FROM push_subs WHERE player_id = ?1 ORDER BY created_at DESC LIMIT 5)',
       ).bind(me.id),
       // Where they said yes, for the 8 am email: the phone only sends it when this turns something on.
-      ...(isPushFrom(b.from) && (streak || friends) ? [bump(env.DB, dayKey(now), STAT.pushOn(b.from))] : []),
+      ...(isPushFrom(b.from) && (streak || friends || news) ? [bump(env.DB, dayKey(now), STAT.pushOn(b.from))] : []),
     ]);
     // A first message straight away, so the player sees that it works.
     if (fresh) {
@@ -331,9 +349,11 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   /* --- play a friend: make a room with a short code --- */
   if (path === '/api/rooms' && method === 'POST') {
     if (isBanned(me)) return fail(403, BANNED_MESSAGE);
+    if (!(await switchOn(env, 'friends', now))) return fail(503, offLine('friends'));
     const b = await body<{ mode: ModeId; stake: number }>(req);
     const mode = isModeId(b.mode) ? b.mode : DEFAULT_MODE;
-    const stake = isFriendTable(b.stake) ? b.stake : 0;
+    // Stakes turned off in Controls: every new room is free.
+    const stake = isFriendTable(b.stake) && (await switchOn(env, 'stakes', now)) ? b.stake : 0;
     if (stake > me.cowries) return fail(400, `You need ${fmt(stake)} Dara Seeds for that stake.`);
     for (let attempt = 0; attempt < 5; attempt++) {
       const code = roomCode();
@@ -351,6 +371,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     const code = peekMatch[1].toUpperCase();
     const b = await body<{ stake: number }>(req);
     if (!isRoomCode(code) || !isFriendTable(b.stake)) return fail(400, 'Friend rooms stake up to 1,000.');
+    if (b.stake > 0 && !(await switchOn(env, 'stakes', now))) return fail(503, offLine('stakes'));
     if (b.stake > me.cowries) return fail(400, `You need ${fmt(b.stake)} Dara Seeds for that stake.`);
     const ok = await env.MATCH.get(env.MATCH.idFromName(code)).setStake(me.id, b.stake);
     return ok ? json({ stake: b.stake }) : fail(409, 'Your friend already joined, so the stake is set.');
@@ -415,6 +436,9 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     const mode = url.searchParams.get('mode');
     const stake = Number(url.searchParams.get('stake') ?? 0);
     if (!isModeId(mode) || !isTable(stake)) return socketError(CLOSE.notFound, 'not-found', 'Pick a mode and a stake.');
+    const controls = await controlsOf(env, now);
+    if (controls.off.includes('quick')) return socketError(CLOSE.notFound, 'resting', offLine('quick'));
+    if (stake > 0 && controls.off.includes('stakes')) return socketError(CLOSE.stake, 'resting', offLine('stakes'));
     const locked = tableLock(stake, me, now);
     if (locked) return socketError(CLOSE.stake, 'table-locked', `${locked}.`);
     // wide: they joined this table because someone was already waiting, so distance doesn't matter.
@@ -431,6 +455,8 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   if (path === '/api/live/watch' && isSocket) {
     // 4000 and up tells the app not to try again (src/lib/useLive.ts).
     if (isBanned(me)) return socketError(CLOSE.banned, 'banned', BANNED_MESSAGE);
+    // Quick match turned off in Controls: the phone stops watching (4000 and up) until it's back on Home.
+    if (!(await switchOn(env, 'quick', now))) return socketError(CLOSE.notFound, 'resting', offLine('quick'));
     const check = { level: me.level, cowries: me.cowries, createdAt: me.createdAt, coolUntil: me.coolUntil };
     return forward(req, env.MATCHMAKER.get(env.MATCHMAKER.idFromName('global')), toPublic(me), { 'x-watch': JSON.stringify({ check }) });
   }
@@ -438,11 +464,13 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   /* --- live games for Quick match, as one request: the ones you can join, nearest and longest waiting first --- */
   if (path === '/api/live' && method === 'GET') {
     if (isBanned(me)) return json({ games: [], n: 0, looking: 0 });
+    const controls = await controlsOf(env, now);
+    if (controls.off.includes('quick')) return json({ games: [], n: 0, looking: 0, resting: offLine('quick') });
     const { games: all, looking } = await env.MATCHMAKER.get(env.MATCHMAKER.idFromName('global')).live(me.id);
     const zone = zoneOf(me.state);
     const near = (g: LiveGame) => (g.state === me.state && me.state !== 'OUT' && me.state !== 'NONE' ? 0 : zone && zoneOf(g.state) === zone ? 1 : 2);
     const games = all
-      .filter((g) => !tableLock(g.stake, me, now))
+      .filter((g) => !tableLock(g.stake, me, now) && !(g.stake > 0 && controls.off.includes('stakes')))
       .sort((a, b) => near(a) - near(b) || a.since - b.since)
       .slice(0, 20);
     return json({ games, n: games.length, looking });

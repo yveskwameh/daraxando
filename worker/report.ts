@@ -22,6 +22,7 @@ import type { Env } from './env';
 import { PUSH_FROM, STAT, WAIT_BUCKETS, type PushFrom } from './stats';
 import { KEEP_LINKS_MS } from './phones';
 import { tidyRecoveries } from './codes';
+import { tidyBanners } from './controls';
 
 const DAY_MS = 86_400_000;
 /** 8 am Lagos, all year (Lagos doesn't change its clocks). The same line is in wrangler.jsonc. */
@@ -97,6 +98,8 @@ export interface Report {
     savedFromAsk: number;
     /** Notifications turned on, by where (worker/stats.ts, STAT.pushOn). */
     pushOn: Record<PushFrom, number>;
+    /** The new-player walkthrough (docs/WALKTHROUGH.md): counters only, nothing per player. */
+    tour: { shown: number; done: number; skipped: number; find: number; replay: number };
   };
   usage: Usage | null;
 }
@@ -231,6 +234,13 @@ export async function gameNumbers(env: Env, day: string): Promise<Omit<Report, '
       appealsOpen: num(one(12).n),
       savedFromAsk: stats.get(STAT.savedFromAsk) ?? 0,
       pushOn: Object.fromEntries(PUSH_FROM.map((f) => [f, stats.get(STAT.pushOn(f)) ?? 0])) as Record<PushFrom, number>,
+      tour: {
+        shown: stats.get(STAT.tour('shown')) ?? 0,
+        done: stats.get(STAT.tour('done')) ?? 0,
+        skipped: (stats.get(STAT.tour('skip1')) ?? 0) + (stats.get(STAT.tour('skip2')) ?? 0) + (stats.get(STAT.tour('skip3')) ?? 0),
+        find: stats.get(STAT.tour('find')) ?? 0,
+        replay: stats.get(STAT.tour('replay')) ?? 0,
+      },
     },
   };
 }
@@ -444,6 +454,20 @@ export function reportEmail(r: Report): Email {
     ],
   });
 
+  // The new-player walkthrough (docs/WALKTHROUGH.md), once it has shown at least once that day.
+  const t = r.extra.tour;
+  if (t.shown || t.replay) {
+    sections.push({
+      title: 'Walkthrough for new players',
+      rows: [
+        ['Shown', fmt(t.shown), t.replay ? `${fmt(t.replay)} more opened it again from Settings` : undefined],
+        ['Finished all 3 steps', fmt(t.done), t.shown ? `${Math.round((t.done / t.shown) * 100)}% of those shown` : undefined],
+        ['Skipped', fmt(t.skipped)],
+        ['Tapped Find a player at the end', fmt(t.find)],
+      ],
+    });
+  }
+
   const extraRows: Rowx[] = [];
   if (r.extra.reminders !== null) extraRows.push(['Streak reminders sent at 7 pm', fmt(r.extra.reminders)]);
   if (r.extra.appealsOpen) extraRows.push(['Ban reviews waiting for you', fmt(r.extra.appealsOpen), 'Answer them through the admin API']);
@@ -612,6 +636,8 @@ export async function sendReport(env: Env, opts: { day?: string; force?: boolean
       env.DB.prepare('DELETE FROM auth_handoffs WHERE expires_at < ?').bind(now),
       env.DB.prepare("DELETE FROM player_phones WHERE how != 'made' AND last_at < ?").bind(now - KEEP_LINKS_MS),
       tidyRecoveries(env.DB, now),
+      // Announcements 30 days after they ended (worker/controls.ts).
+      tidyBanners(env.DB, now),
     ]).catch((err) => console.error('[tidy]', err));
     // Timed bans that ended for players who haven't opened the game since (migrations/0012_admin.sql).
     await liftEndedBans(env.DB, now);

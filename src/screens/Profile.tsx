@@ -26,6 +26,7 @@ import { usePlayer } from '../lib/session';
 import { toast } from '../lib/toast';
 import { InstallSheet } from '../sheets/InstallSheet';
 import { LegalRow } from '../components/LegalLink';
+import { requestTour } from '../lib/tour';
 import { codesOn, firstScreen, phonePlayers } from '../lib/codes';
 
 const TitlesSheet = lazy(() => import('../sheets/TitlesSheet'));
@@ -207,6 +208,7 @@ export function Profile({ go }: { go: Go }) {
             onDelete={() => ask('delete')}
             onCode={() => openCode('settings')}
             onPlayers={() => { setCodeUsed(true); setPhoneSheet('players'); }}
+            onTour={() => { requestTour(); go({ name: 'home' }); }}
           />
         </div>
       </Sheet>
@@ -480,6 +482,7 @@ function NotifyRows() {
   const rows: [PushKind, string, string][] = [
     ['streak', 'Streak reminder', 'One at 7 pm, only on days your streak would end that night.'],
     ['friends', 'Friend joined your room', 'The moment they join, even if you left the app.'],
+    ['news', 'News from Dara X&O', 'A few a month about new games and events. Never more than 4.'],
   ];
   return (
     <>
@@ -493,7 +496,7 @@ function NotifyRows() {
   );
 }
 
-function Settings({ account, onSave, onSignin, onSignOut, onDelete, onCode, onPlayers }: {
+function Settings({ account, onSave, onSignin, onSignOut, onDelete, onCode, onPlayers, onTour }: {
   account: Account | null;
   onSave: () => void;
   onSignin: () => void;
@@ -501,6 +504,7 @@ function Settings({ account, onSave, onSignin, onSignOut, onDelete, onCode, onPl
   onDelete: () => void;
   onCode: () => void;
   onPlayers: () => void;
+  onTour: () => void;
 }) {
   const codes = codesOn();
   const p = usePrefs();
@@ -581,6 +585,11 @@ function Settings({ account, onSave, onSignin, onSignOut, onDelete, onCode, onPl
         </div>
       ))}
       <NotifyRows />
+      {/* The new-player walkthrough (src/lib/tour.ts), one tap away for anyone. */}
+      <div className="toggle-row">
+        <div><b>Show the tour again</b><span>A quick look at Home, in 3 steps.</span></div>
+        <button type="button" className="mini-btn ghost" onClick={onTour}>Show</button>
+      </div>
       <div className="toggle-row">
         <div><b>Install the app</b><span>Play full screen from your home screen.</span></div>
         <button

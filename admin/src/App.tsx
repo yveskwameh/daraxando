@@ -18,6 +18,7 @@ import type { Copy } from './types.ts';
 import { Palette } from './Palette.tsx';
 import { go, Icon, Loading, Problem, Toasts, useLoad, usePath } from './ui.tsx';
 import { HealthPage } from './screens/Health.tsx';
+import { Controls } from './screens/Controls.tsx';
 
 interface Ctx {
   copy: Copy;
@@ -85,7 +86,7 @@ export function App() {
   if (!me) return <main className="page narrow"><Loading /></main>;
   if (!me.signedIn) return <SignIn ready={me.copies.live} onDone={check} />;
 
-  const tab = path.startsWith('/players') ? 'players' : path.startsWith('/growth') ? 'growth' : path.startsWith('/reviews') ? 'reviews' : path.startsWith('/log') ? 'log' : 'today';
+  const tab = path.startsWith('/players') ? 'players' : path.startsWith('/growth') ? 'growth' : path.startsWith('/reviews') ? 'reviews' : path.startsWith('/log') ? 'log' : path.startsWith('/controls') ? 'controls' : 'today';
   const section = path.match(/^\/section\/([a-z]+)$/)?.[1];
   const playerId = path.match(/^\/players\/([0-9a-f-]{36})$/)?.[1];
 
@@ -110,6 +111,8 @@ export function App() {
           <Reviews />
         ) : tab === 'log' ? (
           <Log />
+        ) : tab === 'controls' ? (
+          <Controls />
         ) : (
           <Today />
         )}
@@ -123,6 +126,7 @@ const NAV = [
   ['players', '/players', 'Players'],
   ['growth', '/growth', 'Growth'],
   ['reviews', '/reviews', 'Reviews'],
+  ['controls', '/controls', 'Controls'],
   ['log', '/log', 'Log'],
 ] as const;
 

@@ -198,6 +198,7 @@ const PATHS: Record<string, string> = {
   x: 'M6 6l12 12M18 6L6 18',
   left: 'M15 5l-7 7 7 7',
   right: 'M9 5l7 7-7 7',
+  down: 'M6 9l6 6 6-6',
   refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6',
   today: 'M4 19V9M10 19V5M16 19v-7M22 19H2',
   players: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M17 3.5a4 4 0 0 1 0 7.5M19 14a7 7 0 0 1 3 7',
@@ -214,6 +215,7 @@ const PATHS: Record<string, string> = {
   minus: 'M6 12h12',
   help: 'M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01',
   pulse: 'M3 12h4l3-8 4 16 3-8h4',
+  controls: 'M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4',
   phone: 'M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM11 18h2',
 };
 export function Icon({ name, size = 22 }: { name: keyof typeof PATHS | string; size?: number }) {

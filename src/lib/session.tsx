@@ -12,6 +12,7 @@ import { KEYS, store } from './storage';
 import { toast } from './toast';
 import { TERMS_VERSION } from '../../shared/legal';
 import { borrowOver, codesOn, noteAway, phonePlayers, type Alerts } from './codes';
+import { setControls } from './controls';
 
 type Status = 'loading' | 'guest' | 'ready' | 'offline' | 'resting';
 
@@ -94,10 +95,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setStatus('loading');
     fetchedAt.current = Date.now();
     api.me(token).then(
-      ({ profile, alerts: a }) => {
+      ({ profile, alerts: a, controls }) => {
         if (live) {
           setProfile(profile);
           setAlerts(a ?? null);
+          setControls(controls);
           setOnline(true);
           setStatus('ready');
         }
@@ -147,6 +149,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const r = await api.me(token);
       setProfile(r.profile);
       setAlerts(r.alerts ?? null);
+      setControls(r.controls);
       setOnline(true);
     } catch (err) {
       // Keep what we have.
@@ -184,9 +187,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (stop || busy || document.hidden || !navigator.onLine) return;
       busy = true;
       api.me(token!).then(
-        ({ profile }) => {
+        ({ profile, controls }) => {
           busy = false;
           if (stop) return;
+          setControls(controls);
           fetchedAt.current = Date.now();
           setProfile(profile);
           setOnline(true);

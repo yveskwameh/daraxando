@@ -25,6 +25,7 @@ import type { Mark } from '../shared/rules';
 import { randomToken } from './auth';
 import { getPlayer, recordSeries, type SeriesInput } from './db';
 import type { Env } from './env';
+import { switchOn } from './controls';
 import { afterMatch } from './habits';
 import { body, fail, json } from './http';
 import { bump } from './stats';
@@ -64,6 +65,9 @@ export async function offlineRoute(req: Request, env: Env, path: string, me: Pro
   const db = env.DB;
 
   if (path === '/api/offline/passes') {
+    // Turned off in the dashboard's Controls: no new passes, so new games without internet are just
+    // for fun. Games already played with a pass still count when they arrive.
+    if (!(await switchOn(env, 'offline', now))) return json({ passes: [], now });
     // Tidy up while we're here: passes past the time the server checks games for.
     const old = now - PASS_KEEP_DAYS * DAY;
     await db.prepare('DELETE FROM offline_passes WHERE issued_at < ?').bind(old).run();

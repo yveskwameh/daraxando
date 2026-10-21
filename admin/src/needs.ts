@@ -11,13 +11,14 @@ export interface Need {
   title: string;
   body: string;
   /** Where the button goes. */
-  go?: 'reviews' | 'phones' | 'health' | 'section:plan' | 'section:players' | 'section:first';
+  go?: 'reviews' | 'phones' | 'health' | 'controls' | 'section:plan' | 'section:players' | 'section:first';
   action?: string;
 }
 
-/** Played is down this much on the 7-day average, with at least MIN_AVG a day to compare with. */
+/** Down this much on the 7-day average, with at least MIN_AVG a day to compare with. */
 const DROP = 0.3;
-const MIN_AVG = 5;
+const MIN_AVG = 10;
+const MIN_AVG_NEW = 5;
 
 export function needsFor(days: DayResult[], selected: string, today: string, appealsOpen: number | null): Need[] {
   const out: Need[] = [];
@@ -64,26 +65,27 @@ export function needsFor(days: DayResult[], selected: string, today: string, app
     }
   }
 
-  // A sharp drop only means something on a finished day.
+  // A sharp drop only means something on a finished day, and only when there were enough players
+  // the week before for a drop to mean anything (Yves, 21 October 2026: 5 a day set it off).
+  // Played and new players are one line, so one cause doesn't make two alarms.
   if (r && selected < today) {
     const drop = dropOf(days, i, (x) => x.players.played);
+    const first = dropOf(days, i, (x) => x.players.joined, MIN_AVG_NEW);
     if (drop) {
       out.push({
-        id: 'played',
+        id: 'players',
         level: drop.share >= 0.5 ? 'alarm' : 'warn',
-        title: `Played is down ${pct(drop.share)} on the week before`,
-        body: `${fmt(r.players.played)} played, against ${fmt(Math.round(drop.avg))} a day on average over the 7 days before.`,
+        title: 'Fewer players than usual',
+        body: `${fmt(r.players.played)} played${first ? ` and ${fmt(r.players.joined)} new` : ''}, against ${fmt(Math.round(drop.avg))}${first ? ` and ${fmt(Math.round(first.avg))}` : ''} a day over the 7 days before.`,
         go: 'section:players',
         action: 'See players',
       });
-    }
-    const first = dropOf(days, i, (x) => x.players.joined);
-    if (first) {
+    } else if (first) {
       out.push({
         id: 'joined',
         level: 'warn',
-        title: `New players are down ${pct(first.share)} on the week before`,
-        body: `${fmt(r.players.joined)} new, against ${fmt(Math.round(first.avg))} a day on average over the 7 days before.`,
+        title: 'Fewer new players than usual',
+        body: `${fmt(r.players.joined)} new, against ${fmt(Math.round(first.avg))} a day over the 7 days before.`,
         go: 'section:first',
         action: 'See the first game',
       });
@@ -93,13 +95,29 @@ export function needsFor(days: DayResult[], selected: string, today: string, app
 }
 
 /** How far a day's number fell below the average of the 7 days before it, if it fell sharply. */
-export function dropOf(days: DayResult[], i: number, get: (r: Report) => number) {
+export function dropOf(days: DayResult[], i: number, get: (r: Report) => number, min = MIN_AVG) {
   const now = days[i]?.report;
   if (!now) return null;
   const before = days.slice(Math.max(0, i - 7), i).flatMap((d) => (d.report ? [get(d.report)] : []));
   if (before.length < 3) return null;
   const avg = before.reduce((a, n) => a + n, 0) / before.length;
-  if (avg < MIN_AVG) return null;
+  if (avg < min) return null;
   const share = (avg - get(now)) / avg;
   return share >= DROP ? { share, avg } : null;
 }
+
+/** What each level asks of you, in plain words. */
+export const LEVEL_WORD: Record<Need['level'], string> = { alarm: 'Act today', warn: 'Check soon', note: 'Worth knowing' };
+
+/**
+ * Needs in the order to do them: act today, then check soon, then worth knowing. Within a level,
+ * the game working comes first, then safety, then reviews, then growth.
+ */
+const ORDER = ['health', 'plan', 'errors', 'controls', 'phones', 'recovery', 'appeals', 'players', 'joined', 'usage'];
+const LEVELS: Need['level'][] = ['alarm', 'warn', 'note'];
+const rankOf = (n: Need) => {
+  const base = n.id.startsWith('health:') ? 'health' : n.id;
+  const i = ORDER.indexOf(base);
+  return i < 0 ? ORDER.length : i;
+};
+export const rankNeeds = (needs: Need[]) => [...needs].sort((a, b) => LEVELS.indexOf(a.level) - LEVELS.indexOf(b.level) || rankOf(a) - rankOf(b));

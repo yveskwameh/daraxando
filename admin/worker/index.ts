@@ -42,6 +42,8 @@ const ROUTES: [string, RegExp][] = [
   ['GET', /^recoveries$/],
   ['POST', /^recoveries\/[A-Za-z0-9_-]{8,24}\/(give|refuse)$/],
   ['GET', /^actions$/],
+  ['GET', /^controls$/],
+  ['POST', /^controls\/(switch|banner|news)$/],
   ['GET', /^push\/streak$/],
   ['POST', /^push\/streak$/],
 ];

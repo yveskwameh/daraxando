@@ -47,6 +47,8 @@ export const STAT = {
   savedFromAsk: 'ask:save',
   /** Notifications turned on: from the streak ask on Home, the friend ask, or the Settings switches. */
   pushOn: (from: PushFrom) => `push:on:${from}`,
+  /** The new-player walkthrough (shared/controls.ts, TOUR_EVENTS): shown, finished, skipped at which step, Find a player, opened again from Settings. */
+  tour: (e: string) => `tour:${e}`,
   /** Set once the report for a day has gone out, so a retried run doesn't send it twice. */
   reportSent: 'report:sent',
 } as const;

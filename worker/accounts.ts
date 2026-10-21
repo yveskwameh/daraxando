@@ -24,6 +24,8 @@ import { linkPhone } from './phones';
 import { deviceOf } from './safety';
 import { codeEmail, type Email } from './email';
 import type { Env } from './env';
+import { switchOn } from './controls';
+import { offLine } from '../shared/controls';
 import { body, fail, json, phoneKey, secretOf } from './http';
 import { bump, STAT } from './stats';
 import { dayKey } from '../shared/progression';
@@ -279,6 +281,7 @@ export async function authRoute(req: Request, env: Env, url: URL, me: Profile | 
 
   /* --- email, step 1: send a code --- */
   if (path === '/api/auth/email/start' && method === 'POST') {
+    if (!(await switchOn(env, 'emailCodes', now))) return fail(503, offLine('emailCodes'));
     const b = await body<{ email: string; intent: Intent }>(req);
     const email = cleanEmail(b.email);
     if (!email) return fail(400, "That email address doesn't look right.");

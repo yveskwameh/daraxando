@@ -17,6 +17,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { botMove, isBotLevel, type BotLevel } from '../shared/bot';
 import { cleanMessage, hasContact, MSG_CONTACT, MSG_RUDE, TYPED_ON_REAL_GAME } from '../shared/chat';
+import { switchOn } from './controls';
 import { pairOf } from '../shared/collections';
 import { isModeId, MODES, maxGames, winsNeeded, type ModeId } from '../shared/modes';
 import { auraFor, eloDelta, levelInfo, MIN_RATING, type Kind, type Result } from '../shared/progression';
@@ -282,6 +283,7 @@ export class Match extends DurableObject<Env> {
   /* ------------------------------------------------------------------ sockets */
 
   async fetch(req: Request): Promise<Response> {
+    await this.readTypedSwitch();
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('Expected a websocket', { status: 426 });
     let player: PublicPlayer;
     try {
@@ -406,6 +408,7 @@ export class Match extends DurableObject<Env> {
         const quick = (EMOTES as readonly string[]).includes(m.e);
         const text = quick ? m.e : cleanMessage(m.e).trim();
         if (!quick) {
+          await this.readTypedSwitch();
           if (!this.typing() || !text) return;
           const why = hasContact(text) ? MSG_CONTACT : rudeText(text) ? MSG_RUDE : null;
           if (why) {
@@ -1109,7 +1112,13 @@ export class Match extends DurableObject<Env> {
 
   /** Typed messages: on the test copy and the Mac now, on the real game once the lawyer approves (shared/chat.ts). */
   private typing() {
-    return this.env.ENVIRONMENT !== 'production' || TYPED_ON_REAL_GAME;
+    return (this.env.ENVIRONMENT !== 'production' || TYPED_ON_REAL_GAME) && this.typedSwitch;
+  }
+
+  /** The Typed messages switch in the dashboard's Controls (worker/controls.ts), read when someone connects or types. */
+  private typedSwitch = true;
+  private async readTypedSwitch() {
+    this.typedSwitch = await switchOn(this.env, 'typed');
   }
 
   private say(text: string) {

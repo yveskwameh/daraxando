@@ -35,6 +35,10 @@ import { toast } from '../lib/toast';
 import { StakeSheet } from '../sheets/StakeSheet';
 import { WalletSheet } from '../sheets/WalletSheet';
 import { codesOn } from '../lib/codes';
+import { bannerSeen, controlsNow, markBannerSeen, restingLine, useControls } from '../lib/controls';
+import { countTour, startTour, tourDue } from '../lib/tour';
+import { BANNER_ACTIONS, type Banner } from '../../shared/controls';
+import type { TourEnd } from '../components/Tour';
 
 /** Without internet, only Baba Ayo can be played, where offline play is on (src/lib/offline.ts). */
 const noNet = () => (offlineOn() ? 'No internet. You can still play Baba Ayo.' : 'No internet. Check your connection.');
@@ -58,6 +62,8 @@ const AccountPops = lazy(() => import('../components/AccountPops').then((x) => (
 const ModeSheet = lazy(() => import('../sheets/ModeSheet'));
 // Only for players who still need to pick their name.
 const NameSheet = lazy(() => import('../sheets/NameSheet'));
+// The new-player walkthrough (docs/WALKTHROUGH.md): only when it shows.
+const Tour = lazy(() => import('../components/Tour').then((x) => ({ default: x.Tour })));
 
 type SheetName = 'stake' | 'wallet' | 'friend' | 'baba' | 'streak' | 'friends' | 'quests' | 'live' | 'ban' | 'save' | 'mode' | 'name' | null;
 
@@ -76,6 +82,13 @@ export function Home({ go }: { go: Go }) {
   // The ask after a match (src/lib/asks.ts): save your progress or the streak reminder. Install
   // has its own pop-up (src/components/InstallPop.tsx).
   const [prompt, setPrompt] = useState<'save' | 'streak' | null>(null);
+  // The announcement from the dashboard (src/lib/controls.ts), once per phone.
+  const [banner, setBanner] = useState<Banner | null>(null);
+  const [tour, setTour] = useState(false);
+  // Parts of the game turned off in the dashboard's Controls.
+  const controls = useControls();
+  const quickOff = controls.off.includes('quick');
+  const friendsOff = controls.off.includes('friends');
   const open = (s: SheetName) => {
     setOpened((o) => new Set(o).add(s));
     setSheet(s);
@@ -83,9 +96,15 @@ export function Home({ go }: { go: Go }) {
   const close = () => setSheet(null);
   const ban = profile.ban;
   // Playing other people: a banned player gets the reason instead.
-  const online = (s: 'stake' | 'friend' | 'live') => (ban ? open('ban') : s === 'stake' ? setSheet(s) : open(s));
+  const online = (s: 'stake' | 'friend' | 'live') => {
+    if (ban) return open('ban');
+    // Turned off in Controls: say so, and what still works.
+    if ((s === 'live' || s === 'stake') && quickOff) return toast(restingLine('quick'));
+    if (s === 'friend' && friendsOff) return toast(restingLine('friends'));
+    return s === 'stake' ? setSheet(s) : open(s);
+  };
   // The live games come down one socket the server pushes to (src/lib/useLive.ts).
-  const live = useLive(token).games?.length ?? 0;
+  const live = useLive(token, !quickOff).games?.length ?? 0;
   // Nobody to join: your own game, with your last game and stake.
   const startOwn = useCallback(() => {
     setSheet(null);
@@ -112,6 +131,35 @@ export function Home({ go }: { go: Go }) {
     open('name');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.nameAsk]);
+
+  // The walkthrough (src/lib/tour.ts): after the first game and the name sheet, on a calm Home. It
+  // takes this visit's pop-up, so nothing else shows with it.
+  useEffect(() => {
+    if (tour || sheet || profile.nameAsk || ban || !tourDue(profile)) return;
+    const t = setTimeout(() => {
+      takeVisit();
+      setNudge(null);
+      setBanner(null);
+      setPrompt(null);
+      countTour(token, startTour() ? 'replay' : 'shown');
+      setTour(true);
+    }, 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tour, sheet, profile.nameAsk, ban]);
+  const endTour = (end: TourEnd) => {
+    setTour(false);
+    if (end.how === 'done') {
+      countTour(token, 'done');
+      countTour(token, 'find');
+      // It ends on doing: playing a real person (or Baba Ayo, when Quick match is resting).
+      if (quickOff) open('baba');
+      else online('live');
+    } else {
+      countTour(token, `skip${end.step}`);
+      toast('You can see the tour again in Settings.');
+    }
+  };
 
   // Someone asked you for a friend streak: say so, like a friend request.
   useEffect(() => {
@@ -140,6 +188,14 @@ export function Home({ go }: { go: Go }) {
         markAsked(kind);
         if (kind === 'install') showInstallPop();
         else setPrompt(kind);
+        return;
+      }
+      // An announcement from the dashboard, once per phone, before Baba Ayo.
+      const b = controlsNow().banner;
+      if (b && !bannerSeen(b.id)) {
+        takeVisit();
+        markBannerSeen(b.id);
+        setBanner(b);
         return;
       }
       if (!nudges) return;
@@ -202,20 +258,20 @@ export function Home({ go }: { go: Go }) {
       <div className="actions">
         <button
           type="button"
-          className="btn primary block lg"
-          aria-label={!connected ? 'Quick match. Needs the internet.' : live ? `Quick match. ${live} ${live === 1 ? 'game is' : 'games are'} waiting for a player.` : `Quick match. Nobody is waiting yet. You can start your own ${m.name} game${p.stake ? ` at ${fmt(p.stake)}` : ', free'}.`}
+          className={`btn primary block lg${quickOff ? ' is-resting' : ''}`}
+          aria-label={!connected ? 'Quick match. Needs the internet.' : quickOff ? `Quick match. ${restingLine('quick')}` : live ? `Quick match. ${live} ${live === 1 ? 'game is' : 'games are'} waiting for a player.` : `Quick match. Nobody is waiting yet. You can start your own ${m.name} game${p.stake ? ` at ${fmt(p.stake)}` : ', free'}.`}
           aria-disabled={!connected || undefined}
           onClick={() => (connected ? online('live') : toast(noNet()))}
         >
           Quick match{' '}
-          <span className="stake-pill">
-            {!connected ? 'Offline' : live ? (
+          <span className={`stake-pill${quickOff && connected ? ' resting' : ''}`}>
+            {!connected ? 'Offline' : quickOff ? 'Resting' : live ? (
               <><i className="live-dot" aria-hidden="true" />{live} live</>
-            ) : p.stake ? <Cowries n={p.stake} /> : 'Free'}
+            ) : p.stake && !controls.off.includes('stakes') ? <Cowries n={p.stake} /> : 'Free'}
           </span>
         </button>
         <div className="more">
-          <button type="button" className="btn alt sm" aria-disabled={!connected || undefined} onClick={() => (connected ? online('friend') : toast(noNet()))}>Play a friend</button>
+          <button type="button" className={`btn alt sm${friendsOff ? ' is-resting' : ''}`} aria-disabled={!connected || friendsOff || undefined} onClick={() => (connected ? online('friend') : toast(noNet()))}>Play a friend</button>
           <button type="button" className="btn baba sm" onClick={() => open('baba')}>Play Baba Ayo</button>
         </div>
       </div>
@@ -259,6 +315,39 @@ export function Home({ go }: { go: Go }) {
           </div>
           <button type="button" className="x-btn" aria-label="Not now" onClick={() => setNudge(null)}><Icon id="i-close" className="" /></button>
         </TopPop>
+      )}
+
+      {banner && !ask && !tour && (
+        <TopPop className="ann-pop" role="dialog" label="Announcement" onHide={() => setBanner(null)}>
+          <span className="ann-ic" aria-hidden="true"><Icon id="i-bell" className="" /></span>
+          <div>
+            <b>{banner.text}</b>
+            {banner.action && (
+              <button
+                type="button"
+                className="mini-btn"
+                onClick={() => {
+                  const a = banner.action;
+                  setBanner(null);
+                  if (a === 'quick') online('live');
+                  else if (a === 'friend') online('friend');
+                  else if (a === 'baba') open('baba');
+                  else if (a === 'mode') open('mode');
+                  else go({ name: 'ranks' });
+                }}
+              >
+                {BANNER_ACTIONS[banner.action]}
+              </button>
+            )}
+          </div>
+          <button type="button" className="x-btn" aria-label="Close" onClick={() => setBanner(null)}><Icon id="i-close" className="" /></button>
+        </TopPop>
+      )}
+
+      {tour && (
+        <Suspense fallback={null}>
+          <Tour onEnd={endTour} findLabel={quickOff ? 'Play Baba Ayo' : 'Find a player'} />
+        </Suspense>
       )}
 
       {ask && (

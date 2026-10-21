@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Today page prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@600;700;800;900&family=Onest:wght@400;500;600;700&display=swap">
+<style>
+/*
+ * Dara X&O admin: a calmer Today page, for Yves's approval (21 October 2026). Nothing here is the
+ * dashboard: numbers are from his two screenshots. Same colours, fonts and spacing as the dashboard.
+ */
+:root {
+  color-scheme: dark;
+  --night: #0b0a2a; --deep: #17164a; --raise: #24226a; --line: #34318a;
+  --indigo-glow: #9b8fff; --fuchsia: #dc0fa1; --fuchsia-glow: #ff4fb8;
+  --danfo: #ffc921; --cream: #fff4e0; --teal: #35d6c0; --flame: #ff8a1f;
+  --text: #fff; --muted: #b8b4e8;
+  --warn: var(--flame); --alarm: var(--fuchsia-glow);
+  --head: 'Gabarito', 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --body: 'Onest', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --s1: 8px; --s2: 12px; --s3: 16px; --s4: 24px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #06051c; color: var(--text); font: 400 1rem/1.5 var(--body); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; }
+h1, h2, h3, p { margin: 0; }
+h1, h2 { font-family: var(--head); line-height: 1.15; text-wrap: balance; }
+:focus-visible { outline: 3px solid var(--danfo); outline-offset: 2px; }
+
+/* ---------- the page around the mock ---------- */
+.wrap { max-width: 1320px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left)); display: grid; gap: var(--s4); }
+.intro { display: grid; gap: var(--s1); max-width: 72ch; }
+.intro h1 { font-size: 1.75rem; }
+.intro p { color: var(--muted); }
+.pickers { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
+.seg { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--deep); }
+.seg button { min-height: 38px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: 800 .9375rem/1 var(--head); white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--cream); color: var(--night); }
+.why { display: grid; gap: var(--s1); padding: var(--s3); border-radius: 18px; background: var(--deep); color: var(--muted); font-size: .9375rem; max-width: 860px; }
+.why b { color: var(--text); }
+.why ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+
+/* ---------- the dashboard frame ---------- */
+.frame { border-radius: 22px; overflow: hidden; box-shadow: 0 0 0 1px var(--line), 0 30px 80px rgba(0,0,0,.5); background: var(--night); display: grid; grid-template-columns: 220px minmax(0, 1fr); }
+.frame.phone { grid-template-columns: minmax(0, 1fr); max-width: 390px; margin: 0 auto; border-radius: 32px; }
+.side { background: var(--deep); padding: 22px 16px; display: grid; gap: 6px; align-content: start; }
+.frame.phone .side { display: none; }
+.brand { font: 900 1.375rem/1 var(--head); margin-bottom: 18px; }
+.brand i { font-style: normal; margin-left: 2px; padding: 1px 7px 3px; border-radius: 999px; background: var(--fuchsia); box-shadow: 0 0 0 2px var(--cream); font-size: .875rem; }
+.nav { padding: 10px 12px; border-radius: 12px; color: var(--muted); font-weight: 600; }
+.nav.on { background: var(--cream); color: var(--night); }
+.main { padding: 26px 28px 34px; display: grid; gap: var(--s3); align-content: start; }
+.frame.phone .main { padding: 18px 16px 28px; }
+
+.head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); flex-wrap: wrap; }
+.head h2 { font-size: 1.75rem; }
+.day { display: flex; gap: 6px; align-items: center; }
+.day .b { width: 40px; height: 40px; border-radius: 12px; background: var(--raise); display: grid; place-items: center; color: var(--text); }
+.day .d { min-width: 190px; padding: 6px 14px; border-radius: 12px; background: var(--deep); text-align: center; }
+.day .d b { display: block; font: 800 1rem/1.2 var(--head); }
+.day .d small { color: var(--muted); font-size: .8125rem; }
+.frame.phone .head h2 { display: none; }
+.frame.phone .day { width: 100%; }
+.frame.phone .day .d { flex: 1; min-width: 0; }
+
+/* 1. The status line: the one sentence that says how things are, full width. */
+.status { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--s2); align-items: center; padding: 14px 16px; border-radius: 18px; background: var(--deep); }
+.status .dot { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 900 1rem/1 var(--head); }
+.status.ok .dot { background: rgba(53, 214, 192, .16); color: var(--teal); }
+.status.needs .dot { background: rgba(255, 79, 184, .16); color: var(--alarm); }
+.status b { font: 800 1.0625rem/1.3 var(--head); }
+.status span { display: block; color: var(--muted); font-size: .875rem; }
+.status small { color: var(--muted); font-size: .8125rem; white-space: nowrap; }
+.frame.phone .status { grid-template-columns: auto minmax(0, 1fr); }
+.frame.phone .status small { grid-column: 2; }
+
+/* 2. Two columns that end where their content ends: nothing stretches, so no gaps. */
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--s3); align-items: start; }
+.frame.phone .cols { grid-template-columns: minmax(0, 1fr); }
+.stack { display: grid; gap: var(--s3); align-content: start; }
+.card { display: grid; gap: var(--s2); padding: var(--s3); border-radius: 20px; background: var(--deep); align-content: start; }
+.kicker { font: 800 .75rem/1.2 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--indigo-glow); }
+.card-top { display: flex; align-items: center; justify-content: space-between; gap: var(--s1); }
+.fine { font-size: .8125rem; color: var(--muted); line-height: 1.5; }
+
+/* 3. Needs you: one card, in order, one button. */
+.todo { display: grid; margin: 0; padding: 0; list-style: none; counter-reset: n; }
+.todo li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: var(--s2); align-items: start; padding: var(--s2) 0; counter-increment: n; }
+.todo li + li { border-top: 1px solid var(--line); }
+.todo li:first-child { padding-top: 0; }
+.todo li:last-child { padding-bottom: 0; }
+.todo li::before { content: counter(n); display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--raise); font: 800 .875rem/1 var(--head); color: var(--muted); }
+.todo li.alarm::before { background: var(--alarm); color: var(--night); }
+.todo li.warn::before { background: rgba(255, 138, 31, .2); color: var(--warn); }
+.todo b { display: block; font: 700 .9375rem/1.35 var(--body); }
+.todo span { display: block; font-size: .8125rem; color: var(--muted); line-height: 1.45; }
+.todo .lvl { font-weight: 700; }
+.todo .alarm .lvl { color: var(--alarm); }
+.todo .warn .lvl { color: var(--warn); }
+.go-btn { min-height: 40px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--cream); color: var(--night); font: 800 .875rem/1 var(--head); white-space: nowrap; }
+.go-link { min-height: 40px; padding: 0 6px; border: 0; background: none; color: var(--indigo-glow); font: 700 .875rem/1 var(--body); white-space: nowrap; }
+.frame.phone .todo li { grid-template-columns: 28px minmax(0, 1fr); }
+.frame.phone .todo li > button { grid-column: 2; justify-self: start; }
+.frame.phone .go-link { padding: 0; }
+.more-btn { justify-self: start; border: 0; background: none; color: var(--muted); font: 700 .875rem/1 var(--body); padding: 8px 0; }
+
+/* 4. The day's numbers, with the email tucked into the card's corner. */
+.lead { font: 600 1.125rem/1.45 var(--body); }
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s1); }
+.big { display: grid; justify-items: center; gap: 2px; padding: 14px 8px; border-radius: 16px; background: var(--night); text-align: center; }
+.big b { font: 900 1.75rem/1 var(--head); }
+.big span { font-size: .8125rem; color: var(--muted); }
+.big small { font: 700 .75rem/1 var(--body); color: var(--muted); }
+.big small.up { color: var(--teal); }
+.big small.down { color: var(--alarm); }
+.menu-btn { display: flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--raise); color: var(--text); font: 700 .8125rem/1 var(--body); }
+.menu { position: relative; }
+.menu-list { position: absolute; right: 0; top: 42px; z-index: 3; display: grid; min-width: 210px; padding: 6px; border-radius: 14px; background: var(--raise); box-shadow: 0 0 0 1px var(--line), 0 16px 30px rgba(0,0,0,.45); }
+.menu-list button { text-align: left; padding: 10px 12px; border: 0; border-radius: 10px; background: none; font-weight: 600; font-size: .9375rem; }
+.menu-list button:hover { background: var(--line); }
+.sections { display: grid; gap: var(--s2); grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+.sec { display: grid; gap: 4px; padding: 14px 16px; border-radius: 18px; background: var(--deep); }
+.sec b { font: 900 1.5rem/1 var(--head); }
+
+/* The side column: small, fixed-size tiles. */
+.tile-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s1); font-size: .9375rem; }
+.tile-row b { font-variant-numeric: tabular-nums; }
+.live-big { font: 900 2rem/1 var(--head); }
+.ok-word { display: inline-flex; align-items: center; gap: 6px; color: var(--teal); font-weight: 700; font-size: .9375rem; }
+.meter { display: grid; gap: 4px; }
+.meter .bar { height: 6px; border-radius: 3px; background: var(--night); overflow: hidden; }
+.meter .bar i { display: block; height: 100%; border-radius: 3px; background: var(--indigo-glow); }
+.link { color: var(--indigo-glow); font-weight: 700; font-size: .875rem; }
+
+/* Before, for comparison */
+.before { display: grid; gap: var(--s1); }
+.before img { width: 100%; border-radius: 14px; }
+@media (max-width: 860px) {
+  .frame:not(.phone) { grid-template-columns: minmax(0, 1fr); }
+  .frame:not(.phone) .side { display: none; }
+  .frame:not(.phone) .cols { grid-template-columns: minmax(0, 1fr); }
+  .day .d { min-width: 0; flex: 1; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="intro">
+    <h1>A calmer Today page</h1>
+    <p>For your approval before it's built. Pick a state and a screen size. The numbers come from your two screenshots.</p>
+  </div>
+  <div class="pickers">
+    <div class="seg" role="group" aria-label="State">
+      <button type="button" data-state="needs" aria-pressed="true">Things need you</button>
+      <button type="button" data-state="ok" aria-pressed="false">Nothing needs you</button>
+    </div>
+    <div class="seg" role="group" aria-label="Screen">
+      <button type="button" data-size="computer" aria-pressed="true">Computer</button>
+      <button type="button" data-size="phone" aria-pressed="false">Phone</button>
+    </div>
+  </div>
+
+  <div class="why" id="why"></div>
+
+  <div class="frame" id="frame">
+    <aside class="side" aria-hidden="true">
+      <span class="brand">Dara<i>X&amp;O</i></span>
+      <span class="nav on">Today</span><span class="nav">Players</span><span class="nav">Growth</span><span class="nav">Reviews</span><span class="nav">Controls</span><span class="nav">Log</span>
+    </aside>
+    <div class="main" id="main"></div>
+  </div>
+</div>
+<script>
+const NEEDS = [
+  { lvl: 'alarm', word: 'Act today', title: 'Fewer players than usual yesterday', line: '5 played and 2 new, against 14 and 7 a day over the week before.', go: 'See players' },
+  { lvl: 'warn', word: 'Check soon', title: 'A phone got its third player in the last day', line: 'One person farming seeds, or a family sharing a phone.', go: 'See shared phones' },
+  { lvl: 'warn', word: 'Check soon', title: 'Stakes is turned off', line: 'Since 18:20: checking the seeds maths.', go: 'See Controls' },
+  { lvl: 'note', word: 'Worth knowing', title: '2 ban reviews are waiting', line: 'Banned players asked you to look again.', go: 'Answer' },
+];
+let state = 'needs', size = 'computer', menu = false, all = false;
+
+const big = (n, label, change, cls = '') => `<div class="big"><b>${n}</b><span>${label}</span><small class="${cls}">${change}</small></div>`;
+
+function render() {
+  const main = document.getElementById('main');
+  const shown = all ? NEEDS : NEEDS.slice(0, 3);
+  const status = state === 'ok'
+    ? `<div class="status ok" role="status"><span class="dot">&#10003;</span><div><b>All clear</b><span>Nothing needs you. 5 played yesterday, up 1. All 12 services working.</span></div><small>Checked 18:09</small></div>`
+    : `<div class="status needs" role="status"><span class="dot">${NEEDS.length}</span><div><b>${NEEDS.length} things need you</b><span>Start with the first one. The rest can wait until it's done.</span></div><small>Checked 18:10</small></div>`;
+  const needs = state === 'ok' ? '' : `
+    <section class="card" aria-labelledby="nt">
+      <div class="card-top"><h3 id="nt" class="kicker">Needs you, in order</h3></div>
+      <ol class="todo">
+        ${shown.map((n, i) => `<li class="${n.lvl}"><div><b>${n.title}</b><span><span class="lvl">${n.word}.</span> ${n.line}</span></div>${i === 0 ? `<button type="button" class="go-btn">${n.go}</button>` : `<button type="button" class="go-link">${n.go}</button>`}</li>`).join('')}
+      </ol>
+      ${NEEDS.length > 3 ? `<button type="button" class="more-btn" data-all>${all ? 'Show fewer' : `Show ${NEEDS.length - 3} more`}</button>` : ''}
+    </section>`;
+  const numbers = `
+    <section class="card" aria-labelledby="yt">
+      <div class="card-top">
+        <h3 id="yt" class="kicker">Yesterday's numbers</h3>
+        <div class="menu">
+          <button type="button" class="menu-btn" data-menu aria-expanded="${menu}">The 8 am email <span aria-hidden="true">&#9662;</span></button>
+          ${menu ? `<div class="menu-list" role="menu"><button type="button" role="menuitem">View the email</button><button type="button" role="menuitem">Email it to me now</button></div>` : ''}
+        </div>
+      </div>
+      <p class="lead">5 played yesterday, up 1 on the day before. 2 new players, and all of them finished their first match.</p>
+      <div class="trio">${big(5, 'Played', 'Up 1', 'up')}${big(2, 'New players', 'Same')}${big(5, 'Matches', 'Down 50', 'down')}</div>
+    </section>
+    <div class="sections">
+      <div class="sec"><span class="kicker">Players</span><b>5</b><span class="fine">Played, up 1</span></div>
+      <div class="sec"><span class="kicker">First game</span><b>100%</b><span class="fine">Finished it</span></div>
+      <div class="sec"><span class="kicker">Matches</span><b>5</b><span class="fine">Down 50</span></div>
+      <div class="sec"><span class="kicker">Quick match</span><b>3</b><span class="fine">Met a person</span></div>
+    </div>`;
+  const side = `
+    <section class="card" aria-label="Live now">
+      <div class="card-top"><h3 class="kicker">Live now</h3></div>
+      <div><span class="live-big">0</span> <span class="fine">on Home</span></div>
+      <div class="tile-row"><span>Looking at Quick match</span><b>0</b></div>
+      <div class="tile-row"><span>Waiting in their own game</span><b>0</b></div>
+      <div class="tile-row"><span>Finished a match today</span><b>2</b></div>
+      <a class="link" href="#">Visits in the last hour</a>
+    </section>
+    <section class="card" aria-label="System health">
+      <div class="card-top"><h3 class="kicker">System health</h3><a class="link" href="#">See all</a></div>
+      <span class="ok-word">&#10003; All 12 working</span>
+    </section>
+    <section class="card" aria-label="Free plan">
+      <div class="card-top"><h3 class="kicker">Free plan, Tue 20 Oct</h3><a class="link" href="#">See all</a></div>
+      <div class="meter"><div class="tile-row"><span>Requests</span><b>2%</b></div><div class="bar"><i style="width:2%"></i></div></div>
+      <div class="meter"><div class="tile-row"><span>Database rows read</span><b>0%</b></div><div class="bar"><i style="width:1%"></i></div></div>
+      <p class="fine">Highest of 5 limits. All under half.</p>
+    </section>`;
+  main.innerHTML = `
+    <div class="head"><h2>Today</h2><div class="day"><span class="b">&#8249;</span><div class="d"><b>Yesterday</b><small>Tuesday 20 October</small></div><span class="b">&#8250;</span></div></div>
+    ${status}
+    <div class="cols">
+      <div class="stack">${needs}${numbers}</div>
+      <div class="stack">${side}</div>
+    </div>`;
+  document.getElementById('frame').classList.toggle('phone', size === 'phone');
+  document.getElementById('why').innerHTML = state === 'ok'
+    ? `<b>Nothing needs you.</b> One line at the top says so, the same height every time, so the page never opens with an empty gap. The day's numbers come straight after it, and each column ends where its content ends, so the empty space under the email buttons is gone too.`
+    : `<b>What changed:</b><ol>
+        <li>One line at the top says how things are: "4 things need you", or "All clear".</li>
+        <li>Needs you is one card, numbered in the order to do them: things to act on today first, then things to check soon, then things worth knowing. Only the first has a button; the rest are quiet links. Three show, the rest sit behind "Show 1 more".</li>
+        <li>Fewer alerts that don't mean much: "Played is down" and "New players are down" become one line, and they only show when the week before had at least 10 players a day. On your test copy, with 5 a day, they wouldn't have shown at all.</li>
+        <li>"View the email" and "Email it to me now" move into a small menu on the numbers card, so the page has one main button.</li>
+        <li>The two columns end where their content ends, so there are no empty gaps on either side.</li>
+      </ol>`;
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.state) { state = b.dataset.state; document.querySelectorAll('[data-state]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); }
+  if (b.dataset.size) { size = b.dataset.size; document.querySelectorAll('[data-size]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); }
+  if ('menu' in b.dataset) menu = !menu; else if (!b.closest('.menu-list')) menu = false;
+  if ('all' in b.dataset) all = !all;
+  render();
+});
+render();
+</script>
+</body>
+</html>

@@ -17,7 +17,7 @@ const base: Report = {
     stakes: [{ stake: 0, n: 159 }, { stake: 100, n: 30 }], roomsMade: 34,
   },
   quick: { joined: 61, joinMissed: 7, paired: 104, pairedWaits: { 0: 70, 10: 22, 30: 9, 60: 3, 120: 0 }, pairedAvgS: 13, left: 42, leftWaits: { 0: 8, 10: 14, 30: 12, 60: 6, 120: 2 }, leftAvgS: 40 },
-  extra: { notifyPhones: 80, reminders: 12, appealsOpen: 0, savedFromAsk: 2, pushOn: { 'streak-ask': 3, 'friends-ask': 1, settings: 2 } },
+  extra: { notifyPhones: 80, reminders: 12, appealsOpen: 0, savedFromAsk: 2, pushOn: { 'streak-ask': 3, 'friends-ask': 1, settings: 2 }, tour: { shown: 4, done: 2, skipped: 1, find: 2, replay: 0 } },
   usage: { day: '2026-10-10', requests: { total: 30_000, copies: [{ name: 'daraxando', n: 30_000 }] }, errors: 0, doRequests: 20_000, rowsRead: 1_000_000, rowsWritten: 20_000, problems: [] },
 };
 
