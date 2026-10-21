@@ -39,7 +39,7 @@ describe('announcement and news lines', () => {
 
   it('tell players what they can do instead, in plain sentences', () => {
     for (const s of SWITCHES) {
-      if (s.id === 'reminders') continue;
+      if (s.id === 'reminders' || s.id === 'report') continue;
       expect(s.off).toMatch(/^[A-Z].*\.$/);
       expect(s.off).not.toMatch(/[—–]/);
     }

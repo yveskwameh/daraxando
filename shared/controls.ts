@@ -16,7 +16,7 @@ export interface SwitchInfo {
   off: string;
 }
 
-export const SWITCH_IDS = ['quick', 'friends', 'stakes', 'newPlayers', 'emailCodes', 'codes', 'typed', 'offline', 'reminders'] as const;
+export const SWITCH_IDS = ['quick', 'friends', 'stakes', 'newPlayers', 'emailCodes', 'codes', 'typed', 'offline', 'reminders', 'report'] as const;
 export type SwitchId = (typeof SWITCH_IDS)[number];
 export const isSwitchId = (x: unknown): x is SwitchId => typeof x === 'string' && (SWITCH_IDS as readonly string[]).includes(x);
 
@@ -31,7 +31,13 @@ export const SWITCHES: readonly SwitchInfo[] = [
   { id: 'typed', group: 'In a match and on the phone', name: 'Typed messages', line: 'The quick messages always stay.', off: 'Typed messages are resting for a bit. The quick messages still work.' },
   { id: 'offline', group: 'In a match and on the phone', name: 'Baba Ayo without internet', line: 'Offline games that count. Games already played still count when they arrive.', off: 'Games without internet are just for fun for now.' },
   { id: 'reminders', group: 'In a match and on the phone', name: '7 pm streak reminders', line: "Tonight's run, and every run until it's back on.", off: '' },
+  // Yves, 21 October 2026: he checks Today in the dashboard instead. Only he gets it; players see nothing.
+  { id: 'report', group: 'For you', name: '8 am email', line: "Yesterday's numbers by email. Today in the dashboard shows the same, and the morning tidy-up runs either way.", off: '' },
 ];
+
+/** Switches that only change what Yves gets, so being off is a choice, not something to fix. */
+export const QUIET_WHEN_OFF: readonly SwitchId[] = ['report'];
+export const quietWhenOff = (id: string) => (QUIET_WHEN_OFF as readonly string[]).includes(id);
 
 export const switchInfo = (id: SwitchId) => SWITCHES.find((s) => s.id === id)!;
 export const offLine = (id: SwitchId) => switchInfo(id).off;
