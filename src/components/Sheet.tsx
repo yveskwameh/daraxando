@@ -86,7 +86,7 @@ export function Sheet({ open, onClose, label, locked, closeButton = !locked, clo
     d.classList.remove('dragging', 'settle');
     d.classList.add('closing');
     const end = (e: AnimationEvent) => {
-      if (e.target === d && e.animationName === 'sheet-down') finish();
+      if (e.target === d && (e.animationName === 'sheet-down' || e.animationName === 'down-in-phone')) finish();
     };
     // In case the animation never reports back (a hidden tab), close anyway.
     const t = window.setTimeout(() => finish(), 400);

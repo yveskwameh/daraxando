@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { Avatar, Icon } from './components/art';
 import { InstallPop } from './components/InstallPop';
+import { PhoneFrame } from './components/PhoneFrame';
 import { RoomWatch } from './components/RoomWatch';
 import { Toast } from './components/Toast';
 import { backAt } from './lib/api';
@@ -44,6 +45,7 @@ export function App() {
   return (
     <SessionProvider>
       <div className="stage">
+        <PhoneFrame />
         <div className="app" id="app">
           <Shell />
           <InstallPop />
