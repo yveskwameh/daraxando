@@ -7,12 +7,14 @@
 #  - static.cloudflareinsights.com / cloudflareinsights.com: Cloudflare Web Analytics, which
 #    src/lib/analytics.ts loads on the real game only. Google sign-in is a full-page trip to Google and back, so it needs nothing here.
 #  - blob: for confetti, which draws in a worker.
+#  - frame-ancestors: only Yves's own site may show the game inside a frame (Yves, 22 October
+#    2026), with or without www. Every other site is refused. X-Frame-Options can't name a site,
+#    so it's gone; every current browser follows frame-ancestors instead.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' wss: https://cloudflareinsights.com; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' wss: https://cloudflareinsights.com; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors https://yveskwameh.com https://www.yveskwameh.com; base-uri 'self'; form-action 'self'; object-src 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
-  X-Frame-Options: DENY
   Cross-Origin-Opener-Policy: same-origin
   Strict-Transport-Security: max-age=31536000
 
