@@ -34,6 +34,7 @@ import { fmt, isFriendTable, prize, QUICK_QUIT_MOVES, type StakeBack } from '../
 import { LINES, line } from './baba';
 import { recordSeries, refund, takeStakes, type SeriesInput } from './db';
 import type { Env } from './env';
+import { Flood } from './flood';
 import { afterMatch } from './habits';
 import { rudeText } from './names';
 import { tellHostFriendJoined } from './push';
@@ -140,6 +141,8 @@ export class Match extends DurableObject<Env> {
   /** undefined: not loaded yet. null: there is no match here. */
   private state: State | null | undefined;
   private lastEmote = new Map<string, number>();
+  /** A cap on messages per connection (worker/flood.ts). */
+  private flood = new Flood();
   private joining = false;
 
   constructor(ctx: DurableObjectState, env: Env) {
@@ -376,7 +379,7 @@ export class Match extends DurableObject<Env> {
   }
 
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
-    if (typeof raw !== 'string' || raw.length > 200) return;
+    if (typeof raw !== 'string' || raw.length > 200 || !this.flood.allow(ws)) return;
     await this.load();
     const s = this.state;
     const a = this.att(ws);

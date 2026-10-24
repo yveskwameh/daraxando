@@ -27,6 +27,12 @@ export interface Env {
   EMAIL_LIMITER?: RateLimit;
   /** Code checks, sign-in links and Google sign-ins: 20 a minute per phone. */
   AUTH_LIMITER?: RateLimit;
+  /** Reads per player (anything a signed-in player GETs): 120 a minute. */
+  READ_LIMITER?: RateLimit;
+  /** Live connections opened per player (matches, Quick match, watching a room): 30 a minute. */
+  SOCKET_LIMITER?: RateLimit;
+  /** Reads that need no login, per IP: 300 a minute, loose because mobile networks share IPs. */
+  PUBLIC_LIMITER?: RateLimit;
   /** Which copy this is: local, staging or production (wrangler.jsonc). */
   ENVIRONMENT?: 'local' | 'staging' | 'production';
   /** Signs player tokens. Local: .dev.vars. Live: a secret on each Worker (Settings, Variables and Secrets). */

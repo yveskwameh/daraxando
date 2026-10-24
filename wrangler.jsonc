@@ -52,13 +52,22 @@
   // codes until they find a stranger's room.
   // EMAIL_LIMITER: 3 sign-in emails a minute per phone and per address (worker/accounts.ts).
   // AUTH_LIMITER: 20 code checks, email links and Google sign-ins a minute per phone.
+  // READ_LIMITER: 120 reads a minute per player (Ranks, the league, the profile and the rest).
+  // SOCKET_LIMITER: 30 live connections opened a minute per player (matches, Quick match, rooms).
+  // PUBLIC_LIMITER: 300 reads a minute per IP for what needs no login. Loose, because of shared IPs.
+  // Messages inside a live connection have their own cap (worker/flood.ts). None of this protects
+  // the free plan's daily request allowance: that needs Cloudflare's rate limiting rule in front
+  // of the Worker (README, "Going live").
   "ratelimits": [
     { "name": "DEVICE_LIMITER", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } },
     { "name": "IP_LIMITER", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } },
     { "name": "ACTION_LIMITER", "namespace_id": "1003", "simple": { "limit": 60, "period": 60 } },
     { "name": "PEEK_LIMITER", "namespace_id": "1004", "simple": { "limit": 120, "period": 60 } },
     { "name": "EMAIL_LIMITER", "namespace_id": "1005", "simple": { "limit": 3, "period": 60 } },
-    { "name": "AUTH_LIMITER", "namespace_id": "1006", "simple": { "limit": 20, "period": 60 } }
+    { "name": "AUTH_LIMITER", "namespace_id": "1006", "simple": { "limit": 20, "period": 60 } },
+    { "name": "READ_LIMITER", "namespace_id": "1007", "simple": { "limit": 120, "period": 60 } },
+    { "name": "SOCKET_LIMITER", "namespace_id": "1008", "simple": { "limit": 30, "period": 60 } },
+    { "name": "PUBLIC_LIMITER", "namespace_id": "1009", "simple": { "limit": 300, "period": 60 } }
   ],
 
   // Logs keep the game's own console lines (errors) for 3 days on the free plan. Invocation logs
@@ -103,7 +112,10 @@
         { "name": "ACTION_LIMITER", "namespace_id": "2003", "simple": { "limit": 60, "period": 60 } },
         { "name": "PEEK_LIMITER", "namespace_id": "2004", "simple": { "limit": 120, "period": 60 } },
         { "name": "EMAIL_LIMITER", "namespace_id": "2005", "simple": { "limit": 3, "period": 60 } },
-        { "name": "AUTH_LIMITER", "namespace_id": "2006", "simple": { "limit": 20, "period": 60 } }
+        { "name": "AUTH_LIMITER", "namespace_id": "2006", "simple": { "limit": 20, "period": 60 } },
+        { "name": "READ_LIMITER", "namespace_id": "2007", "simple": { "limit": 120, "period": 60 } },
+        { "name": "SOCKET_LIMITER", "namespace_id": "2008", "simple": { "limit": 30, "period": 60 } },
+        { "name": "PUBLIC_LIMITER", "namespace_id": "2009", "simple": { "limit": 300, "period": 60 } }
       ]
     },
     "production": {
@@ -136,7 +148,10 @@
         { "name": "ACTION_LIMITER", "namespace_id": "3003", "simple": { "limit": 60, "period": 60 } },
         { "name": "PEEK_LIMITER", "namespace_id": "3004", "simple": { "limit": 120, "period": 60 } },
         { "name": "EMAIL_LIMITER", "namespace_id": "3005", "simple": { "limit": 3, "period": 60 } },
-        { "name": "AUTH_LIMITER", "namespace_id": "3006", "simple": { "limit": 20, "period": 60 } }
+        { "name": "AUTH_LIMITER", "namespace_id": "3006", "simple": { "limit": 20, "period": 60 } },
+        { "name": "READ_LIMITER", "namespace_id": "3007", "simple": { "limit": 120, "period": 60 } },
+        { "name": "SOCKET_LIMITER", "namespace_id": "3008", "simple": { "limit": 30, "period": 60 } },
+        { "name": "PUBLIC_LIMITER", "namespace_id": "3009", "simple": { "limit": 300, "period": 60 } }
       ]
     }
   }
