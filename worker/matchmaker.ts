@@ -29,6 +29,7 @@ import { dayKey } from '../shared/progression';
 import { CLOSE, type LiveGame, type LobbyServerMsg, type Nearby, type PublicPlayer } from '../shared/protocol';
 import { HIGH_TABLE, PAIR_DAILY_MAX, tableLock, type StakeCheck } from '../shared/stakes';
 import type { Env } from './env';
+import { Flood } from './flood';
 import type { InitResult } from './match';
 import { bump, STAT, waitBucket } from './stats';
 
@@ -68,6 +69,8 @@ const realState = (s: string) => s !== 'OUT' && s !== 'NONE';
 export class Matchmaker extends DurableObject<Env> {
   /** Players being handed to a match right now, so a second search cannot grab them mid-handoff. */
   private pairing = new Set<string>();
+  /** A cap on messages per connection (worker/flood.ts): one object pairs everyone, so a flood here hurts most. */
+  private flood = new Flood();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -105,6 +108,7 @@ export class Matchmaker extends DurableObject<Env> {
    * wider. A watcher sends {"t":"looking","on":true|false} when the Quick match sheet opens or closes.
    */
   async webSocketMessage(ws: WebSocket, msg: string | ArrayBuffer) {
+    if (!this.flood.allow(ws)) return;
     if (!this.isWatcher(ws)) return this.pair();
     let on: boolean;
     try {

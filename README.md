@@ -114,7 +114,7 @@ Everything runs on Cloudflare's free plan, at $0 (`docs/STACK.md`, `docs/BACKEND
 | Builds from | every push to `main` | the `production` branch |
 | Its 8 am email says | "Test copy" | nothing extra |
 
-**Free plan limits** (per account, both copies together, reset at 1 am Lagos time): 100,000 requests a day, 10 ms of processing per request, 5 million database rows read and 100,000 written a day, 5 schedules (each copy uses 2). Over a limit, players see "Dara X&O is resting" until the reset. The 8 am email warns from half a limit.
+**Free plan limits** (per account, both copies together, reset at 1 am Lagos time): 100,000 requests a day, 10 ms of processing per request, 5 million database rows read and 100,000 written a day, 5 schedules (each copy uses 2). Over a limit, players see "Dara X&O is resting" until the reset. The 8 am email warns from half a limit. Every request has a limit inside the Worker (`wrangler.jsonc`, "ratelimits", and `worker/flood.ts` for messages in a live connection), but only Cloudflare's rate limiting rule in front of the Worker keeps a flood from using up the day's requests (`docs/LAUNCH.md`, step 11).
 
 Setting up a copy from scratch, step by step, is in `docs/LAUNCH.md`.
 

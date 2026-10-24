@@ -55,6 +55,21 @@ function socketError(code: number, error: string, message = error) {
   return new Response(null, { status: 101, webSocket: client });
 }
 
+const SLOW = 'Slow down a little. Try again in a minute.';
+const over = async (limiter: RateLimit | undefined, key: string) => !!limiter && !(await limiter.limit({ key })).success;
+const ipOf = (req: Request) => req.headers.get('cf-connecting-ip') ?? 'local';
+
+/**
+ * Every request has a limit, not only sign-in (wrangler.jsonc, "ratelimits"): per player when
+ * signed in, per IP when not. Sign-in, emails and room codes have tighter ones of their own.
+ * A refused live connection gets a plain 429, so the app tries again a little later.
+ */
+async function tooMany(env: Env, req: Request, me: Profile | null, isSocket = false) {
+  if (!me) return over(env.PUBLIC_LIMITER, `p:${ipOf(req)}`);
+  if (isSocket) return over(env.SOCKET_LIMITER, `s:${me.id}`);
+  return req.method === 'GET' || req.method === 'HEAD' ? over(env.READ_LIMITER, `r:${me.id}`) : over(env.ACTION_LIMITER, `a:${me.id}`);
+}
+
 /** Passes the websocket to a Durable Object with the player attached by us, never by the browser. */
 function forward(req: Request, stub: { fetch(r: Request): Promise<Response> }, player: PublicPlayer, extra: Record<string, string> = {}) {
   const headers = new Headers(req.headers);
@@ -151,8 +166,9 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   if (path === '/api/leaderboard' && method === 'GET') {
     const scope = url.searchParams.get('state');
     const state = scope && isStateCode(scope) && scope !== 'OUT' && scope !== 'NONE' ? scope : null;
-    const top = await cachedTop(env, url, state);
     const me = await playerFrom(req, url, env);
+    if (await tooMany(env, req, me)) return fail(429, SLOW);
+    const top = await cachedTop(env, url, state);
     // A banned player isn't on the list, but sees where they'd be ("outside").
     const mine = me && me.quickGames > 0 && (!state || me.state === state)
       ? { rank: await rankOf(env.DB, me.rating, state), ...(isBanned(me) ? { outside: true as const } : {}) }
@@ -162,6 +178,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
 
   /* --- a guess at the player's state, to pre-select it at sign-up. Nothing is stored. --- */
   if (path === '/api/where' && method === 'GET') {
+    if (await tooMany(env, req, null)) return fail(429, SLOW);
     const cf = req.cf as { country?: string; regionCode?: string } | undefined;
     const guess = cf?.country === 'NG' ? (isStateCode(cf.regionCode) ? cf.regionCode : null) : cf?.country ? 'OUT' : null;
     return json({ state: guess });
@@ -170,6 +187,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   /* --- is it up? For checks after a deploy. No player needed. --- */
   // `signIn` says whether each sign-in secret is set on this copy (never the values), so a missing one is easy to spot.
   if (path === '/api/health' && method === 'GET') {
+    if (await tooMany(env, req, null)) return fail(429, SLOW);
     return json({ ok: true, env: env.ENVIRONMENT ?? 'local', signIn: { google: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), email: !!env.RESEND_API_KEY }, push: pushReady(env) });
   }
 
@@ -201,24 +219,31 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   if (path.startsWith('/api/admin/') || path === '/api/admin') return adminRoute(req, env, url);
 
   /* --- save your progress and sign in (worker/accounts.ts). The phone may not have a player yet. --- */
-  if (path.startsWith('/api/auth/')) return authRoute(req, env, url, tokenFrom(req, url) ? await playerFrom(req, url, env) : null);
+  if (path.startsWith('/api/auth/')) {
+    const me = tokenFrom(req, url) ? await playerFrom(req, url, env) : null;
+    if (await tooMany(env, req, me)) return fail(429, SLOW);
+    return authRoute(req, env, url, me);
+  }
 
   /* --- player codes and "Lost your code?" (worker/codes.ts). The phone may not have a player yet. --- */
   if (path === '/api/code' || path.startsWith('/api/code/') || path === '/api/recovery' || path.startsWith('/api/recovery/')) {
+    const me = tokenFrom(req, url) ? await playerFrom(req, url, env) : null;
+    if (await tooMany(env, req, me)) return fail(429, SLOW);
     if (!(await switchOn(env, 'codes'))) return fail(503, offLine('codes'));
-    return codeRoute(req, env, url, tokenFrom(req, url) ? await playerFrom(req, url, env) : null);
+    return codeRoute(req, env, url, me);
   }
 
   /* --- the public notification key: not secret, so no login needed (phones ask for it before subscribing) --- */
-  if (path === '/api/push' && method === 'GET') return json({ key: pushReady(env) ? env.VAPID_PUBLIC_KEY : null });
+  if (path === '/api/push' && method === 'GET') {
+    if (await tooMany(env, req, null)) return fail(429, SLOW);
+    return json({ key: pushReady(env) ? env.VAPID_PUBLIC_KEY : null });
+  }
 
   const isSocket = req.headers.get('Upgrade') === 'websocket';
   const me = await playerFrom(req, url, env);
   if (!me) return isSocket ? socketError(CLOSE.unauthorized, 'unauthorized') : fail(401, 'unauthorized');
   const now = Date.now();
-  if (method !== 'GET' && !isSocket && env.ACTION_LIMITER && !(await env.ACTION_LIMITER.limit({ key: `a:${me.id}` })).success) {
-    return fail(429, 'Slow down a little. Try again in a minute.');
-  }
+  if (await tooMany(env, req, me, isSocket)) return fail(429, SLOW);
 
   /* --- your profile --- */
   if (path === '/api/me' && method === 'GET') {
